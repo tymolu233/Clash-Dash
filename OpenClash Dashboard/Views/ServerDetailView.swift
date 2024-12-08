@@ -254,13 +254,13 @@ struct OverviewTab: View {
                 HStack(spacing: 16) {
                     StatusCard(
                         title: "下载总量",
-                        value: monitor.totalUpload,
+                        value: monitor.totalDownload,
                         icon: "arrow.down.circle.fill",
                         color: .blue
                     )
                     StatusCard(
                         title: "上传总量",
-                        value: monitor.totalDownload,
+                        value: monitor.totalUpload,
                         icon: "arrow.up.circle.fill",
                         color: .green
                     )

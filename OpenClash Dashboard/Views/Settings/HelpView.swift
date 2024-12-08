@@ -22,6 +22,12 @@ struct HelpView: View {
                     Text("长按服务器项目可以进行编辑或删除操作。下拉列表可以刷新所有服务器状态。")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
+                    
+                    Text("4. 快速启动")
+                        .font(.headline)
+                    Text("长按服务器可以将其设置为快速启动（闪电图标）。设置后，App 启动时会自动打开该服务器的详情页面。每次只能设置一个快速启动服务器。")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
                 }
                 .padding(.vertical, 8)
             }
