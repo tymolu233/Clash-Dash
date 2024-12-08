@@ -11,6 +11,7 @@ struct ClashServer: Identifiable, Codable {
     var useSSL: Bool
     var errorMessage: String?
     var serverType: ServerType?
+    var isQuickLaunch: Bool = false
     
     enum ServerType: String, Codable {
         case premium = "Premium"

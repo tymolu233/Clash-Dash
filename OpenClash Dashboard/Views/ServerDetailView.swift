@@ -49,8 +49,15 @@ struct ServerDetailView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    Text(server.name.isEmpty ? "\(server.url):\(server.port)" : server.name)
-                        .font(.headline)
+                    HStack {
+                        Text(server.name.isEmpty ? "\(server.url):\(server.port)" : server.name)
+                            .font(.headline)
+                        if server.isQuickLaunch {
+                            Image(systemName: "bolt.circle.fill")
+                                .foregroundColor(.yellow)
+                                .font(.subheadline)
+                        }
+                    }
                 }
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button {
@@ -87,7 +94,7 @@ struct SpeedChartView: View {
         let maxDownload = speedHistory.map { $0.download }.max() ?? 0
         let currentMax = max(maxUpload, maxDownload)
         
-        // 如果没有数据或数据太小，使用最小刻度
+        // 如果没有数据或数据��小，使用最小刻度
         if currentMax < 100_000 { // 小于 100KB/s
             return 100_000 // 100KB/s
         }

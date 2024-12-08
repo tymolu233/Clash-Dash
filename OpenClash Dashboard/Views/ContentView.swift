@@ -4,6 +4,7 @@ struct ContentView: View {
     @StateObject private var viewModel = ServerViewModel()
     @State private var showingAddSheet = false
     @State private var editingServer: ClashServer?
+    @State private var selectedQuickLaunchServer: ClashServer?
     
     var body: some View {
         NavigationStack {
@@ -61,6 +62,13 @@ struct ContentView: View {
                                         } label: {
                                             Label("编辑", systemImage: "pencil")
                                         }
+                                        
+                                        Button {
+                                            viewModel.setQuickLaunch(server)
+                                        } label: {
+                                            Label(server.isQuickLaunch ? "取消快速启动" : "设为快速启动", 
+                                                  systemImage: server.isQuickLaunch ? "bolt.slash.circle" : "bolt.circle")
+                                        }
                                     }
                             }
                             .buttonStyle(PlainButtonStyle())
@@ -104,6 +112,15 @@ struct ContentView: View {
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("Clash Dash")
+            .background {
+                NavigationLink(
+                    destination: ServerDetailView(server: selectedQuickLaunchServer ?? viewModel.servers[0]),
+                    isActive: Binding(
+                        get: { selectedQuickLaunchServer != nil },
+                        set: { if !$0 { selectedQuickLaunchServer = nil } }
+                    )
+                ) { EmptyView() }
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -132,6 +149,11 @@ struct ContentView: View {
                 } else {
                     Text(viewModel.errorMessage ?? "")
                 }
+            }
+        }
+        .onAppear {
+            if let quickLaunchServer = viewModel.servers.first(where: { $0.isQuickLaunch }) {
+                selectedQuickLaunchServer = quickLaunchServer
             }
         }
     }
@@ -173,9 +195,17 @@ struct ServerRowView: View {
             
             // 服务器信息
             VStack(alignment: .leading, spacing: 6) {
-                Text(server.displayName)
-                    .font(.headline)
-                    .lineLimit(1)
+                HStack {
+                    Text(server.displayName)
+                        .font(.headline)
+                        .lineLimit(1)
+                    
+                    if server.isQuickLaunch {
+                        Image(systemName: "bolt.circle.fill")
+                            .foregroundColor(.yellow)
+                            .font(.subheadline)
+                    }
+                }
                 
                 if server.status == .ok {
                     HStack(spacing: 4) {

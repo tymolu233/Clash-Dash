@@ -273,4 +273,26 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate {
         servers.removeAll { $0.id == server.id }
         saveServers()
     }
+    
+    func setQuickLaunch(_ server: ClashServer) {
+        // 如果当前服务器已经是快速启动，则取消它
+        if server.isQuickLaunch {
+            if let index = servers.firstIndex(where: { $0.id == server.id }) {
+                servers[index].isQuickLaunch = false
+            }
+        } else {
+            // 否则，先将所有服务器的 isQuickLaunch 设为 false
+            for index in servers.indices {
+                servers[index].isQuickLaunch = false
+            }
+            
+            // 然后设置选中的服务器为快速启动
+            if let index = servers.firstIndex(where: { $0.id == server.id }) {
+                servers[index].isQuickLaunch = true
+            }
+        }
+        
+        // 保存更改
+        saveServers()
+    }
 } 
