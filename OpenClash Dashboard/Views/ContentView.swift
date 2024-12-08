@@ -5,6 +5,7 @@ struct ContentView: View {
     @State private var showingAddSheet = false
     @State private var editingServer: ClashServer?
     @State private var selectedQuickLaunchServer: ClashServer?
+    @State private var showQuickLaunchDestination = false
     
     var body: some View {
         NavigationStack {
@@ -112,14 +113,10 @@ struct ContentView: View {
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("Clash Dash")
-            .background {
-                NavigationLink(
-                    destination: ServerDetailView(server: selectedQuickLaunchServer ?? viewModel.servers[0]),
-                    isActive: Binding(
-                        get: { selectedQuickLaunchServer != nil },
-                        set: { if !$0 { selectedQuickLaunchServer = nil } }
-                    )
-                ) { EmptyView() }
+            .navigationDestination(isPresented: $showQuickLaunchDestination) {
+                if let server = selectedQuickLaunchServer ?? viewModel.servers.first {
+                    ServerDetailView(server: server)
+                }
             }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -154,6 +151,7 @@ struct ContentView: View {
         .onAppear {
             if let quickLaunchServer = viewModel.servers.first(where: { $0.isQuickLaunch }) {
                 selectedQuickLaunchServer = quickLaunchServer
+                showQuickLaunchDestination = true
             }
         }
     }
