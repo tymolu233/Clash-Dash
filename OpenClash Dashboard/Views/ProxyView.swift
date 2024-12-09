@@ -386,6 +386,7 @@ struct ProxyGroupCard: View {
                     }
                     .padding(.horizontal, 4)
                     .padding(.top, 8)
+                    .padding(.bottom, 8)
                 }
                 .frame(maxHeight: 500)
             } else {
