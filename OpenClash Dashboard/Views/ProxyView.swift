@@ -174,27 +174,37 @@ struct ProxyView: View {
     // 添加节点排序方法
     private func sortNodes(_ nodeNames: [String], _ allNodes: [ProxyNode], groupName: String) -> [ProxyNode] {
         let specialNodes = ["DIRECT", "REJECT"]
-        let matchedNodes = nodeNames.compactMap { name in
+        var matchedNodes = nodeNames.compactMap { name in
             if specialNodes.contains(name) {
-                // 先尝试从现有节点中查找
                 if let existingNode = allNodes.first(where: { $0.name == name }) {
                     return existingNode
                 }
-                // 如果找不到，再创建新的节点
                 return ProxyNode(
                     id: UUID().uuidString,
                     name: name,
                     type: "Special",
                     alive: true,
-                    delay: 0,  // 初始延迟为0
+                    delay: 0,
                     history: []
                 )
             }
-            // 确保所有节点都被包含
             return allNodes.first { $0.name == name }
         }
         
-        // 自定义排序逻辑
+        // 检查是否需要隐藏不可用代理
+        let hideUnavailable = UserDefaults.standard.bool(forKey: "hideUnavailableProxies")
+        if hideUnavailable {
+            // 过滤掉超时的节点，但保留特殊节点
+            matchedNodes = matchedNodes.filter { node in
+                specialNodes.contains(node.name) || node.delay > 0
+            }
+        }
+        
+        // 获取排序设置
+        let sortOrder = UserDefaults.standard.string(forKey: "proxyGroupSortOrder") ?? "default"
+        let order = ProxyGroupSortOrder(rawValue: sortOrder) ?? .default
+        
+        // 根据排序设置对节点进行排序
         return matchedNodes.sorted { node1, node2 in
             // 1. DIRECT 永远在最前
             if node1.name == "DIRECT" { return true }
@@ -208,8 +218,27 @@ struct ProxyView: View {
             if node1.name == groupName { return true }
             if node2.name == groupName { return false }
             
-            // 4. 其他节点按字母顺序排序
-            return node1.name < node2.name
+            // 4. 根据选择的排序方式对其他节点排序
+            switch order {
+            case .default:
+                return true
+                
+            case .latencyAsc:
+                if node1.delay == 0 { return false }
+                if node2.delay == 0 { return true }
+                return node1.delay < node2.delay
+                
+            case .latencyDesc:
+                if node1.delay == 0 { return false }
+                if node2.delay == 0 { return true }
+                return node1.delay > node2.delay
+                
+            case .nameAsc:
+                return node1.name.localizedStandardCompare(node2.name) == .orderedAscending
+                
+            case .nameDesc:
+                return node1.name.localizedStandardCompare(node2.name) == .orderedDescending
+            }
         }
     }
 }
@@ -253,11 +282,20 @@ struct ProxyGroupCard: View {
                     .background(.secondary.opacity(0.2))
                     .clipShape(Capsule())
                 
+                // 添加选中的节点显示
+                if !selectedNode.isEmpty {
+                    Text("\(selectedNode)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+                
+                Spacer()
+                
                 Text("\(count)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                
-                Spacer()
                 
                 // 测速按钮
                 Button {
@@ -334,43 +372,18 @@ struct ProxyGroupCard: View {
                                                 .padding(.vertical, 2)
                                                 .background(.red.opacity(0.1))
                                                 .clipShape(RoundedRectangle(cornerRadius: 4))
-                                        } else if node.name == "DIRECT" {
-                                            if viewModel.testingNodes.contains(node.id) {
-                                                ProgressView()
-                                                    .scaleEffect(0.6)
-                                                    .frame(width: 30)
-                                            } else if node.delay > 0 {
-                                                Text("\(node.delay) ms")
-                                                    .font(.system(size: 12))
-                                                    .foregroundStyle(getDelayTextColor(delay: node.delay))
-                                                    .padding(.horizontal, 6)
-                                                    .padding(.vertical, 2)
-                                                    .background(getDelayTextColor(delay: node.delay).opacity(0.1))
-                                                    .clipShape(RoundedRectangle(cornerRadius: 4))
-                                            } else {
-                                                Text("超时")
-                                                    .font(.system(size: 12))
-                                                    .foregroundStyle(.secondary)
-                                                    .padding(.horizontal, 6)
-                                                    .padding(.vertical, 2)
-                                                    .background(Color.secondary.opacity(0.1))
-                                                    .clipShape(RoundedRectangle(cornerRadius: 4))
-                                            }
+                                        } else if viewModel.testingNodes.contains(node.id) {
+                                            ProgressView()
+                                                .scaleEffect(0.6)
+                                                .frame(width: 30)
                                         } else if node.delay > 0 {
-                                            HStack {
-                                                if viewModel.testingNodes.contains(node.id) {
-                                                    ProgressView()
-                                                        .scaleEffect(0.7)
-                                                } else {
-                                                    Text("\(node.delay) ms")
-                                                }
-                                            }
-                                            .font(.system(size: 12))
-                                            .foregroundStyle(getDelayTextColor(delay: node.delay))
-                                            .padding(.horizontal, 6)
-                                            .padding(.vertical, 2)
-                                            .background(getDelayTextColor(delay: node.delay).opacity(0.1))
-                                            .clipShape(RoundedRectangle(cornerRadius: 4))
+                                            Text("\(node.delay) ms")
+                                                .font(.system(size: 12))
+                                                .foregroundStyle(getDelayTextColor(delay: node.delay))
+                                                .padding(.horizontal, 6)
+                                                .padding(.vertical, 2)
+                                                .background(getDelayTextColor(delay: node.delay).opacity(0.1))
+                                                .clipShape(RoundedRectangle(cornerRadius: 4))
                                         } else {
                                             Text("超时")
                                                 .font(.system(size: 12))
@@ -411,6 +424,7 @@ struct ProxyGroupCard: View {
                     }
                     .padding(.horizontal, 4)
                     .padding(.top, 8)
+                    .padding(.bottom, 8)
                 }
                 .frame(maxHeight: 500)
             } else {

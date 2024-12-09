@@ -80,11 +80,25 @@ class ProxyViewModel: ObservableObject {
     @Published var testingNodes: Set<String> = []
     @Published var lastUpdated = Date()
     @Published var lastDelayTestTime = Date()
+    @Published var isSortMode = false  // 添加排序模式状态
     
     private let server: ClashServer
     private var currentTask: Task<Void, Never>?
     private let settingsViewModel = SettingsViewModel()
-    private let defaultTestUrl = "http://www.gstatic.com/generate_204"
+    
+    // 从 UserDefaults 读取设置
+    private var testUrl: String {
+        UserDefaults.standard.string(forKey: "speedTestURL") ?? "http://www.gstatic.com/generate_204"
+    }
+    
+    private var testTimeout: Int {
+        UserDefaults.standard.integer(forKey: "speedTestTimeout") 
+    }
+    
+    // 添加用于存储自定义顺序的键
+    private var customOrderKey: String {
+        "proxyGroups.customOrder.\(server.id)"
+    }
     
     init(server: ClashServer) {
         self.server = server
@@ -109,20 +123,13 @@ class ProxyViewModel: ObservableObject {
     
     @MainActor
     func fetchProxies() async {
-        // 1. 取消之前的任务前先等待完成
-        await currentTask?.value
         currentTask?.cancel()
         
         currentTask = Task {
             do {
-                // 2. 添加任务取消检查
-                if Task.isCancelled { return }
-                
-                // 获取 providers 数据
+                // 1. 获取 providers 数据
                 guard let providersRequest = makeRequest(path: "providers/proxies") else { return }
                 let (providersData, _) = try await URLSession.shared.data(for: providersRequest)
-                
-                if Task.isCancelled { return }
                 
                 // 解析 providers 数据，获取所有实际的代理节点
                 if let providersResponse = try? JSONDecoder().decode(ProxyProvidersResponse.self, from: providersData) {
@@ -187,26 +194,26 @@ class ProxyViewModel: ObservableObject {
                     if let proxiesResponse = try? JSONDecoder().decode(ProxyResponse.self, from: proxiesData) {
                         // 5. 更新组数据
                         self.groups = proxiesResponse.proxies.compactMap { name, proxy in
-                            // 只过滤掉没有 all 数组的代理
-                            guard proxy.all != nil, !proxy.all!.isEmpty else { return nil }
+                            guard proxy.all != nil else { return nil }
                             return ProxyGroup(
                                 name: name,
                                 type: proxy.type,
                                 now: proxy.now ?? "",
-                                all: proxy.all ?? [],
-                                alive: proxy.alive
+                                all: proxy.all ?? []
                             )
                         }
                         
-                        // 确保立即触发 UI 更新
-                        objectWillChange.send()
-                        
-                        // 6. 合并所有节点数据
+                        // 6. 合并所有节���数据
                         var allNodes: [ProxyNode] = []
                         
                         // 添加特殊节点
                         let specialNodes = ["DIRECT", "REJECT"].map { name in
-                            ProxyNode(
+                            // 尝试从现节点中找到对应的特殊节点
+                            if let existingNode = self.nodes.first(where: { $0.name == name }) {
+                                return existingNode  // 如果找到，保留现有节点的所有信息（包括延迟）
+                            }
+                            // 如果是新建的节点，才使用默认值
+                            return ProxyNode(
                                 id: UUID().uuidString,
                                 name: name,
                                 type: "Special",
@@ -239,9 +246,7 @@ class ProxyViewModel: ObservableObject {
                     }
                 }
             } catch {
-                if !(error is CancellationError) {
-                    handleNetworkError(error)
-                }
+                handleNetworkError(error)
             }
         }
     }
@@ -259,8 +264,8 @@ class ProxyViewModel: ObservableObject {
             
             var components = URLComponents(url: request.url!, resolvingAgainstBaseURL: true)
             components?.queryItems = [
-                URLQueryItem(name: "url", value: defaultTestUrl),
-                URLQueryItem(name: "timeout", value: "2000")
+                URLQueryItem(name: "url", value: testUrl),
+                URLQueryItem(name: "timeout", value: "\(testTimeout)")
             ]
             
             guard let finalUrl = components?.url else { continue }
@@ -323,7 +328,6 @@ class ProxyViewModel: ObservableObject {
         let encodedGroupName = groupName.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? groupName
         guard var request = makeRequest(path: "proxies/\(encodedGroupName)") else { return }
         
-        // 设置请求方法和请求体
         request.httpMethod = "PUT"
         let body = ["name": proxyName]
         request.httpBody = try? JSONEncoder().encode(body)
@@ -331,7 +335,6 @@ class ProxyViewModel: ObservableObject {
         do {
             let (_, response) = try await URLSession.shared.data(for: request)
             
-            // 检查 HTTPS 响应
             if server.useSSL,
                let httpsResponse = response as? HTTPURLResponse,
                httpsResponse.statusCode == 400 {
@@ -339,12 +342,35 @@ class ProxyViewModel: ObservableObject {
                 return
             }
             
-            // 如果不 REJECT 节点，测试延迟
+            // 检查是否需要自动断开旧连接
+            if UserDefaults.standard.bool(forKey: "autoDisconnectOldProxy") {
+                // 获取当前活跃的连接
+                guard var connectionsRequest = makeRequest(path: "connections") else { return }
+                let (data, _) = try await URLSession.shared.data(for: connectionsRequest)
+                
+                if let connectionsResponse = try? JSONDecoder().decode(ConnectionsResponse.self, from: data) {
+                    // 遍历所有活跃连接
+                    for connection in connectionsResponse.connections {
+                        // 如果连接的代理链包含当前切换的代理名称,则关闭该连接
+                        if connection.chains.contains(proxyName) {
+                            // 构建关闭连接的请求
+                            guard var closeRequest = makeRequest(path: "connections/\(connection.id)") else { continue }
+                            closeRequest.httpMethod = "DELETE"
+                            
+                            // 发送关闭请求
+                            let (_, closeResponse) = try await URLSession.shared.data(for: closeRequest)
+                            if let closeHttpResponse = closeResponse as? HTTPURLResponse,
+                               closeHttpResponse.statusCode == 204 {
+                                print("成功关闭连接: \(connection.id)")
+                            }
+                        }
+                    }
+                }
+            }
+            
             if proxyName != "REJECT" {
                 await testNodeDelay(nodeName: proxyName)
             }
-            
-            // 刷新代理数据
             await fetchProxies()
             
         } catch {
@@ -359,8 +385,8 @@ class ProxyViewModel: ObservableObject {
         
         var components = URLComponents(url: request.url!, resolvingAgainstBaseURL: true)
         components?.queryItems = [
-            URLQueryItem(name: "url", value: defaultTestUrl),
-            URLQueryItem(name: "timeout", value: "2000")
+            URLQueryItem(name: "url", value: testUrl),
+            URLQueryItem(name: "timeout", value: "\(testTimeout)")
         ]
         
         guard let finalUrl = components?.url else { return }
@@ -449,8 +475,8 @@ class ProxyViewModel: ObservableObject {
         
         var components = URLComponents(url: request.url!, resolvingAgainstBaseURL: true)
         components?.queryItems = [
-            URLQueryItem(name: "url", value: defaultTestUrl),
-            URLQueryItem(name: "timeout", value: "2000")
+            URLQueryItem(name: "url", value: testUrl),
+            URLQueryItem(name: "timeout", value: "\(testTimeout)")
         ]
         
         guard let finalUrl = components?.url else { return }
@@ -560,11 +586,10 @@ class ProxyViewModel: ObservableObject {
         
         guard var request = makeRequest(path: "providers/proxies/\(encodedProviderName)/\(encodedProxyName)/healthcheck") else { return }
         
-        // 添加查询参数，使用默认测试 URL
         var components = URLComponents(url: request.url!, resolvingAgainstBaseURL: true)
         components?.queryItems = [
-            URLQueryItem(name: "url", value: defaultTestUrl),
-            URLQueryItem(name: "timeout", value: "5000")
+            URLQueryItem(name: "url", value: testUrl),
+            URLQueryItem(name: "timeout", value: "\(testTimeout)")
         ]
         
         guard let finalUrl = components?.url else { return }
@@ -625,21 +650,40 @@ class ProxyViewModel: ObservableObject {
         }
     }
     
-    // 简化获取排序后的组的方法，只使用 GLOBAL 组排序
+    // 添加保存自定义顺序的方法
+    func saveCustomOrder() {
+        let orderDict = Dictionary(uniqueKeysWithValues: groups.enumerated().map { ($0.element.name, $0.offset) })
+        UserDefaults.standard.set(orderDict, forKey: customOrderKey)
+    }
+    
+    // 添加获取排序后的组的方法
     func getSortedGroups() -> [ProxyGroup] {
-        // 使用 GLOBAL 组顺序
+        if isSortMode {
+            // 在排序模式下使用保存的自定义顺序
+            if let savedOrder = UserDefaults.standard.dictionary(forKey: customOrderKey) as? [String: Int] {
+                let allGroupsPresent = groups.allSatisfy { savedOrder[$0.name] != nil }
+                
+                if allGroupsPresent {
+                    return groups.sorted { 
+                        savedOrder[$0.name] ?? 0 < savedOrder[$1.name] ?? 0 
+                    }
+                }
+            }
+        }
+        
+        // 获取 GLOBAL 组的排序索引
         if let globalGroup = groups.first(where: { $0.name == "GLOBAL" }) {
             var sortIndex = globalGroup.all
             sortIndex.append("GLOBAL") // 将 GLOBAL 添加到末尾
             
-            return groups.sorted { prev, next in
-                let prevIndex = sortIndex.firstIndex(of: prev.name) ?? Int.max
-                let nextIndex = sortIndex.firstIndex(of: next.name) ?? Int.max
-                return prevIndex < nextIndex
+            return groups.sorted { group1, group2 in
+                let index1 = sortIndex.firstIndex(of: group1.name) ?? Int.max
+                let index2 = sortIndex.firstIndex(of: group2.name) ?? Int.max
+                return index1 < index2
             }
         }
         
-        // 如果找不到 GLOBAL 组，则使用字母顺序
+        // 如果找不到 GLOBAL 组或其他情况，使用字母顺序
         return groups.sorted { $0.name < $1.name }
     }
 }
@@ -705,7 +749,7 @@ struct ProxyInfo: Codable {
         xudp = try container.decodeIfPresent(Bool.self, forKey: .xudp)
     }
     
-    // 添加编码法
+    // 添加编码方法
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(name, forKey: .name)
