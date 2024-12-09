@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreHaptics
 
 struct GlobalSettingsView: View {
     @AppStorage("autoDisconnectOldProxy") private var autoDisconnectOldProxy = false
@@ -10,27 +11,99 @@ struct GlobalSettingsView: View {
     var body: some View {
         Form {
             Section {
-                Toggle("切换代理时自动断开旧连接", isOn: $autoDisconnectOldProxy)
-                Toggle("隐藏不可用代理", isOn: $hideUnavailableProxies)
-            }
-            
-            Section(header: Text("代理组排序")) {
-                Picker("排序方式", selection: $proxyGroupSortOrder) {
-                    ForEach(ProxyGroupSortOrder.allCases) { order in
-                        Text(order.description).tag(order)
+                Toggle(isOn: $autoDisconnectOldProxy) {
+                    VStack(alignment: .leading) {
+                        Text("自动断开旧连接")
+                            .font(.body)
+                        Text("切换代理时自动断开旧的连接")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                     }
                 }
+            } header: {
+                Text("代理设置")
             }
             
-            Section(header: Text("测速设置")) {
-                TextField("测速链接", text: $speedTestURL)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
+            Section {
+                Toggle(isOn: $hideUnavailableProxies) {
+                    VStack(alignment: .leading) {
+                        Text("隐藏不可用代理")
+                            .font(.body)
+                        Text("在列表中不显示无法连接的代理")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
                 
-                Stepper("测速超时时间: \(speedTestTimeout) ms", 
-                        value: $speedTestTimeout,
-                        in: 1000...10000,
-                        step: 500)
+                NavigationLink {
+                    List {
+                        ForEach(ProxyGroupSortOrder.allCases) { order in
+                            Button {
+                                proxyGroupSortOrder = order
+                            } label: {
+                                HStack {
+                                    Text(order.description)
+                                    Spacer()
+                                    if order == proxyGroupSortOrder {
+                                        Image(systemName: "checkmark")
+                                            .foregroundColor(.accentColor)
+                                    }
+                                }
+                            }
+                            .foregroundColor(.primary)
+                        }
+                    }
+                    .navigationTitle("排序方式")
+                    .navigationBarTitleDisplayMode(.inline)
+                } label: {
+                    HStack {
+                        Text("排序方式")
+                        Spacer()
+                        Text(proxyGroupSortOrder.description)
+                            .foregroundColor(.secondary)
+                    }
+                }
+
+                Label {
+                    Text("DIRECT（直连）和 REJECT（拒绝）节点会始终显示在列表中")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                } icon: {
+                    Image(systemName: "info.circle")
+                        .foregroundColor(.secondary)
+                }
+                .padding(.trailing, 24)
+            } header: {
+                Text("排序设置")
+            }
+            
+            Section {
+                VStack(alignment: .leading, spacing: 4) {
+                    TextField("测速链接", text: $speedTestURL)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .font(.body)
+                    Text("用于测试代理延迟的URL地址")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                HStack {
+                    Text("超时时间")
+                    Spacer()
+                    Text("\(speedTestTimeout) ms")
+                        .foregroundColor(.secondary)
+                    Stepper("", value: $speedTestTimeout, in: 1000...10000, step: 500)
+                        .labelsHidden()
+                        .onChange(of: speedTestTimeout) { _ in
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        }
+                }
+                
+                Text("测速请求的最大等待时间")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            } header: {
+                Text("测速设置")
             }
         }
         .navigationTitle("全局配置")

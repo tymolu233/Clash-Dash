@@ -85,7 +85,15 @@ class ProxyViewModel: ObservableObject {
     private let server: ClashServer
     private var currentTask: Task<Void, Never>?
     private let settingsViewModel = SettingsViewModel()
-    private let defaultTestUrl = "http://www.gstatic.com/generate_204"
+    
+    // 从 UserDefaults 读取设置
+    private var testUrl: String {
+        UserDefaults.standard.string(forKey: "speedTestURL") ?? "http://www.gstatic.com/generate_204"
+    }
+    
+    private var testTimeout: Int {
+        UserDefaults.standard.integer(forKey: "speedTestTimeout") 
+    }
     
     // 添加用于存储自定义顺序的键
     private var customOrderKey: String {
@@ -195,7 +203,7 @@ class ProxyViewModel: ObservableObject {
                             )
                         }
                         
-                        // 6. 合并所有节点数据
+                        // 6. 合并所有节���数据
                         var allNodes: [ProxyNode] = []
                         
                         // 添加特殊节点
@@ -256,8 +264,8 @@ class ProxyViewModel: ObservableObject {
             
             var components = URLComponents(url: request.url!, resolvingAgainstBaseURL: true)
             components?.queryItems = [
-                URLQueryItem(name: "url", value: defaultTestUrl),
-                URLQueryItem(name: "timeout", value: "2000")
+                URLQueryItem(name: "url", value: testUrl),
+                URLQueryItem(name: "timeout", value: "\(testTimeout)")
             ]
             
             guard let finalUrl = components?.url else { continue }
@@ -377,8 +385,8 @@ class ProxyViewModel: ObservableObject {
         
         var components = URLComponents(url: request.url!, resolvingAgainstBaseURL: true)
         components?.queryItems = [
-            URLQueryItem(name: "url", value: defaultTestUrl),
-            URLQueryItem(name: "timeout", value: "2000")
+            URLQueryItem(name: "url", value: testUrl),
+            URLQueryItem(name: "timeout", value: "\(testTimeout)")
         ]
         
         guard let finalUrl = components?.url else { return }
@@ -467,8 +475,8 @@ class ProxyViewModel: ObservableObject {
         
         var components = URLComponents(url: request.url!, resolvingAgainstBaseURL: true)
         components?.queryItems = [
-            URLQueryItem(name: "url", value: defaultTestUrl),
-            URLQueryItem(name: "timeout", value: "2000")
+            URLQueryItem(name: "url", value: testUrl),
+            URLQueryItem(name: "timeout", value: "\(testTimeout)")
         ]
         
         guard let finalUrl = components?.url else { return }
@@ -578,11 +586,10 @@ class ProxyViewModel: ObservableObject {
         
         guard var request = makeRequest(path: "providers/proxies/\(encodedProviderName)/\(encodedProxyName)/healthcheck") else { return }
         
-        // 添加查询参数，使用默认测试 URL
         var components = URLComponents(url: request.url!, resolvingAgainstBaseURL: true)
         components?.queryItems = [
-            URLQueryItem(name: "url", value: defaultTestUrl),
-            URLQueryItem(name: "timeout", value: "5000")
+            URLQueryItem(name: "url", value: testUrl),
+            URLQueryItem(name: "timeout", value: "\(testTimeout)")
         ]
         
         guard let finalUrl = components?.url else { return }
