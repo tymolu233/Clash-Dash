@@ -24,6 +24,10 @@ jobs:
             -configuration Release \
             -archivePath build/App.xcarchive \
             -sdk iphoneos \
+            -allowProvisioningUpdates \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
             archive
           mkdir -p Payload
           cp -r build/App.xcarchive/Products/Applications/*.app Payload/
