@@ -282,11 +282,20 @@ struct ProxyGroupCard: View {
                     .background(.secondary.opacity(0.2))
                     .clipShape(Capsule())
                 
+                // 添加选中的节点显示
+                if !selectedNode.isEmpty {
+                    Text("\(selectedNode)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+                
+                Spacer()
+                
                 Text("\(count)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                
-                Spacer()
                 
                 // 测速按钮
                 Button {
