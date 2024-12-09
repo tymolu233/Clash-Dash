@@ -200,7 +200,7 @@ class ProxyViewModel: ObservableObject {
                         
                         // 添加特殊节点
                         let specialNodes = ["DIRECT", "REJECT"].map { name in
-                            // 尝试从现��节点中找到对应的特殊节点
+                            // 尝试从现节点中找到对应的特殊节点
                             if let existingNode = self.nodes.first(where: { $0.name == name }) {
                                 return existingNode  // 如果找到，保留现有节点的所有信息（包括延迟）
                             }
@@ -332,6 +332,32 @@ class ProxyViewModel: ObservableObject {
                httpsResponse.statusCode == 400 {
                 print("SSL 连接失败，服务器可能不支持 HTTPS")
                 return
+            }
+            
+            // 检查是否需要自动断开旧连接
+            if UserDefaults.standard.bool(forKey: "autoDisconnectOldProxy") {
+                // 获取当前活跃的连接
+                guard var connectionsRequest = makeRequest(path: "connections") else { return }
+                let (data, _) = try await URLSession.shared.data(for: connectionsRequest)
+                
+                if let connectionsResponse = try? JSONDecoder().decode(ConnectionsResponse.self, from: data) {
+                    // 遍历所有活跃连接
+                    for connection in connectionsResponse.connections {
+                        // 如果连接的代理链包含当前切换的代理名称,则关闭该连接
+                        if connection.chains.contains(proxyName) {
+                            // 构建关闭连接的请求
+                            guard var closeRequest = makeRequest(path: "connections/\(connection.id)") else { continue }
+                            closeRequest.httpMethod = "DELETE"
+                            
+                            // 发送关闭请求
+                            let (_, closeResponse) = try await URLSession.shared.data(for: closeRequest)
+                            if let closeHttpResponse = closeResponse as? HTTPURLResponse,
+                               closeHttpResponse.statusCode == 204 {
+                                print("成功关闭连接: \(connection.id)")
+                            }
+                        }
+                    }
+                }
             }
             
             if proxyName != "REJECT" {
@@ -544,7 +570,7 @@ class ProxyViewModel: ObservableObject {
         }
     }
     
-    // 代理提供��中单个节点的健康检查
+    // 代理提供者中单个节点的健康检查
     @MainActor
     func healthCheckProviderProxy(providerName: String, proxyName: String) async {
         let encodedProviderName = providerName.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? providerName
