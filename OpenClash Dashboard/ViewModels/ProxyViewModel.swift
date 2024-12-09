@@ -200,7 +200,7 @@ class ProxyViewModel: ObservableObject {
                         
                         // 添加特殊节点
                         let specialNodes = ["DIRECT", "REJECT"].map { name in
-                            // 尝试从现有节点中找到对应的特殊节点
+                            // 尝试从现��节点中找到对应的特殊节点
                             if let existingNode = self.nodes.first(where: { $0.name == name }) {
                                 return existingNode  // 如果找到，保留现有节点的所有信息（包括延迟）
                             }
@@ -544,7 +544,7 @@ class ProxyViewModel: ObservableObject {
         }
     }
     
-    // 代理提供者中单个节点的健康检查
+    // 代理提供��中单个节点的健康检查
     @MainActor
     func healthCheckProviderProxy(providerName: String, proxyName: String) async {
         let encodedProviderName = providerName.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? providerName
@@ -625,19 +625,32 @@ class ProxyViewModel: ObservableObject {
     
     // 添加获取排序后的组的方法
     func getSortedGroups() -> [ProxyGroup] {
-        if let savedOrder = UserDefaults.standard.dictionary(forKey: customOrderKey) as? [String: Int] {
-            // 检查是否所有当前组都在保存的��序中
-            let allGroupsPresent = groups.allSatisfy { savedOrder[$0.name] != nil }
-            
-            if allGroupsPresent {
-                // 使用保存的顺序
-                return groups.sorted { 
-                    savedOrder[$0.name] ?? 0 < savedOrder[$1.name] ?? 0 
+        if isSortMode {
+            // 在排序模式下使用保存的自定义顺序
+            if let savedOrder = UserDefaults.standard.dictionary(forKey: customOrderKey) as? [String: Int] {
+                let allGroupsPresent = groups.allSatisfy { savedOrder[$0.name] != nil }
+                
+                if allGroupsPresent {
+                    return groups.sorted { 
+                        savedOrder[$0.name] ?? 0 < savedOrder[$1.name] ?? 0 
+                    }
                 }
             }
         }
         
-        // 如果没有保存的顺序或组发生变化，使用字母顺序
+        // 获取 GLOBAL 组的排序索引
+        if let globalGroup = groups.first(where: { $0.name == "GLOBAL" }) {
+            var sortIndex = globalGroup.all
+            sortIndex.append("GLOBAL") // 将 GLOBAL 添加到末尾
+            
+            return groups.sorted { group1, group2 in
+                let index1 = sortIndex.firstIndex(of: group1.name) ?? Int.max
+                let index2 = sortIndex.firstIndex(of: group2.name) ?? Int.max
+                return index1 < index2
+            }
+        }
+        
+        // 如果找不到 GLOBAL 组或其他情况，使用字母顺序
         return groups.sorted { $0.name < $1.name }
     }
 }
