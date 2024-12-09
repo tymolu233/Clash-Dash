@@ -25,7 +25,7 @@ struct AddServerView: View {
                     TextField("服务器地址", text: $url)
                         .textInputAutocapitalization(.never)
                         .keyboardType(.URL)
-                        .onChange(of: url) { _ in
+                        .onSubmit {
                             if isHostname {
                                 useSSL = true
                             }
@@ -35,12 +35,15 @@ struct AddServerView: View {
                     TextField("密钥", text: $secret)
                         .textInputAutocapitalization(.never)
                     
-                    Toggle(isOn: $useSSL) {
+                    Toggle(isOn: Binding(
+                        get: { isHostname || useSSL },
+                        set: { useSSL = $0 }
+                    )) {
                         Label {
                             Text("使用 HTTPS")
                         } icon: {
                             Image(systemName: "lock.fill")
-                                .foregroundColor(useSSL ? .green : .secondary)
+                                .foregroundColor((isHostname || useSSL) ? .green : .secondary)
                         }
                     }
                     .disabled(isHostname)

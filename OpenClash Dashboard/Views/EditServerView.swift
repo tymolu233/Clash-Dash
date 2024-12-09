@@ -36,7 +36,7 @@ struct EditServerView: View {
                     TextField("服务器地址", text: $url)
                         .textInputAutocapitalization(.never)
                         .keyboardType(.URL)
-                        .onChange(of: url) { _ in
+                        .onSubmit {
                             if isHostname {
                                 useSSL = true
                             }
