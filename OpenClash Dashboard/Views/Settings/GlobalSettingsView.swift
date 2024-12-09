@@ -11,102 +11,170 @@ struct GlobalSettingsView: View {
     var body: some View {
         Form {
             Section {
-                Toggle(isOn: $autoDisconnectOldProxy) {
-                    VStack(alignment: .leading) {
-                        Text("自动断开旧连接")
-                            .font(.body)
-                        Text("切换代理时自动断开旧的连接")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
+                SettingToggleRow(
+                    title: "自动断开旧连接",
+                    subtitle: "切换代理时自动断开旧的连接",
+                    isOn: $autoDisconnectOldProxy
+                )
             } header: {
-                Text("代理设置")
+                SectionHeader(title: "切换代理设置", systemImage: "network")
             }
             
             Section {
-                Toggle(isOn: $hideUnavailableProxies) {
-                    VStack(alignment: .leading) {
-                        Text("隐藏不可用代理")
-                            .font(.body)
-                        Text("在列表中不显示无法连接的代理")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
+                SettingToggleRow(
+                    title: "隐藏不可用代理",
+                    subtitle: "在列表中不显示无法连接的代理",
+                    isOn: $hideUnavailableProxies
+                )
                 
                 NavigationLink {
-                    List {
-                        ForEach(ProxyGroupSortOrder.allCases) { order in
-                            Button {
-                                proxyGroupSortOrder = order
-                            } label: {
-                                HStack {
-                                    Text(order.description)
-                                    Spacer()
-                                    if order == proxyGroupSortOrder {
-                                        Image(systemName: "checkmark")
-                                            .foregroundColor(.accentColor)
-                                    }
-                                }
-                            }
-                            .foregroundColor(.primary)
-                        }
-                    }
-                    .navigationTitle("排序方式")
-                    .navigationBarTitleDisplayMode(.inline)
+                    ProxyGroupSortOrderView(selection: $proxyGroupSortOrder)
                 } label: {
-                    HStack {
-                        Text("排序方式")
-                        Spacer()
-                        Text(proxyGroupSortOrder.description)
-                            .foregroundColor(.secondary)
-                    }
+                    SettingRow(
+                        title: "排序方式",
+                        value: proxyGroupSortOrder.description
+                    )
                 }
-
-                Label {
-                    Text("DIRECT（直连）和 REJECT（拒绝）节点会始终显示在列表中")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                } icon: {
-                    Image(systemName: "info.circle")
-                        .foregroundColor(.secondary)
-                }
-                .padding(.trailing, 24)
+                
+                InfoRow(message: "DIRECT（直连）和 REJECT（拒绝）节点会始终显示在列表中")
             } header: {
-                Text("排序设置")
+                SectionHeader(title: "排序设置", systemImage: "arrow.up.arrow.down")
             }
             
             Section {
-                VStack(alignment: .leading, spacing: 4) {
-                    TextField("测速链接", text: $speedTestURL)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .font(.body)
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "link")
+                            .foregroundColor(.secondary)
+                        TextField("测速链接", text: $speedTestURL)
+                            .textFieldStyle(.plain)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                    }
+                    .padding(12)
+                    .background(Color(.systemGray6))
+                    .cornerRadius(10)
+                    
                     Text("用于测试代理延迟的URL地址")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .caption()
                 }
-                HStack {
-                    Text("超时时间")
-                    Spacer()
-                    Text("\(speedTestTimeout) ms")
-                        .foregroundColor(.secondary)
-                    Stepper("", value: $speedTestTimeout, in: 1000...10000, step: 500)
-                        .labelsHidden()
-                        .onChange(of: speedTestTimeout) { _ in
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        }
-                }
+                .padding(.vertical, 4)
                 
-                Text("测速请求的最大等待时间")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("超时时间")
+                        Spacer()
+                        Text("\(speedTestTimeout) ms")
+                            .monospacedDigit()
+                        Stepper("", value: $speedTestTimeout, in: 1000...10000, step: 500)
+                            .labelsHidden()
+                            .frame(width: 100)
+                            .onChange(of: speedTestTimeout) { _ in
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            }
+                    }
+                    
+                    Text("测速请求的最大等待时间")
+                        .caption()
+                }
             } header: {
-                Text("测速设置")
+                SectionHeader(title: "测速设置", systemImage: "speedometer")
             }
         }
         .navigationTitle("全局配置")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+// 辅助视图组件
+struct SettingToggleRow: View {
+    let title: String
+    let subtitle: String
+    @Binding var isOn: Bool
+    
+    var body: some View {
+        Toggle(isOn: $isOn) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                Text(subtitle)
+                    .caption()
+            }
+        }
+    }
+}
+
+struct SettingRow: View {
+    let title: String
+    let value: String
+    
+    var body: some View {
+        HStack {
+            Text(title)
+            Spacer()
+            Text(value)
+                .foregroundColor(.secondary)
+        }
+    }
+}
+
+struct InfoRow: View {
+    let message: String
+    
+    var body: some View {
+        Label {
+            Text(message)
+                .caption()
+        } icon: {
+            Image(systemName: "info.circle")
+                .foregroundColor(.secondary)
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+struct SectionHeader: View {
+    let title: String
+    let systemImage: String
+    
+    var body: some View {
+        Label(title, systemImage: systemImage)
+            .foregroundColor(.secondary)
+            .textCase(nil)
+    }
+}
+
+// 扩展便捷修饰符
+extension View {
+    func caption() -> some View {
+        self.font(.caption)
+            .foregroundColor(.secondary)
+    }
+}
+
+// 单独的排序设置视图
+struct ProxyGroupSortOrderView: View {
+    @Binding var selection: ProxyGroupSortOrder
+    
+    var body: some View {
+        List {
+            ForEach(ProxyGroupSortOrder.allCases) { order in
+                Button {
+                    selection = order
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                } label: {
+                    HStack {
+                        Text(order.description)
+                        Spacer()
+                        if order == selection {
+                            Image(systemName: "checkmark")
+                                .foregroundColor(.accentColor)
+                        }
+                    }
+                }
+                .foregroundColor(.primary)
+            }
+        }
+        .navigationTitle("排序方式")
         .navigationBarTitleDisplayMode(.inline)
     }
 }
