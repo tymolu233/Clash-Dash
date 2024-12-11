@@ -432,4 +432,258 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         print("状态码: \(response.statusCode)")
         completionHandler(nil)  // 不跟随重定向
     }
+    
+    func fetchOpenClashConfigs(_ server: ClashServer) async throws -> [OpenClashConfig] {
+        let scheme = server.useSSL ? "https" : "http"
+        let baseURL = "\(scheme)://\(server.url):\(server.openWRTPort ?? "80")"
+        print("🔍 开始获取配置列表: \(baseURL)")
+        
+        // 1. 获取或重用 token
+        guard let username = server.openWRTUsername,
+              let password = server.openWRTPassword else {
+            print("❌ 未找到认证信息")
+            throw NetworkError.unauthorized
+        }
+        
+        print("🔑 获取认证令牌...")
+        let token = try await getAuthToken(server, username: username, password: password)
+        print("✅ 获取令牌成功: \(token)")
+        
+        // 创建 session
+        let session = makeURLSession(for: server)
+        
+        // 3. 获取配置文件列表
+        guard let listURL = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
+            print("❌ 无效的列表 URL")
+            throw NetworkError.invalidURL
+        }
+        
+        print("📤 发送获取文件列表请求...")
+        var listRequest = URLRequest(url: listURL)
+        listRequest.httpMethod = "POST"
+        listRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let listCommand: [String: Any] = [
+            "method": "exec",
+            "params": ["ls -la /etc/openclash/config/"]
+        ]
+        listRequest.httpBody = try JSONSerialization.data(withJSONObject: listCommand)
+        
+        let (listData, listResponse) = try await session.data(for: listRequest)
+        
+        if let httpResponse = listResponse as? HTTPURLResponse {
+            print("📥 文件列表响应状态码: \(httpResponse.statusCode)")
+        }
+        
+        if let responseStr = String(data: listData, encoding: .utf8) {
+            print("📥 文件列表响应: \(responseStr)")
+        }
+        
+        struct ListResponse: Codable {
+            let id: Int?
+            let result: String
+            let error: String?
+        }
+        
+        let listResult = try JSONDecoder().decode(ListResponse.self, from: listData)
+        let fileList = listResult.result
+        
+        print("📝 文件列表内容:\n\(fileList)")
+        
+        // 4. 获取当前启用的配置
+        print("📤 获取当前启用的配置...")
+        var currentRequest = URLRequest(url: listURL)
+        currentRequest.httpMethod = "POST"
+        currentRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let currentCommand: [String: Any] = [
+            "method": "exec",
+            "params": ["uci get openclash.config.config_path"]
+        ]
+        currentRequest.httpBody = try JSONSerialization.data(withJSONObject: currentCommand)
+        
+        let (currentData, currentResponse) = try await session.data(for: currentRequest)
+        
+        if let httpResponse = currentResponse as? HTTPURLResponse {
+            print("📥 当前配置响应状态码: \(httpResponse.statusCode)")
+        }
+        
+        if let responseStr = String(data: currentData, encoding: .utf8) {
+            print("📥 当前配置响应: \(responseStr)")
+        }
+        
+        let currentResult = try JSONDecoder().decode(ListResponse.self, from: currentData)
+        let currentConfig = currentResult.result.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).components(separatedBy: "/").last ?? ""
+        print("📝 当前启用的配置: \(currentConfig)")
+        
+        // 5. 解析文件列表
+        var configs: [OpenClashConfig] = []
+        let dateFormatter = DateFormatter()
+        dateFormatter.locale = Locale(identifier: "en_US_POSIX")
+        dateFormatter.dateFormat = "MMM dd HH:mm"
+        
+        let lines = fileList.components(separatedBy: CharacterSet.newlines)
+        print("🔍 开始解析 \(lines.count) 行文件列表")
+        
+        for line in lines {
+            let components = line.split(separator: " ").filter { !$0.isEmpty }
+            guard components.count >= 9,
+                  let fileName = components.last?.description,
+                  fileName.hasSuffix(".yaml") || fileName.hasSuffix(".yml") else {
+                continue
+            }
+            
+            print("📄 处理配置文件: \(fileName)")
+            
+            // 解析日期
+            let month = String(components[components.count - 4])
+            let day = String(components[components.count - 3])
+            let timeOrYear = String(components[components.count - 2])
+            
+            var date: Date
+            if timeOrYear.contains(":") {
+                dateFormatter.dateFormat = "MMM dd HH:mm"
+                date = dateFormatter.date(from: "\(month) \(day) \(timeOrYear)") ?? Date()
+            } else {
+                dateFormatter.dateFormat = "MMM dd yyyy"
+                date = dateFormatter.date(from: "\(month) \(day) \(timeOrYear)") ?? Date()
+            }
+            
+            // 检查配置文件语法
+            print("🔍 检查配置文件语法: \(fileName)")
+            var checkRequest = URLRequest(url: listURL)
+            checkRequest.httpMethod = "POST"
+            checkRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            
+            let checkCommand: [String: Any] = [
+                "method": "exec",
+                "params": ["ruby -ryaml -rYAML -I \"/usr/share/openclash\" -E UTF-8 -e \"puts YAML.load_file('/etc/openclash/config/\(fileName)')\" 2>/dev/null"]
+            ]
+            checkRequest.httpBody = try JSONSerialization.data(withJSONObject: checkCommand)
+            
+            let (checkData, _) = try await session.data(for: checkRequest)
+            // if let responseStr = String(data: checkData, encoding: .utf8) {
+            //     print("📥 配置语法检查响应: \(responseStr)")
+            // }
+            
+            let checkResult = try JSONDecoder().decode(ListResponse.self, from: checkData)
+            let check: OpenClashConfig.ConfigCheck = checkResult.result != "false\n" && !checkResult.result.isEmpty ? .normal : .abnormal
+            
+            print("📝 配置语法检查结果: \(check)")
+            
+            // 获取订阅信息
+            print("🔍 获取订阅信息: \(fileName)")
+            let subFileName = fileName.replacingOccurrences(of: ".yaml", with: "").replacingOccurrences(of: ".yml", with: "")
+            let timestamp = Int(Date().timeIntervalSince1970 * 1000)
+            guard let subURL = URL(string: "\(baseURL)/cgi-bin/luci/admin/services/openclash/sub_info_get?\(timestamp)&filename=\(subFileName)") else {
+                continue
+            }
+            
+            var subRequest = URLRequest(url: subURL)
+            subRequest.setValue("sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
+            
+            let (subData, _) = try await session.data(for: subRequest)
+            let subscription = try? JSONDecoder().decode(OpenClashConfig.SubscriptionInfo.self, from: subData)
+            
+            // 创建配置对象
+            let config = OpenClashConfig(
+                name: fileName,
+                state: fileName == currentConfig ? .enabled : .disabled,
+                mtime: date,
+                check: check,
+                subscription: subscription
+            )
+            
+            configs.append(config)
+            print("✅ 成功添加配置: \(fileName)")
+        }
+        
+        print("✅ 完成配置列表获取，共 \(configs.count) 个配置")
+        return configs
+    }
+    
+    func switchOpenClashConfig(_ server: ClashServer, configName: String) async throws {
+        let scheme = server.useSSL ? "https" : "http"
+        let baseURL = "\(scheme)://\(server.url):\(server.openWRTPort ?? "80")"
+        print("🔄 开始切换配置: \(configName)")
+        
+        // 获取认证 token
+        guard let username = server.openWRTUsername,
+              let password = server.openWRTPassword else {
+            print("❌ 未找到认证信息")
+            throw NetworkError.unauthorized
+        }
+        
+        print("🔑 获取认证令牌...")
+        let token = try await getAuthToken(server, username: username, password: password)
+        print("✅ 获取令牌成功")
+        
+        // 构建切换配置的请求
+        let timestamp = Int(Date().timeIntervalSince1970 * 1000)
+        guard let switchURL = URL(string: "\(baseURL)/cgi-bin/luci/admin/services/openclash/switch_config?\(timestamp)") else {
+            print("❌ 无效的切换配置 URL")
+            throw NetworkError.invalidURL
+        }
+        
+        print("📤 发送切换配置请求: \(switchURL)")
+        var request = URLRequest(url: switchURL)
+        request.httpMethod = "POST"
+        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        request.setValue("sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
+        
+        let body = "config_name=\(configName)"
+        request.httpBody = body.data(using: .utf8)
+        
+        let session = makeURLSession(for: server)
+        
+        let (data, response) = try await session.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            print("❌ 无效的响应类型")
+            throw NetworkError.invalidResponse
+        }
+        
+        if let responseStr = String(data: data, encoding: .utf8) {
+            print("📥 切换配置响应: \(responseStr)")
+        }
+        
+        guard httpResponse.statusCode == 200 else {
+            print("❌ 切换配置失败: 状态码 \(httpResponse.statusCode)")
+            throw NetworkError.serverError(httpResponse.statusCode)
+        }
+        
+        print("✅ 切换配置成功")
+    }
+    
+    // 辅助方法：获取认证 token
+    private func getAuthToken(_ server: ClashServer, username: String, password: String) async throws -> String {
+        let scheme = server.useSSL ? "https" : "http"
+        let baseURL = "\(scheme)://\(server.url):\(server.openWRTPort ?? "80")"
+        
+        guard let loginURL = URL(string: "\(baseURL)/cgi-bin/luci/rpc/auth") else {
+            throw NetworkError.invalidURL
+        }
+        
+        var loginRequest = URLRequest(url: loginURL)
+        loginRequest.httpMethod = "POST"
+        loginRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let requestBody: [String: Any] = [
+            "id": 1,
+            "method": "login",
+            "params": [username, password]
+        ]
+        
+        loginRequest.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+        
+        let session = makeURLSession(for: server)
+        let (data, _) = try await session.data(for: loginRequest)
+        let authResponse = try JSONDecoder().decode(OpenWRTAuthResponse.self, from: data)
+        
+        guard let token = authResponse.result, !token.isEmpty else {
+            throw NetworkError.unauthorized
+        }
+        
+        return token
+    }
 } 

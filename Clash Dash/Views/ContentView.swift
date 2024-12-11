@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct ContentView: View {
     @StateObject private var viewModel = ServerViewModel()
@@ -205,7 +206,17 @@ struct ContentView: View {
     }
     
     private func showSwitchConfigView(for server: ClashServer) {
-        // 显示切换配置页面的逻辑
+        editingServer = nil  // 清除编辑状态
+        Task { @MainActor in
+            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+               let rootViewController = windowScene.windows.first?.rootViewController {
+                let configView = OpenClashConfigView(viewModel: viewModel, server: server)
+                let hostingController = UIHostingController(rootView: configView)
+                let navigationController = UINavigationController(rootViewController: hostingController)
+                navigationController.modalPresentationStyle = .formSheet
+                rootViewController.present(navigationController, animated: true)
+            }
+        }
     }
 }
 
