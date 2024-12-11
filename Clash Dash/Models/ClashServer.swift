@@ -82,26 +82,29 @@ struct ClashServer: Identifiable, Codable {
     }
     
     static func handleNetworkError(_ error: Error) -> NetworkError {
-        switch error {
-        case let urlError as URLError:
+        if let urlError = error as? URLError {
             switch urlError.code {
-            case .timedOut, .cannotConnectToHost, .networkConnectionLost:
-                return .serverUnreachable
+            case .notConnectedToInternet, .networkConnectionLost, .cannotConnectToHost:
+                return .serverError(0)  // 使用状态码 0 表示连接问题
             case .secureConnectionFailed, .serverCertificateHasBadDate,
-                 .serverCertificateUntrusted, .serverCertificateNotYetValid:
-                return .sslError
-            case .badServerResponse, .cannotParseResponse:
-                return .invalidResponse
+                 .serverCertificateUntrusted, .serverCertificateHasUnknownRoot,
+                 .serverCertificateNotYetValid, .clientCertificateRejected,
+                 .clientCertificateRequired:
+                return .serverError(-1)  // 使用状态码 -1 表示 SSL 问题
             case .userAuthenticationRequired:
                 return .unauthorized
+            case .badServerResponse, .cannotParseResponse:
+                return .invalidResponse
             default:
-                return .unknownError(error)
+                return .unknown(error)
             }
-        case let networkError as NetworkError:
-            return networkError
-        default:
-            return .unknownError(error)
         }
+        
+        if let networkError = error as? NetworkError {
+            return networkError
+        }
+        
+        return .unknown(error)
     }
 }
 

@@ -13,41 +13,52 @@ struct OpenClashConfigView: View {
     
     var body: some View {
         NavigationStack {
-            Group {
-                if isLoading {
-                    ProgressView()
-                } else if configs.isEmpty {
-                    VStack(spacing: 16) {
-                        Spacer()
-                            .frame(height: 10)
-                        
-                        Image(systemName: "doc.text.magnifyingglass")
-                            .font(.system(size: 45))
-                            .foregroundColor(.secondary)
-                        
-                        Text("没有找到配置文件")
-                            .font(.title3)
-                        
-                        Text("请确认配置文件目录不为空")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                        
-                        Spacer()
-                    }
-                    .padding(.horizontal)
-                } else {
-                    ScrollView {
+            ScrollView {
+                Group {
+                    if isLoading {
+                        VStack(spacing: 12) {
+                            ForEach(0..<3, id: \.self) { _ in
+                                ConfigCardPlaceholder()
+                            }
+                        }
+                        .padding(.horizontal)
+                        .padding(.top, 4)
+                        .shimmering()
+                    } else if configs.isEmpty {
+                        VStack(spacing: 16) {
+                            Spacer()
+                                .frame(height: 10)
+                            
+                            Image(systemName: "doc.text.magnifyingglass")
+                                .font(.system(size: 45))
+                                .foregroundColor(.secondary)
+                            
+                            Text("没有找到配置文件")
+                                .font(.title3)
+                            
+                            Text("请确认配置文件目录不为空")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                            
+                            Spacer()
+                        }
+                        .padding(.horizontal)
+                        .transition(.opacity)
+                    } else {
                         LazyVStack(spacing: 12) {
                             ForEach(configs) { config in
                                 ConfigCard(config: config) {
                                     switchConfig(config)
                                 }
+                                .transition(.opacity)
                             }
                         }
                         .padding(.horizontal)
                         .padding(.top, 4)
                     }
                 }
+                .animation(.easeInOut, value: isLoading)
+                .animation(.easeInOut, value: configs.isEmpty)
             }
             .navigationTitle("配置文件")
             .navigationBarTitleDisplayMode(.inline)
@@ -244,5 +255,102 @@ struct DataLabel: View {
                 .font(.subheadline)
                 .bold()
         }
+    }
+}
+
+struct ConfigCardPlaceholder: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            // 标题行占位符
+            HStack {
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(Color.gray.opacity(0.2))
+                    .frame(width: 120, height: 20)
+                Spacer()
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(Color.gray.opacity(0.2))
+                    .frame(width: 60, height: 20)
+            }
+            
+            // 更新时间占位符
+            HStack {
+                Circle()
+                    .fill(Color.gray.opacity(0.2))
+                    .frame(width: 16, height: 16)
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(Color.gray.opacity(0.2))
+                    .frame(width: 100, height: 16)
+            }
+            
+            // 语法检查状态占位符
+            HStack {
+                Circle()
+                    .fill(Color.gray.opacity(0.2))
+                    .frame(width: 16, height: 16)
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(Color.gray.opacity(0.2))
+                    .frame(width: 80, height: 16)
+            }
+            
+            // 订阅信息占位符
+            Divider()
+                .padding(.vertical, 4)
+            
+            // 流量信息占位符
+            HStack(spacing: 16) {
+                ForEach(0..<3, id: \.self) { _ in
+                    VStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(Color.gray.opacity(0.2))
+                            .frame(width: 40, height: 12)
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(Color.gray.opacity(0.2))
+                            .frame(width: 60, height: 16)
+                    }
+                }
+            }
+            
+            // 进度条占位符
+            RoundedRectangle(cornerRadius: 2)
+                .fill(Color.gray.opacity(0.2))
+                .frame(height: 4)
+        }
+        .padding(12)
+        .background(Color(.secondarySystemGroupedBackground))
+        .cornerRadius(12)
+        .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color(.systemGray5), lineWidth: 0.5)
+        )
+    }
+}
+
+struct ShimmeringView: ViewModifier {
+    @State private var phase: CGFloat = 0
+    
+    func body(content: Content) -> some View {
+        content
+            .mask(
+                GeometryReader { geometry in
+                    LinearGradient(
+                        colors: [.clear, .white, .clear],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                    .offset(x: -geometry.size.width + (geometry.size.width * 3 * phase))
+                    .onAppear {
+                        withAnimation(.linear(duration: 1.5).repeatForever(autoreverses: false)) {
+                            phase = 1
+                        }
+                    }
+                }
+            )
+    }
+}
+
+extension View {
+    func shimmering() -> some View {
+        modifier(ShimmeringView())
     }
 } 

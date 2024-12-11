@@ -301,74 +301,88 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             }
             
             print("📥 登录响应状态码: \(httpResponse.statusCode)")
-            if let responseStr = String(data: loginData, encoding: .utf8) {
-                print("📥 JSON-RPC 登录响应: \(responseStr)")
-            }
             
-            guard httpResponse.statusCode == 200 else {
-                print("❌ 登录失败：状态码 \(httpResponse.statusCode)")
-                throw NetworkError.serverError(httpResponse.statusCode)
-            }
-            
-            // 解析 JSON-RPC 响应
-            let authResponse = try JSONDecoder().decode(OpenWRTAuthResponse.self, from: loginData)
-            print("📥 解析后的 JSON-RPC 响应: id=\(authResponse.id), result=\(authResponse.result ?? "nil"), error=\(authResponse.error ?? "nil")")
-            
-            guard let token = authResponse.result, !token.isEmpty else {
-                if authResponse.result == nil && authResponse.error == nil {
-                    print("❌ 用户名或密码错误")
-                    throw NetworkError.unauthorized
-                }
-                if let error = authResponse.error {
-                    print("❌ JSON-RPC 错误: \(error)")
-                    throw NetworkError.unauthorized
-                }
-                print("❌ 无效的响应结果")
-                throw NetworkError.invalidResponse
-            }
-            
-            print("🔑 获取到认证令牌: \(token)")
-            
-            // 2. 使用认证令牌获取 OpenClash 状态
-            let timestamp = Int(Date().timeIntervalSince1970 * 1000)
-            guard let statusURL = URL(string: "\(baseURL)/cgi-bin/luci/admin/services/openclash/status?\(timestamp)") else {
-                print("❌ 状态 URL 无效")
-                throw NetworkError.invalidURL
-            }
-            
-            print("📤 发送状态请求: \(statusURL)")
-            var statusRequest = URLRequest(url: statusURL)
-            statusRequest.setValue("sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
-            
-            let (statusData, statusResponse) = try await session.data(for: statusRequest)
-            
-            guard let statusHttpResponse = statusResponse as? HTTPURLResponse else {
-                print("❌ 无效的状态响应类型")
-                throw NetworkError.invalidResponse
-            }
-            
-            print("📥 状态响应状态码: \(statusHttpResponse.statusCode)")
-            if let responseStr = String(data: statusData, encoding: .utf8) {
-                print("📥 OpenClash 状态响应: \(responseStr)")
-            }
-            
-            switch statusHttpResponse.statusCode {
+            switch httpResponse.statusCode {
             case 200:
-                print("✅ 获取状态成功，开始解析")
-                do {
-                    let status = try JSONDecoder().decode(OpenWRTStatus.self, from: statusData)
-                    print("✅ 解析成功: \(status)")
-                    return status
-                } catch {
-                    print("❌ 解析错误: \(error)")
+                // 解析 JSON-RPC 响应
+                let authResponse = try JSONDecoder().decode(OpenWRTAuthResponse.self, from: loginData)
+                print("📥 解析后的 JSON-RPC 响应: id=\(authResponse.id), result=\(authResponse.result ?? "nil"), error=\(authResponse.error ?? "nil")")
+                
+                guard let token = authResponse.result, !token.isEmpty else {
+                    if authResponse.result == nil && authResponse.error == nil {
+                        print("❌ 用户名或密码错误")
+                        throw NetworkError.unauthorized
+                    }
+                    if let error = authResponse.error {
+                        print("❌ JSON-RPC 错误: \(error)")
+                        throw NetworkError.unauthorized
+                    }
+                    print("❌ 无效的响应结果")
                     throw NetworkError.invalidResponse
                 }
-            case 403:
-                print("🔒 认证令牌已过期")
-                throw NetworkError.unauthorized
+                
+                print("🔑 获取到认证令牌: \(token)")
+                
+                // 2. 使用认证令牌获取 OpenClash 状态
+                let timestamp = Int(Date().timeIntervalSince1970 * 1000)
+                guard let statusURL = URL(string: "\(baseURL)/cgi-bin/luci/admin/services/openclash/status?\(timestamp)") else {
+                    print("❌ 状态 URL 无效")
+                    throw NetworkError.invalidURL
+                }
+                
+                print("📤 发送状态请求: \(statusURL)")
+                var statusRequest = URLRequest(url: statusURL)
+                statusRequest.setValue("sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
+                
+                let (statusData, statusResponse) = try await session.data(for: statusRequest)
+                
+                guard let statusHttpResponse = statusResponse as? HTTPURLResponse else {
+                    print("❌ 无效的状态响应类型")
+                    throw NetworkError.invalidResponse
+                }
+                
+                print("📥 状态响应状态码: \(statusHttpResponse.statusCode)")
+                if let responseStr = String(data: statusData, encoding: .utf8) {
+                    print("📥 OpenClash 状态响应: \(responseStr)")
+                }
+                
+                switch statusHttpResponse.statusCode {
+                case 200:
+                    print("✅ 获取状态成功，开始解析")
+                    do {
+                        let status = try JSONDecoder().decode(OpenWRTStatus.self, from: statusData)
+                        print("✅ 解析成功: \(status)")
+                        return status
+                    } catch {
+                        print("❌ 解析错误: \(error)")
+                        throw NetworkError.invalidResponse
+                    }
+                case 403:
+                    print("🔒 认证令牌已过期")
+                    throw NetworkError.unauthorized
+                default:
+                    print("❌ 状态请求失败: \(statusHttpResponse.statusCode)")
+                    throw NetworkError.serverError(statusHttpResponse.statusCode)
+                }
+                
+            case 404:
+                print("❌ OpenWRT 缺少必要的依赖")
+                throw NetworkError.missingDependencies("""
+                    OpenWRT 路由器缺少必要的依赖。
+                    
+                    请确保已经安装以下软件包：
+                    1. luci-app-openclash
+                    2. ruby
+                    3. ruby-yaml
+                    
+                    可以通过以下命令安装：
+                    opkg update
+                    opkg install luci-app-openclash ruby ruby-yaml
+                    """)
+                
             default:
-                print("❌ 状态请求失败: \(statusHttpResponse.statusCode)")
-                throw NetworkError.serverError(statusHttpResponse.statusCode)
+                print("❌ 登录失败：状态码 \(httpResponse.statusCode)")
+                throw NetworkError.serverError(httpResponse.statusCode)
             }
         } catch {
             print("❌ 请求错误: \(error)")
