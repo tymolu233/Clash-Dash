@@ -14,9 +14,9 @@ struct OpenClashConfig: Identifiable {
     }
     
     enum ConfigCheck: String {
-        case normal = "Config Normal"
-        case abnormal = "Config Abnormal"
-        case checkFailed = "Check Failed"
+        case normal = "配置检查通过"
+        case abnormal = "配置检查不通过"
+        case checkFailed = "检查失败"
     }
     
     struct SubscriptionInfo: Codable {

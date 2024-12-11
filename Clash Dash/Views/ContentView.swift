@@ -26,7 +26,7 @@ struct ContentView: View {
                             .font(.title2)
                             .fontWeight(.medium)
                         
-                        Text("点击添加按钮来添加一个新的服务器")
+                        Text("点击添加按钮来添加��个新的服务器")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
@@ -207,15 +207,18 @@ struct ContentView: View {
     
     private func showSwitchConfigView(for server: ClashServer) {
         editingServer = nil  // 清除编辑状态
-        Task { @MainActor in
-            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-               let rootViewController = windowScene.windows.first?.rootViewController {
-                let configView = OpenClashConfigView(viewModel: viewModel, server: server)
-                let hostingController = UIHostingController(rootView: configView)
-                let navigationController = UINavigationController(rootViewController: hostingController)
-                navigationController.modalPresentationStyle = .formSheet
-                rootViewController.present(navigationController, animated: true)
-            }
+        let configView = OpenClashConfigView(viewModel: viewModel, server: server)
+        let sheet = UIHostingController(rootView: configView)
+        
+        // 设置 sheet 的首选样式
+        sheet.modalPresentationStyle = .formSheet
+        sheet.sheetPresentationController?.detents = [.medium(), .large()]
+        sheet.sheetPresentationController?.prefersGrabberVisible = true
+        
+        // 获取当前的 window scene
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let rootViewController = windowScene.windows.first?.rootViewController {
+            rootViewController.present(sheet, animated: true)
         }
     }
 }
