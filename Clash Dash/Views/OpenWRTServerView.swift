@@ -67,6 +67,21 @@ struct OpenWRTServerView: View {
                         }
                     }
                 }
+                
+                Section {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("使用该方式前，请确认您的 OpenWRT 已安装以下软件包并重启 uhttpd：")
+                            .font(.footnote)
+                            .foregroundColor(.secondary)
+                        
+                        Text("opkg install luci-mod-rpc luci-lib-ipkg luci-compat\n\n/etc/init.d/uhttpd restart")
+                            .font(.system(.footnote, design: .monospaced))
+                            .padding(8)
+                            .background(Color(.systemGray6))
+                            .cornerRadius(8)
+                    }
+                    .padding(.vertical, 8)
+                }
             }
             .navigationTitle(isEditMode ? "编辑服务器" : "添加 OpenWRT 服务器")
             .navigationBarTitleDisplayMode(.inline)

@@ -266,49 +266,33 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         let baseURL = "\(scheme)://\(server.url):\(server.openWRTPort ?? "80")"
         print("🔍 开始验证 OpenWRT 服务器: \(baseURL)")
         
-        // 1. 尝试登录
-        guard let loginURL = URL(string: "\(baseURL)/cgi-bin/luci/") else {
+        // 1. 使用 JSON-RPC 登录
+        guard let loginURL = URL(string: "\(baseURL)/cgi-bin/luci/rpc/auth") else {
             print("❌ 登录 URL 无效")
             throw NetworkError.invalidURL
         }
         
         // 创建一个新的 URLSession 配置
-        let config = URLSessionConfiguration.ephemeral  // 使用 ephemeral 配置，不保存任何缓存和 cookie
-        config.httpShouldSetCookies = false
-        config.httpCookieAcceptPolicy = .never
-        config.httpMaximumConnectionsPerHost = 1
-        
-        // 使用新的配置创建 session，并确保设置了 delegate
+        let config = URLSessionConfiguration.ephemeral
         let session = URLSession(configuration: config, delegate: self, delegateQueue: nil)
         activeSessions.append(session)
         
         do {
-            // 创建登录请求
+            // 创建 JSON-RPC 登录请求
             var loginRequest = URLRequest(url: loginURL)
             loginRequest.httpMethod = "POST"
-
-            // 复制所有头部
-            loginRequest.setValue("text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7", forHTTPHeaderField: "Accept")
-            loginRequest.setValue("en-US,en;q=0.9,zh-CN;q=0.8,zh-TW;q=0.7,zh;q=0.6", forHTTPHeaderField: "Accept-Language")
-            loginRequest.setValue("no-cache", forHTTPHeaderField: "Cache-Control")
-            loginRequest.setValue("keep-alive", forHTTPHeaderField: "Connection")
-            loginRequest.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
-            loginRequest.setValue("1", forHTTPHeaderField: "DNT")
-            let originURL = "\(scheme)://\(server.url)"
-            loginRequest.setValue(originURL, forHTTPHeaderField: "Origin")
-            loginRequest.setValue("no-cache", forHTTPHeaderField: "Pragma")
-            loginRequest.setValue("\(originURL)/cgi-bin/luci/", forHTTPHeaderField: "Referer")
-            loginRequest.setValue("1", forHTTPHeaderField: "Upgrade-Insecure-Requests")
-            loginRequest.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36", forHTTPHeaderField: "User-Agent")
-
-            // 使用 data-raw 格式的请求体
-            let loginBody = "luci_username=\(username)&luci_password=\(password)"
-            loginRequest.httpBody = loginBody.data(using: .utf8)
+            loginRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
             
-            print("📤 发送登录请求")
-            print("📝 请求头: \(loginRequest.allHTTPHeaderFields ?? [:])")
-            print("📝 请求体: \(loginBody)")
+            // 构建 JSON-RPC 请求体
+            let requestBody: [String: Any] = [
+                "id": 1,
+                "method": "login",
+                "params": [username, password]
+            ]
             
+            loginRequest.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+            
+            print("📤 发送 JSON-RPC 登录请求")
             let (loginData, loginResponse) = try await session.data(for: loginRequest)
             
             guard let httpResponse = loginResponse as? HTTPURLResponse else {
@@ -317,22 +301,35 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             }
             
             print("📥 登录响应状态码: \(httpResponse.statusCode)")
-            print("📥 登录响应头: \(httpResponse.allHeaderFields)")
             if let responseStr = String(data: loginData, encoding: .utf8) {
-                print("📥 登录响应体: \(responseStr)")
+                print("📥 JSON-RPC 登录响应: \(responseStr)")
             }
             
-            // 检查状态码和 set-cookie 头
-            guard httpResponse.statusCode == 302,
-                  let cookies = httpResponse.value(forHTTPHeaderField: "set-cookie"),
-                  let sysauth = cookies.split(separator: ";").first else {
+            guard httpResponse.statusCode == 200 else {
                 print("❌ 登录失败：状态码 \(httpResponse.statusCode)")
-                throw NetworkError.unauthorized
+                throw NetworkError.serverError(httpResponse.statusCode)
             }
             
-            print("🍪 获取到 Cookie: \(sysauth)")
+            // 解析 JSON-RPC 响应
+            let authResponse = try JSONDecoder().decode(OpenWRTAuthResponse.self, from: loginData)
+            print("📥 解析后的 JSON-RPC 响应: id=\(authResponse.id), result=\(authResponse.result ?? "nil"), error=\(authResponse.error ?? "nil")")
             
-            // 2. 使用 cookie 获取 OpenClash 状态
+            guard let token = authResponse.result, !token.isEmpty else {
+                if authResponse.result == nil && authResponse.error == nil {
+                    print("❌ 用户名或密码错误")
+                    throw NetworkError.unauthorized
+                }
+                if let error = authResponse.error {
+                    print("❌ JSON-RPC 错误: \(error)")
+                    throw NetworkError.unauthorized
+                }
+                print("❌ 无效的响应结果")
+                throw NetworkError.invalidResponse
+            }
+            
+            print("🔑 获取到认证令牌: \(token)")
+            
+            // 2. 使用认证令牌获取 OpenClash 状态
             let timestamp = Int(Date().timeIntervalSince1970 * 1000)
             guard let statusURL = URL(string: "\(baseURL)/cgi-bin/luci/admin/services/openclash/status?\(timestamp)") else {
                 print("❌ 状态 URL 无效")
@@ -341,7 +338,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             
             print("📤 发送状态请求: \(statusURL)")
             var statusRequest = URLRequest(url: statusURL)
-            statusRequest.setValue(String(sysauth), forHTTPHeaderField: "Cookie")
+            statusRequest.setValue("sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
             
             let (statusData, statusResponse) = try await session.data(for: statusRequest)
             
@@ -352,7 +349,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             
             print("📥 状态响应状态码: \(statusHttpResponse.statusCode)")
             if let responseStr = String(data: statusData, encoding: .utf8) {
-                print("📥 状态响应体: \(responseStr)")
+                print("📥 OpenClash 状态响应: \(responseStr)")
             }
             
             switch statusHttpResponse.statusCode {
@@ -366,8 +363,8 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                     print("❌ 解析错误: \(error)")
                     throw NetworkError.invalidResponse
                 }
-            case 401:
-                print("🔒 状态请求未授权")
+            case 403:
+                print("🔒 认证令牌已过期")
                 throw NetworkError.unauthorized
             default:
                 print("❌ 状态请求失败: \(statusHttpResponse.statusCode)")

@@ -81,6 +81,22 @@ struct ContentView: View {
                                             Label(server.isQuickLaunch ? "取消快速启动" : "设为快速启动", 
                                                   systemImage: server.isQuickLaunch ? "bolt.slash.circle" : "bolt.circle")
                                         }
+                                        
+                                        if server.source == .openWRT {
+                                            Button {
+                                                // 打开管理页面
+                                                showManagementView(for: server)
+                                            } label: {
+                                                Label("管理", systemImage: "gear")
+                                            }
+                                            
+                                            Button {
+                                                // 打开切换配置页面
+                                                showSwitchConfigView(for: server)
+                                            } label: {
+                                                Label("切换配置", systemImage: "arrow.2.circlepath")
+                                            }
+                                        }
                                     }
                             }
                             .buttonStyle(PlainButtonStyle())
@@ -182,6 +198,14 @@ struct ContentView: View {
                 showQuickLaunchDestination = true
             }
         }
+    }
+    
+    private func showManagementView(for server: ClashServer) {
+        // 显示管理页面的逻辑
+    }
+    
+    private func showSwitchConfigView(for server: ClashServer) {
+        // 显示切换配置页面的逻辑
     }
 }
 

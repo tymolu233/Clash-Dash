@@ -20,7 +20,7 @@ enum NetworkError: LocalizedError {
         case .invalidResponse:
             return "无效的服务器响应"
         case .unauthorized:
-            return "认证失败"
+            return "认证失败，请检查用户名或密码"
         case .serverError(let code):
             return "服务器错误: \(code)"
         case .unknownError(let error):
