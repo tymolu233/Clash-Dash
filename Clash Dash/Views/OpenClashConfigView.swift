@@ -148,7 +148,7 @@ struct OpenClashConfigView: View {
             Button("取消", role: .cancel) {
                 configToEdit = nil
             }
-            Button("我已了解") {
+            Button("继续编辑") {
                 if let config = configToEdit {
                     editingConfig = config
                 }
