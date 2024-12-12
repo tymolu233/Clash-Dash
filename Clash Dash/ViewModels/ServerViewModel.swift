@@ -575,7 +575,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         let dateFormatter = DateFormatter()
         dateFormatter.locale = Locale(identifier: "en_US_POSIX")
         dateFormatter.timeZone = TimeZone.current  // 使用当前时区
-        dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss Z"  // 修改日期格式以匹配 --full-time 输出
+        dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss Z"  // 修改日期匹配 --full-time 输出
         
         let lines = fileList.components(separatedBy: CharacterSet.newlines)
         print("🔍 开始解析 \(lines.count) 行文件列表")
@@ -584,11 +584,12 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             let components = line.split(separator: " ").filter { !$0.isEmpty }
             guard components.count >= 9,
                   let fileName = components.last?.description,
-                  fileName.hasSuffix(".yaml") || fileName.hasSuffix(".yml") else {
+                  fileName.hasSuffix(".yaml") || fileName.hasSuffix(".yml"),
+                  let fileSize = Int64(components[4]) else {  // 获取文件大小
                 continue
             }
             
-            print("📄 处理配置文件: \(fileName)")
+            print("📄 处理配置文件: \(fileName), 大小: \(fileSize) 字节")
             
             // 解析日期
             let dateString = "\(components[5]) \(components[6]) \(components[7])"  // 2024-12-09 21:34:04 +0800
@@ -636,7 +637,8 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                 state: fileName == currentConfig ? .enabled : .disabled,
                 mtime: date,
                 check: check,
-                subscription: subscription
+                subscription: subscription,
+                fileSize: fileSize
             )
             
             configs.append(config)
@@ -867,5 +869,115 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         
         let configResponse = try JSONDecoder().decode(ConfigResponse.self, from: data)
         return configResponse.result
+    }
+    
+    func saveConfigContent(_ server: ClashServer, configName: String, content: String) async throws {
+        let scheme = server.useSSL ? "https" : "http"
+        let baseURL = "\(scheme)://\(server.url):\(server.openWRTPort ?? "80")"
+        
+        print("📝 开始保存配置文件: \(configName)")
+        
+        guard let username = server.openWRTUsername,
+              let password = server.openWRTPassword else {
+            print("❌ 未找到认证信息")
+            throw NetworkError.unauthorized
+        }
+        
+        print("🔑 获取认证令牌...")
+        let token = try await getAuthToken(server, username: username, password: password)
+        print("✅ 获取令牌成功: \(token)")
+        
+        // 构建请求
+        guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
+            print("❌ 无效的 URL")
+            throw NetworkError.invalidURL
+        }
+        
+        // 将内容转换为 base64
+        guard let contentData = content.data(using: .utf8) else {
+            print("❌ 内容编码失败")
+            throw NetworkError.invalidResponse
+        }
+        let base64Content = contentData.base64EncodedString()
+        print("✅ 内容已转换为 base64")
+        
+        // 构建写入命令
+        let filePath = "/etc/openclash/config/\(configName)"
+        // let cmd = "printf '%s' '\(base64Content)' | base64 -d > \(filePath)"
+        let cmd = "echo '\(base64Content)' | base64 -d | tee \(filePath) >/dev/null 2>&1"
+        // print("📤 执行写入命令: \(cmd)")
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("sysauth=\(token)", forHTTPHeaderField: "Cookie")
+        
+        let command: [String: Any] = [
+            "method": "exec",
+            "params": [cmd]
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: command)
+        
+        let session = makeURLSession(for: server)
+        let (data, response) = try await session.data(for: request)
+        
+        if let httpResponse = response as? HTTPURLResponse {
+            print("📥 写入响应状态码: \(httpResponse.statusCode)")
+        }
+        
+        if let responseStr = String(data: data, encoding: .utf8) {
+            print("📥 写入响应内容: \(responseStr)")
+        }
+        
+        guard let httpResponse = response as? HTTPURLResponse,
+              httpResponse.statusCode == 200 else {
+            print("❌ 写入失败")
+            throw NetworkError.serverError((response as? HTTPURLResponse)?.statusCode ?? 500)
+        }
+        
+        // 验证文件是否成功写入
+        print("🔍 验证文件写入...")
+        let verifyCommand: [String: Any] = [
+            "method": "exec",
+            "params": ["ls -l --full-time \(filePath)"]
+        ]
+        
+        request.httpBody = try JSONSerialization.data(withJSONObject: verifyCommand)
+        let (verifyData, _) = try await session.data(for: request)
+        
+        if let verifyStr = String(data: verifyData, encoding: .utf8) {
+            print("📥 验证响应内容: \(verifyStr)")
+        }
+        
+        struct VerifyResponse: Codable {
+            let result: String
+        }
+        
+        let verifyResult = try JSONDecoder().decode(VerifyResponse.self, from: verifyData)
+        let fileInfo = verifyResult.result.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        if fileInfo.isEmpty {
+            print("❌ 文件验证失败：未找到文件")
+            throw NetworkError.invalidResponse
+        }
+        
+        // 检查文件修改时间
+        let components = fileInfo.split(separator: " ")
+        if components.count >= 8 {
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+            let dateString = "\(components[5]) \(components[6])"
+            
+            if let fileDate = dateFormatter.date(from: dateString) {
+                let timeDiff = Date().timeIntervalSince(fileDate)
+                print("⏱ 文件修改时间差: \(timeDiff)秒")
+                if timeDiff < 0 || timeDiff > 5 {
+                    print("❌ 文件时间验证失败")
+                    throw NetworkError.invalidResponse
+                }
+            }
+        }
+        
+        print("✅ 配置文件保存成功")
     }
 } 

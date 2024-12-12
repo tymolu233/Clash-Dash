@@ -7,6 +7,7 @@ struct OpenClashConfig: Identifiable {
     let mtime: Date
     let check: ConfigCheck
     let subscription: SubscriptionInfo?
+    let fileSize: Int64
     
     enum ConfigState: String {
         case enabled = "Enabled"
@@ -14,9 +15,9 @@ struct OpenClashConfig: Identifiable {
     }
     
     enum ConfigCheck: String {
-        case normal = "配置检查通过"
-        case abnormal = "配置检查不通过"
-        case checkFailed = "检查失败"
+        case normal = "YAML 语法检查通过"
+        case abnormal = "YAML 语法检查不通过"
+        case checkFailed = "YAML 语法检查失败"
     }
     
     struct SubscriptionInfo: Codable {

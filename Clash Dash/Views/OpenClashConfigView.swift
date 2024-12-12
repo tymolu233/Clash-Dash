@@ -15,6 +15,8 @@ struct OpenClashConfigView: View {
     @State private var isDragging = false
     @State private var startupLogs: [String] = []
     @State private var editingConfig: OpenClashConfig?
+    @State private var showingEditAlert = false
+    @State private var configToEdit: OpenClashConfig?
     
     var body: some View {
         NavigationStack {
@@ -60,7 +62,7 @@ struct OpenClashConfigView: View {
                                         }
                                     },
                                     onEdit: {
-                                        editingConfig = config
+                                        handleEditConfig(config)
                                     }
                                 )
                             }
@@ -163,6 +165,19 @@ struct OpenClashConfigView: View {
                 configName: config.name
             )
         }
+        .alert("提示", isPresented: $showingEditAlert) {
+            Button("取消", role: .cancel) {
+                configToEdit = nil
+            }
+            Button("我已了解") {
+                if let config = configToEdit {
+                    editingConfig = config
+                }
+                configToEdit = nil
+            }
+        } message: {
+            Text(errorMessage)
+        }
     }
     
     private func handleConfigSelection(_ config: OpenClashConfig) {
@@ -220,6 +235,25 @@ struct OpenClashConfigView: View {
             }
         }
     }
+    
+    private func handleEditConfig(_ config: OpenClashConfig) {
+        let maxEditSize: Int64 = 100 * 1024  // 100KB
+        configToEdit = config
+        
+        if config.fileSize > maxEditSize {
+            errorMessage = 配置文件较大（\(formatFileSize(config.fileSize))），超过 100KB 将无法保存"
+            showingEditAlert = true
+        } else {
+            editingConfig = config
+        }
+    }
+    
+    private func formatFileSize(_ size: Int64) -> String {
+        let formatter = ByteCountFormatter()
+        formatter.allowedUnits = [.useKB, .useMB]
+        formatter.countStyle = .file
+        return formatter.string(fromByteCount: size)
+    }
 }
 
 struct ConfigCard: View {
@@ -228,6 +262,13 @@ struct ConfigCard: View {
     let onEdit: () -> Void
     
     @Environment(\.colorScheme) private var colorScheme
+    
+    private func formatFileSize(_ size: Int64) -> String {
+        let formatter = ByteCountFormatter()
+        formatter.allowedUnits = [.useKB, .useMB]
+        formatter.countStyle = .file
+        return formatter.string(fromByteCount: size)
+    }
     
     var body: some View {
         Button(action: onSelect) {
@@ -262,6 +303,12 @@ struct ConfigCard: View {
                         icon: config.check == .normal ? "checkmark.circle.fill" : "xmark.circle.fill",
                         text: config.check.rawValue,
                         color: config.check == .normal ? .green : .red
+                    )
+                    
+                    // 添加文件大小显示
+                    InfoRow(
+                        icon: "doc.circle",
+                        text: formatFileSize(config.fileSize)
                     )
                 }
                 .font(.subheadline)
@@ -418,7 +465,7 @@ struct ConfigCardPlaceholder: View {
                     .frame(width: 100, height: 16)
             }
             
-            // 语法检查状态占位符
+            // 语法检查状态占位
             HStack {
                 Circle()
                     .fill(Color.gray.opacity(0.2))
@@ -535,7 +582,7 @@ private extension Date {
         } else if let seconds = components.second, seconds >= 0 {
             return "刚刚更新"
         } else {
-            // 如果是未来的时间���显示具体日期时间
+            // 如果是未来的时显示具体日期时间
             let formatter = DateFormatter()
             formatter.dateStyle = .medium
             formatter.timeStyle = .short

@@ -10,10 +10,8 @@ struct ConfigEditorView: View {
     @State private var isLoading = true
     @State private var showError = false
     @State private var errorMessage = ""
-    @State private var visibleRange: Range<String.Index>?
-    
-    // 每次显示的行数
-    private let visibleLineCount = 100
+    @State private var showingSaveAlert = false
+    @State private var isSaving = false
     
     var body: some View {
         NavigationStack {
@@ -21,48 +19,41 @@ struct ConfigEditorView: View {
                 if isLoading {
                     ProgressView()
                 } else {
-                    ScrollView {
-                        LazyVStack(alignment: .leading, spacing: 0) {
-                            let lines = configContent.components(separatedBy: .newlines)
-                            ForEach(Array(lines.enumerated()), id: \.offset) { index, line in
-                                Text(line)
-                                    .font(.system(.body, design: .monospaced))
-                                    .padding(.horizontal)
-                                    .padding(.vertical, 2)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .background(index % 2 == 0 ? Color.clear : Color(.systemGray6))
-                            }
-                        }
-                        .padding(.vertical)
-                    }
+                    YAMLTextView(
+                        text: $configContent,
+                        font: .monospacedSystemFont(ofSize: 14, weight: .regular)
+                    )
+                    .padding(.horizontal, 8)
                 }
             }
             .navigationTitle(configName)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("关闭") {
+                    Button("取消") {
                         dismiss()
                     }
                 }
                 
                 ToolbarItem(placement: .primaryAction) {
-                    Menu {
-                        Button(action: copyToClipboard) {
-                            Label("复制全部", systemImage: "doc.on.doc")
-                        }
-                        
-                        Button(action: shareConfig) {
-                            Label("分享", systemImage: "square.and.arrow.up")
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
+                    Button("完成") {
+                        showingSaveAlert = true
                     }
                 }
             }
         }
         .task {
             await loadConfigContent()
+        }
+        .alert("保存配置", isPresented: $showingSaveAlert) {
+            Button("取消", role: .cancel) { }
+            Button("保存", role: .destructive) {
+                Task {
+                    await saveConfig()
+                }
+            }
+        } message: {
+            Text("确定要保存修改后的配置吗？这将覆盖原有配置文件。")
         }
         .alert("错误", isPresented: $showError) {
             Button("确定", role: .cancel) { }
@@ -82,23 +73,16 @@ struct ConfigEditorView: View {
         }
     }
     
-    private func copyToClipboard() {
-        UIPasteboard.general.string = configContent
-    }
-    
-    private func shareConfig() {
-        let activityVC = UIActivityViewController(
-            activityItems: [configContent],
-            applicationActivities: nil
-        )
+    private func saveConfig() async {
+        isSaving = true
+        defer { isSaving = false }
         
-        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-           let window = windowScene.windows.first,
-           let rootVC = window.rootViewController {
-            activityVC.popoverPresentationController?.sourceView = window
-            activityVC.popoverPresentationController?.sourceRect = CGRect(x: window.bounds.midX, y: window.bounds.midY, width: 0, height: 0)
-            activityVC.popoverPresentationController?.permittedArrowDirections = []
-            rootVC.present(activityVC, animated: true)
+        do {
+            try await viewModel.saveConfigContent(server, configName: configName, content: configContent)
+            dismiss()
+        } catch {
+            errorMessage = error.localizedDescription
+            showError = true
         }
     }
 } 
