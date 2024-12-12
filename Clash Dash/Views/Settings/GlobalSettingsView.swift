@@ -36,7 +36,11 @@ struct GlobalSettingsView: View {
                     )
                 }
                 
-                InfoRow(message: "DIRECT（直连）和 REJECT（拒绝）节点会始终显示在列表中")
+                SettingsInfoRow(
+                    icon: "info.circle",
+                    text: "版本",
+                    message: "1.0.0"
+                )
             } header: {
                 SectionHeader(title: "排序设置", systemImage: "arrow.up.arrow.down")
             }
@@ -117,21 +121,6 @@ struct SettingRow: View {
     }
 }
 
-struct InfoRow: View {
-    let message: String
-    
-    var body: some View {
-        Label {
-            Text(message)
-                .caption()
-        } icon: {
-            Image(systemName: "info.circle")
-                .foregroundColor(.secondary)
-        }
-        .padding(.vertical, 4)
-    }
-}
-
 struct SectionHeader: View {
     let title: String
     let systemImage: String
@@ -196,6 +185,30 @@ enum ProxyGroupSortOrder: String, CaseIterable, Identifiable {
         case .nameAsc: return "按名称字母排序 (A-Z)"
         case .nameDesc: return "按名称字母排序 (Z-A)"
         }
+    }
+}
+
+struct SettingsInfoRow: View {
+    let icon: String
+    let text: String
+    var message: String? = nil
+    
+    var body: some View {
+        Label {
+            HStack {
+                Text(text)
+                    .foregroundColor(.secondary)
+                if let message = message {
+                    Text(message)
+                        .foregroundColor(.secondary)
+                        .font(.caption)
+                }
+            }
+        } icon: {
+            Image(systemName: icon)
+                .foregroundColor(.secondary)
+        }
+        .padding(.vertical, 4)
     }
 }
 

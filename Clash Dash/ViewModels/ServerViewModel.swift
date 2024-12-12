@@ -7,6 +7,17 @@ struct VersionResponse: Codable {
     let version: String
 }
 
+// 添加一个结构体来表示启动状态
+struct StartLogResponse: Codable {
+    let startlog: String
+}
+
+struct ClashStatusResponse: Codable {
+    let id: Int?
+    let result: String
+    let error: String?
+}
+
 @MainActor
 class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessionTaskDelegate {
     @Published var servers: [ClashServer] = []
@@ -301,6 +312,9 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             }
             
             print("📥 登录响应状态码: \(httpResponse.statusCode)")
+            if let responseStr = String(data: loginData, encoding: .utf8) {
+                print("📥 JSON-RPC 登录响应: \(responseStr)")
+            }
             
             switch httpResponse.statusCode {
             case 200:
@@ -346,15 +360,38 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                     print("📥 OpenClash 状态响应: \(responseStr)")
                 }
                 
+                
                 switch statusHttpResponse.statusCode {
                 case 200:
                     print("✅ 获取状态成功，开始解析")
+                    print("📥 原始响应内容：")
+                    if let jsonString = String(data: statusData, encoding: .utf8) {
+                        print("""
+                        {
+                            解析到的 JSON 内容：
+                            \(jsonString.replacingOccurrences(of: ",", with: ",\n    "))
+                        }
+                        """)
+                    }
+                    
                     do {
                         let status = try JSONDecoder().decode(OpenWRTStatus.self, from: statusData)
                         print("✅ 解析成功: \(status)")
                         return status
                     } catch {
                         print("❌ 解析错误: \(error)")
+                        if let decodingError = error as? DecodingError {
+                            switch decodingError {
+                            case .keyNotFound(let key, _):
+                                print("缺少必需的字段: \(key)")
+                            case .typeMismatch(let type, let context):
+                                print("类型不匹配: 期望 \(type) 在路径: \(context.codingPath)")
+                            case .valueNotFound(let type, let context):
+                                print("值为空: 期望 \(type) 在路径: \(context.codingPath)")
+                            default:
+                                print("其他解码错误: \(decodingError)")
+                            }
+                        }
                         throw NetworkError.invalidResponse
                     }
                 case 403:
@@ -368,16 +405,19 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             case 404:
                 print("❌ OpenWRT 缺少必要的依赖")
                 throw NetworkError.missingDependencies("""
-                    OpenWRT 路由器缺少必要的依赖。
+                    OpenWRT 路由器缺少必要的依赖
                     
                     请确保已经安装以下软件包：
-                    1. luci-app-openclash
-                    2. ruby
-                    3. ruby-yaml
+                    1. luci-mod-rpc
+                    2. luci-lib-ipkg
+                    3. luci-compat
                     
                     可以通过以下命令安装：
                     opkg update
-                    opkg install luci-app-openclash ruby ruby-yaml
+                    opkg install luci-mod-rpc luci-lib-ipkg luci-compat
+
+                    并重启 uhttpd：
+                    /etc/init.d/uhttpd restart
                     """)
                 
             default:
@@ -479,7 +519,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         
         let listCommand: [String: Any] = [
             "method": "exec",
-            "params": ["ls -la /etc/openclash/config/"]
+            "params": ["ls -la --full-time /etc/openclash/config/"]
         ]
         listRequest.httpBody = try JSONSerialization.data(withJSONObject: listCommand)
         
@@ -528,13 +568,14 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         
         let currentResult = try JSONDecoder().decode(ListResponse.self, from: currentData)
         let currentConfig = currentResult.result.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).components(separatedBy: "/").last ?? ""
-        print("📝 当前启用的配置: \(currentConfig)")
+        print("📝 当前用的配置: \(currentConfig)")
         
         // 5. 解析文件列表
         var configs: [OpenClashConfig] = []
         let dateFormatter = DateFormatter()
         dateFormatter.locale = Locale(identifier: "en_US_POSIX")
-        dateFormatter.dateFormat = "MMM dd HH:mm"
+        dateFormatter.timeZone = TimeZone.current  // 使用当前时区
+        dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss Z"  // 修改日期格式以匹配 --full-time 输出
         
         let lines = fileList.components(separatedBy: CharacterSet.newlines)
         print("🔍 开始解析 \(lines.count) 行文件列表")
@@ -550,18 +591,8 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             print("📄 处理配置文件: \(fileName)")
             
             // 解析日期
-            let month = String(components[components.count - 4])
-            let day = String(components[components.count - 3])
-            let timeOrYear = String(components[components.count - 2])
-            
-            var date: Date
-            if timeOrYear.contains(":") {
-                dateFormatter.dateFormat = "MMM dd HH:mm"
-                date = dateFormatter.date(from: "\(month) \(day) \(timeOrYear)") ?? Date()
-            } else {
-                dateFormatter.dateFormat = "MMM dd yyyy"
-                date = dateFormatter.date(from: "\(month) \(day) \(timeOrYear)") ?? Date()
-            }
+            let dateString = "\(components[5]) \(components[6]) \(components[7])"  // 2024-12-09 21:34:04 +0800
+            let date = dateFormatter.date(from: dateString) ?? Date()
             
             // 检查配置文件语法
             print("🔍 检查配置文件语法: \(fileName)")
@@ -586,7 +617,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             print("📝 配置语法检查结果: \(check)")
             
             // 获取订阅信息
-            print("🔍 获取订阅信息: \(fileName)")
+            print("获取订阅信息: \(fileName)")
             let subFileName = fileName.replacingOccurrences(of: ".yaml", with: "").replacingOccurrences(of: ".yml", with: "")
             let timestamp = Int(Date().timeIntervalSince1970 * 1000)
             guard let subURL = URL(string: "\(baseURL)/cgi-bin/luci/admin/services/openclash/sub_info_get?\(timestamp)&filename=\(subFileName)") else {
@@ -616,7 +647,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         return configs
     }
     
-    func switchOpenClashConfig(_ server: ClashServer, configName: String) async throws {
+    func switchOpenClashConfig(_ server: ClashServer, configName: String) async throws -> AsyncStream<String> {
         let scheme = server.useSSL ? "https" : "http"
         let baseURL = "\(scheme)://\(server.url):\(server.openWRTPort ?? "80")"
         print("🔄 开始切换配置: \(configName)")
@@ -624,49 +655,140 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         // 获取认证 token
         guard let username = server.openWRTUsername,
               let password = server.openWRTPassword else {
-            print("❌ 未找到认证信息")
             throw NetworkError.unauthorized
         }
         
-        print("🔑 获取认证令牌...")
         let token = try await getAuthToken(server, username: username, password: password)
-        print("✅ 获取令牌成功")
         
-        // 构建切换配置的请求
+        // 1. 发送切换配置请求
         let timestamp = Int(Date().timeIntervalSince1970 * 1000)
         guard let switchURL = URL(string: "\(baseURL)/cgi-bin/luci/admin/services/openclash/switch_config?\(timestamp)") else {
-            print("❌ 无效的切换配置 URL")
             throw NetworkError.invalidURL
         }
         
-        print("📤 发送切换配置请求: \(switchURL)")
         var request = URLRequest(url: switchURL)
         request.httpMethod = "POST"
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
         request.setValue("sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
-        
-        let body = "config_name=\(configName)"
-        request.httpBody = body.data(using: .utf8)
+        request.httpBody = "config_name=\(configName)".data(using: .utf8)
         
         let session = makeURLSession(for: server)
+        let (_, response) = try await session.data(for: request)
         
-        let (data, response) = try await session.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse else {
-            print("❌ 无效的响应类型")
-            throw NetworkError.invalidResponse
+        guard let httpResponse = response as? HTTPURLResponse,
+              httpResponse.statusCode == 200 else {
+            throw NetworkError.serverError((response as? HTTPURLResponse)?.statusCode ?? 500)
         }
         
-        if let responseStr = String(data: data, encoding: .utf8) {
-            print("📥 切换配置响应: \(responseStr)")
+        // 2. 发送重启服务请求
+        guard let restartURL = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
+            throw NetworkError.invalidURL
         }
         
-        guard httpResponse.statusCode == 200 else {
-            print("❌ 切换配置失败: 状态码 \(httpResponse.statusCode)")
-            throw NetworkError.serverError(httpResponse.statusCode)
+        var restartRequest = URLRequest(url: restartURL)
+        restartRequest.httpMethod = "POST"
+        restartRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        restartRequest.setValue("sysauth=\(token)", forHTTPHeaderField: "Cookie")
+        
+        let restartCommand: [String: Any] = [
+            "method": "exec",
+            "params": ["/etc/init.d/openclash restart >/dev/null 2>&1 &"]
+        ]
+        restartRequest.httpBody = try JSONSerialization.data(withJSONObject: restartCommand)
+        
+        let (_, restartResponse) = try await session.data(for: restartRequest)
+        guard (restartResponse as? HTTPURLResponse)?.statusCode == 200 else {
+            throw NetworkError.serverError((restartResponse as? HTTPURLResponse)?.statusCode ?? 500)
         }
         
-        print("✅ 切换配置成功")
+        // 3. 创建一个异步流来监控启动日志和服务状态
+        return AsyncStream { continuation in
+        Task {
+            var isRunning = false
+            var hasWaitedAfterRunning = false
+            var seenLogs = Set<String>()
+            var waitStartTime: Date? = nil
+            
+            while !isRunning || !hasWaitedAfterRunning {
+                do {
+                    // 获取启动日志
+                    let random = Int.random(in: 1...1000000000)
+                    guard let logURL = URL(string: "\(baseURL)/cgi-bin/luci/admin/services/openclash/startlog?\(random)") else {
+                        throw NetworkError.invalidURL
+                    }
+                    
+                    var logRequest = URLRequest(url: logURL)
+                    logRequest.setValue("sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
+                    
+                    let (logData, _) = try await session.data(for: logRequest)
+                    let logResponse = try JSONDecoder().decode(StartLogResponse.self, from: logData)
+                    
+                    // 处理日志
+                    if !logResponse.startlog.isEmpty {
+                        let logs = logResponse.startlog
+                            .components(separatedBy: "\n")
+                            .filter { !$0.isEmpty && $0 != "\n" }
+                        
+                        for log in logs {
+                            let trimmedLog = log.trimmingCharacters(in: .whitespacesAndNewlines)
+                            if !trimmedLog.isEmpty && !seenLogs.contains(trimmedLog) {
+                                seenLogs.insert(trimmedLog)
+                                continuation.yield(trimmedLog)
+                                
+                                // 检查日志是否包含成功标记
+                                if trimmedLog.contains("启动成功") {
+                                    continuation.yield("✅ OpenClash 服务已完全就绪")
+                                    continuation.finish()
+                                    return
+                                }
+                            }
+                        }
+                    }
+                    
+                    // 检查服务状态
+                    var statusRequest = URLRequest(url: restartURL)
+                    statusRequest.httpMethod = "POST"
+                    statusRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                    statusRequest.setValue("sysauth=\(token)", forHTTPHeaderField: "Cookie")
+                    
+                    let statusCommand: [String: Any] = [
+                        "method": "exec",
+                        "params": ["pidof clash >/dev/null && echo 'running' || echo 'stopped'"]
+                    ]
+                    statusRequest.httpBody = try JSONSerialization.data(withJSONObject: statusCommand)
+                    
+                    let (statusData, _) = try await session.data(for: statusRequest)
+                    let statusResponse = try JSONDecoder().decode(ClashStatusResponse.self, from: statusData)
+                    
+                    if statusResponse.result.contains("running") {
+                        if !isRunning {
+                            isRunning = true
+                            waitStartTime = Date()
+                            // continuation.yield("⏳ OpenClash 正在切换配置...")
+                        }
+                        
+                        // 检查是否已经等待足够时间
+                        if let startTime = waitStartTime {
+                            let elapsedTime = Date().timeIntervalSince(startTime)
+                            if elapsedTime >= 20 {  // 20秒
+                                hasWaitedAfterRunning = true
+                                continuation.yield("✅ OpenClash 服务已就绪")
+                                continuation.finish()
+                                break
+                            }
+                        }
+                    }
+                    
+                    try await Task.sleep(nanoseconds: 100_000_000) // 0.1秒延迟
+                    
+                } catch {
+                        continuation.yield("❌ 发生错误: \(error.localizedDescription)")
+                        continuation.finish()
+                        break
+                    }
+                }
+            }
+        }
     }
     
     // 辅助方法：获取认证 token

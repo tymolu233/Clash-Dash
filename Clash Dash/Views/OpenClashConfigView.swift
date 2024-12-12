@@ -10,6 +10,10 @@ struct OpenClashConfigView: View {
     @State private var showError = false
     @State private var errorMessage = ""
     @State private var isChanging = false
+    @State private var showingSwitchAlert = false
+    @State private var selectedConfig: OpenClashConfig?
+    @State private var isDragging = false
+    @State private var startupLogs: [String] = []
     
     var body: some View {
         NavigationStack {
@@ -48,7 +52,9 @@ struct OpenClashConfigView: View {
                         LazyVStack(spacing: 12) {
                             ForEach(configs) { config in
                                 ConfigCard(config: config) {
-                                    switchConfig(config)
+                                    if !isDragging {
+                                        handleConfigSelection(config)
+                                    }
                                 }
                                 .transition(.opacity)
                             }
@@ -60,6 +66,17 @@ struct OpenClashConfigView: View {
                 .animation(.easeInOut, value: isLoading)
                 .animation(.easeInOut, value: configs.isEmpty)
             }
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { _ in
+                        isDragging = true
+                    }
+                    .onEnded { _ in
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            isDragging = false
+                        }
+                    }
+            )
             .navigationTitle("配置文件")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -84,6 +101,7 @@ struct OpenClashConfigView: View {
         .overlay {
             if isChanging {
                 ProgressView()
+                    .background(Color(.systemBackground).opacity(0.8))
             }
         }
         .task {
@@ -94,6 +112,52 @@ struct OpenClashConfigView: View {
         } message: {
             Text(errorMessage)
         }
+        .alert("切换配置", isPresented: $showingSwitchAlert) {
+            Button("取消", role: .cancel) {
+                selectedConfig = nil
+            }
+            Button("确认切换", role: .destructive) {
+                if let config = selectedConfig {
+                    switchConfig(config)
+                }
+            }
+        } message: {
+            Text("切换配置会重启 OpenClash 服务，这会导致当前连接中断。是否继续？")
+        }
+        .sheet(isPresented: $isChanging) {
+            VStack(spacing: 16) {
+                ProgressView()
+                    .scaleEffect(1.5)
+                    .padding(.bottom, 8)
+                
+                Text("正在切换配置...")
+                    .font(.headline)
+                
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(startupLogs, id: \.self) { log in
+                            Text(log)
+                                .font(.system(.subheadline, design: .monospaced))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding()
+                }
+                .frame(maxHeight: 200)
+                .background(Color(.systemBackground))
+                .cornerRadius(8)
+            }
+            .padding()
+            .presentationDetents([.height(300)])
+            .presentationDragIndicator(.visible)
+        }
+    }
+    
+    private func handleConfigSelection(_ config: OpenClashConfig) {
+        guard config.state != .enabled else { return }
+        selectedConfig = config
+        showingSwitchAlert = true
     }
     
     private func loadConfigs() async {
@@ -111,16 +175,28 @@ struct OpenClashConfigView: View {
     private func switchConfig(_ config: OpenClashConfig) {
         guard !isChanging else { return }
         
+        startupLogs.removeAll()
         isChanging = true
+        
         Task {
             do {
-                try await viewModel.switchOpenClashConfig(server, configName: config.name)
+                let logStream = try await viewModel.switchOpenClashConfig(server, configName: config.name)
+                for await log in logStream {
+                    await MainActor.run {
+                        startupLogs.append(log)
+                    }
+                }
                 await loadConfigs()  // 重新加载配置列表以更新状态
+                await MainActor.run {
+                    isChanging = false
+                }
             } catch {
-                errorMessage = error.localizedDescription
-                showError = true
+                await MainActor.run {
+                    errorMessage = error.localizedDescription
+                    showError = true
+                    isChanging = false
+                }
             }
-            isChanging = false
         }
     }
 }
@@ -129,10 +205,12 @@ struct ConfigCard: View {
     let config: OpenClashConfig
     let onSelect: () -> Void
     
+    @Environment(\.colorScheme) private var colorScheme
+    
     var body: some View {
         Button(action: onSelect) {
-            VStack(alignment: .leading, spacing: 10) {
-                // 标题行
+            VStack(alignment: .leading, spacing: 12) {
+                // 标题栏
                 HStack {
                     Text(config.name)
                         .font(.headline)
@@ -141,25 +219,22 @@ struct ConfigCard: View {
                     StateLabel(state: config.state)
                 }
                 
-                // 更新时间
-                Label {
-                    Text(config.mtime, style: .date)
-                        .foregroundColor(.secondary)
-                } icon: {
-                    Image(systemName: "calendar")
-                        .foregroundColor(.secondary)
+                // 配置信息
+                VStack(alignment: .leading, spacing: 8) {
+                    // 更新时间
+                    InfoRow(
+                        icon: "clock",
+                        text: config.mtime.relativeTimeString()
+                    )
+                    
+                    // 语法检查状态
+                    InfoRow(
+                        icon: config.check == .normal ? "checkmark.circle.fill" : "xmark.circle.fill",
+                        text: config.check.rawValue,
+                        color: config.check == .normal ? .green : .red
+                    )
                 }
-                .font(.footnote)
-                
-                // 语法检查状态
-                Label {
-                    Text(config.check.rawValue)
-                        .foregroundColor(config.check == .normal ? .green : .red)
-                } icon: {
-                    Image(systemName: config.check == .normal ? "checkmark.circle.fill" : "xmark.circle.fill")
-                        .foregroundColor(config.check == .normal ? .green : .red)
-                }
-                .font(.footnote)
+                .font(.subheadline)
                 
                 // 订阅信息
                 if let subscription = config.subscription {
@@ -168,16 +243,37 @@ struct ConfigCard: View {
                     SubscriptionInfoView(info: subscription)
                 }
             }
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color(.secondarySystemGroupedBackground))
+                    .shadow(
+                        color: config.state == .enabled ? 
+                            Color.accentColor.opacity(0.3) : 
+                            Color.black.opacity(colorScheme == .dark ? 0.3 : 0.1),
+                        radius: config.state == .enabled ? 8 : 4,
+                        y: 2
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(
+                        config.state == .enabled ? 
+                            Color.accentColor.opacity(0.5) : 
+                            Color(.systemGray4),
+                        lineWidth: config.state == .enabled ? 2 : 0.5
+                    )
+            )
         }
-        .buttonStyle(PlainButtonStyle())
-        .padding(12)
-        .background(Color(.secondarySystemGroupedBackground))
-        .cornerRadius(12)
-        .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Color(.systemGray5), lineWidth: 0.5)
-        )
+        .buttonStyle(ConfigCardButtonStyle())
+    }
+}
+
+struct ConfigCardButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+            .animation(.easeInOut(duration: 0.2), value: configuration.isPressed)
     }
 }
 
@@ -185,16 +281,26 @@ struct StateLabel: View {
     let state: OpenClashConfig.ConfigState
     
     var body: some View {
-        Text(state.rawValue)
+        Text(state == .enabled ? "已启用" : "未启用")
             .font(.caption)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 3)
-            .background(state == .enabled ? Color.green.opacity(0.15) : Color.secondary.opacity(0.1))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(
+                Capsule()
+                    .fill(state == .enabled ? 
+                          Color.green.opacity(0.15) : 
+                          Color.secondary.opacity(0.1)
+                    )
+            )
             .foregroundColor(state == .enabled ? .green : .secondary)
-            .cornerRadius(6)
             .overlay(
-                RoundedRectangle(cornerRadius: 6)
-                    .stroke(state == .enabled ? Color.green.opacity(0.3) : Color.secondary.opacity(0.2), lineWidth: 0.5)
+                Capsule()
+                    .stroke(
+                        state == .enabled ? 
+                            Color.green.opacity(0.3) : 
+                            Color.secondary.opacity(0.2),
+                        lineWidth: 0.5
+                    )
             )
     }
 }
@@ -208,7 +314,7 @@ struct SubscriptionInfoView: View {
                 // 流量信息
                 HStack(spacing: 16) {
                     if let used = info.used {
-                        DataLabel(title: "已用", value: used)
+                        DataLabel(title: "已使用", value: used)
                     }
                     if let surplus = info.surplus {
                         DataLabel(title: "剩余", value: surplus)
@@ -352,5 +458,58 @@ struct ShimmeringView: ViewModifier {
 extension View {
     func shimmering() -> some View {
         modifier(ShimmeringView())
+    }
+}
+
+// 所有组件定义
+struct InfoRow: View {
+    let icon: String
+    let text: String
+    var color: Color = .secondary
+    var message: String? = nil
+    
+    var body: some View {
+        Label {
+            HStack {
+                Text(text)
+                    .foregroundColor(color)
+                if let message = message {
+                    Text(message)
+                        .foregroundColor(.secondary)
+                        .font(.caption)
+                }
+            }
+        } icon: {
+            Image(systemName: icon)
+                .foregroundColor(color)
+        }
+    }
+}
+
+// 添加相对时间格式化的扩展
+private extension Date {
+    func relativeTimeString() -> String {
+        let now = Date()
+        let components = Calendar.current.dateComponents([.second, .minute, .hour, .day, .weekOfYear], from: self, to: now)
+        
+        if let weeks = components.weekOfYear, weeks > 0 {
+            return "\(weeks)周前更新"
+        } else if let days = components.day, days > 0 {
+            return "\(days)天前更新"
+        } else if let hours = components.hour, hours > 0 {
+            return "\(hours)小时前更新"
+        } else if let minutes = components.minute, minutes > 0 {
+            return "\(minutes)分钟前更新"
+        } else if let seconds = components.second, seconds > 30 {
+            return "\(seconds)秒前更新"
+        } else if let seconds = components.second, seconds >= 0 {
+            return "刚刚更新"
+        } else {
+            // 如果是未来的时间，显示具体日期时间
+            let formatter = DateFormatter()
+            formatter.dateStyle = .medium
+            formatter.timeStyle = .short
+            return formatter.string(from: self)
+        }
     }
 } 

@@ -26,7 +26,7 @@ struct ContentView: View {
                             .font(.title2)
                             .fontWeight(.medium)
                         
-                        Text("点击添加按钮来添加��个新的服务器")
+                        Text("点击添加按钮来添加一个新的服务器")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
