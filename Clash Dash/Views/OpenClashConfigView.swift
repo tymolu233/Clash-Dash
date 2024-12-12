@@ -56,15 +56,12 @@ struct OpenClashConfigView: View {
                                         handleConfigSelection(config)
                                     }
                                 }
-                                .transition(.opacity)
                             }
                         }
                         .padding(.horizontal)
                         .padding(.top, 4)
                     }
                 }
-                .animation(.easeInOut, value: isLoading)
-                .animation(.easeInOut, value: configs.isEmpty)
             }
             .gesture(
                 DragGesture(minimumDistance: 0)
@@ -155,7 +152,17 @@ struct OpenClashConfigView: View {
     }
     
     private func handleConfigSelection(_ config: OpenClashConfig) {
+        // 首先检查是否是当前启用的配置
         guard config.state != .enabled else { return }
+        
+        // 检查配置文件状态
+        if config.check == .abnormal {
+            errorMessage = "无法切换到配置检查不通过的配置文件，请检查配置文件格式是否正确"
+            showError = true
+            return
+        }
+        
+        // 如果配置检查通过，则显示切换确认对话框
         selectedConfig = config
         showingSwitchAlert = true
     }
