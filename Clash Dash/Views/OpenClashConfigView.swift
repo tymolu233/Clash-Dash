@@ -131,38 +131,17 @@ struct OpenClashConfigView: View {
             Text("切换配置会重启 OpenClash 服务，这会导致当前连接中断。是否继续？")
         }
         .sheet(isPresented: $isChanging) {
-            VStack(spacing: 16) {
-                ProgressView()
-                    .scaleEffect(1.5)
-                    .padding(.bottom, 8)
-                
-                Text("正在切换配置...")
-                    .font(.headline)
-                
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 8) {
-                        ForEach(startupLogs, id: \.self) { log in
-                            Text(log)
-                                .font(.system(.subheadline, design: .monospaced))
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding()
-                }
-                .frame(maxHeight: 200)
-                .background(Color(.systemBackground))
-                .cornerRadius(8)
-            }
-            .padding()
-            .presentationDetents([.height(300)])
-            .presentationDragIndicator(.visible)
+            LogDisplayView(
+                logs: startupLogs,
+                title: "正在切换配置..."
+            )
         }
         .sheet(item: $editingConfig) { config in
             ConfigEditorView(
                 viewModel: viewModel,
                 server: server,
-                configName: config.name
+                configName: config.name,
+                isEnabled: config.state == .enabled
             )
         }
         .alert("提示", isPresented: $showingEditAlert) {
@@ -563,7 +542,7 @@ struct InfoRow: View {
     }
 }
 
-// 添加相对时间格式化的扩展
+// 添加相对时间格���化的扩展
 private extension Date {
     func relativeTimeString() -> String {
         let now = Date()

@@ -311,7 +311,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                 throw NetworkError.invalidResponse
             }
             
-            print("📥 登录响应状态码: \(httpResponse.statusCode)")
+            print("�� 登录响应状态码: \(httpResponse.statusCode)")
             if let responseStr = String(data: loginData, encoding: .utf8) {
                 print("📥 JSON-RPC 登录响应: \(responseStr)")
             }
@@ -385,7 +385,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                             case .keyNotFound(let key, _):
                                 print("缺少必需的字段: \(key)")
                             case .typeMismatch(let type, let context):
-                                print("类型不匹配: 期望 \(type) 在路径: \(context.codingPath)")
+                                print("类型不匹配: 期望 \(type) 路径: \(context.codingPath)")
                             case .valueNotFound(let type, let context):
                                 print("值为空: 期望 \(type) 在路径: \(context.codingPath)")
                             default:
@@ -654,7 +654,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         let baseURL = "\(scheme)://\(server.url):\(server.openWRTPort ?? "80")"
         print("🔄 开始切换配置: \(configName)")
         
-        // 获取认证 token
+        // 获取��证 token
         guard let username = server.openWRTUsername,
               let password = server.openWRTPassword else {
             throw NetworkError.unauthorized
@@ -682,112 +682,20 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             throw NetworkError.serverError((response as? HTTPURLResponse)?.statusCode ?? 500)
         }
         
-        // 2. 发送重启服务请求
-        guard let restartURL = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
-            throw NetworkError.invalidURL
-        }
+        // 2. 使用 restartOpenClash 来重启服务并监控状态
+        let restartStream = try await restartOpenClash(server)
         
-        var restartRequest = URLRequest(url: restartURL)
-        restartRequest.httpMethod = "POST"
-        restartRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        restartRequest.setValue("sysauth=\(token)", forHTTPHeaderField: "Cookie")
-        
-        let restartCommand: [String: Any] = [
-            "method": "exec",
-            "params": ["/etc/init.d/openclash restart >/dev/null 2>&1 &"]
-        ]
-        restartRequest.httpBody = try JSONSerialization.data(withJSONObject: restartCommand)
-        
-        let (_, restartResponse) = try await session.data(for: restartRequest)
-        guard (restartResponse as? HTTPURLResponse)?.statusCode == 200 else {
-            throw NetworkError.serverError((restartResponse as? HTTPURLResponse)?.statusCode ?? 500)
-        }
-        
-        // 3. 创建一个异步流来监控启动日志和服务状态
+        // 3. 将 AsyncThrowingStream 转换为 AsyncStream
         return AsyncStream { continuation in
-        Task {
-            var isRunning = false
-            var hasWaitedAfterRunning = false
-            var seenLogs = Set<String>()
-            var waitStartTime: Date? = nil
-            
-            while !isRunning || !hasWaitedAfterRunning {
+            Task {
                 do {
-                    // 获取启动日志
-                    let random = Int.random(in: 1...1000000000)
-                    guard let logURL = URL(string: "\(baseURL)/cgi-bin/luci/admin/services/openclash/startlog?\(random)") else {
-                        throw NetworkError.invalidURL
+                    for try await message in restartStream {
+                        continuation.yield(message)
                     }
-                    
-                    var logRequest = URLRequest(url: logURL)
-                    logRequest.setValue("sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
-                    
-                    let (logData, _) = try await session.data(for: logRequest)
-                    let logResponse = try JSONDecoder().decode(StartLogResponse.self, from: logData)
-                    
-                    // 处理日志
-                    if !logResponse.startlog.isEmpty {
-                        let logs = logResponse.startlog
-                            .components(separatedBy: "\n")
-                            .filter { !$0.isEmpty && $0 != "\n" }
-                        
-                        for log in logs {
-                            let trimmedLog = log.trimmingCharacters(in: .whitespacesAndNewlines)
-                            if !trimmedLog.isEmpty && !seenLogs.contains(trimmedLog) {
-                                seenLogs.insert(trimmedLog)
-                                continuation.yield(trimmedLog)
-                                
-                                // 检查日志是否包含成功标记
-                                if trimmedLog.contains("启动成功") {
-                                    continuation.yield("✅ OpenClash 服务已完全就绪")
-                                    continuation.finish()
-                                    return
-                                }
-                            }
-                        }
-                    }
-                    
-                    // 检查服务状态
-                    var statusRequest = URLRequest(url: restartURL)
-                    statusRequest.httpMethod = "POST"
-                    statusRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                    statusRequest.setValue("sysauth=\(token)", forHTTPHeaderField: "Cookie")
-                    
-                    let statusCommand: [String: Any] = [
-                        "method": "exec",
-                        "params": ["pidof clash >/dev/null && echo 'running' || echo 'stopped'"]
-                    ]
-                    statusRequest.httpBody = try JSONSerialization.data(withJSONObject: statusCommand)
-                    
-                    let (statusData, _) = try await session.data(for: statusRequest)
-                    let statusResponse = try JSONDecoder().decode(ClashStatusResponse.self, from: statusData)
-                    
-                    if statusResponse.result.contains("running") {
-                        if !isRunning {
-                            isRunning = true
-                            waitStartTime = Date()
-                            // continuation.yield("⏳ OpenClash 正在切换配置...")
-                        }
-                        
-                        // 检查是否已经等待足够时间
-                        if let startTime = waitStartTime {
-                            let elapsedTime = Date().timeIntervalSince(startTime)
-                            if elapsedTime >= 20 {  // 20秒
-                                hasWaitedAfterRunning = true
-                                continuation.yield("✅ OpenClash 服务已就绪")
-                                continuation.finish()
-                                break
-                            }
-                        }
-                    }
-                    
-                    try await Task.sleep(nanoseconds: 100_000_000) // 0.1秒延迟
-                    
+                    continuation.finish()
                 } catch {
-                        continuation.yield("❌ 发生错误: \(error.localizedDescription)")
-                        continuation.finish()
-                        break
-                    }
+                    continuation.yield("❌ 发生错误: \(error.localizedDescription)")
+                    continuation.finish()
                 }
             }
         }
@@ -979,5 +887,171 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         }
         
         print("✅ 配置文件保存成功")
+    }
+    
+    func restartOpenClash(_ server: ClashServer) async throws -> AsyncThrowingStream<String, Error> {
+        let scheme = server.useSSL ? "https" : "http"
+        let baseURL = "\(scheme)://\(server.url):\(server.openWRTPort ?? "80")"
+        
+        print("🔄 开始重启 OpenClash")
+        
+        guard let username = server.openWRTUsername,
+              let password = server.openWRTPassword else {
+            print("❌ 未找到认证信息")
+            throw NetworkError.unauthorized
+        }
+        
+        print("🔑 获取认证令牌...")
+        let token = try await getAuthToken(server, username: username, password: password)
+        print("✅ 获取令牌成功: \(token)")
+        
+        guard let restartURL = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
+            throw NetworkError.invalidURL
+        }
+        
+        var restartRequest = URLRequest(url: restartURL)
+        restartRequest.httpMethod = "POST"
+        restartRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        restartRequest.setValue("sysauth=\(token)", forHTTPHeaderField: "Cookie")
+        
+        let restartCommand: [String: Any] = [
+            "method": "exec",
+            "params": ["/etc/init.d/openclash restart >/dev/null 2>&1 &"]
+        ]
+        restartRequest.httpBody = try JSONSerialization.data(withJSONObject: restartCommand)
+        
+        let session = makeURLSession(for: server)
+        let (_, restartResponse) = try await session.data(for: restartRequest)
+        
+        guard (restartResponse as? HTTPURLResponse)?.statusCode == 200 else {
+            throw NetworkError.serverError((restartResponse as? HTTPURLResponse)?.statusCode ?? 500)
+        }
+        
+        print("✅ 重启命令已发送")
+        
+        // 返回一个异步流来监控启动日志和服务状态
+        return AsyncThrowingStream { continuation in
+            Task {
+                var isRunning = false
+                var hasWaitedAfterRunning = false
+                var seenLogs = Set<String>()
+                var waitStartTime: Date? = nil
+                
+                while !isRunning || !hasWaitedAfterRunning {
+                    do {
+                        // 获取启动日志
+                        let random = Int.random(in: 1...1000000000)
+                        guard let logURL = URL(string: "\(baseURL)/cgi-bin/luci/admin/services/openclash/startlog?\(random)") else {
+                            throw NetworkError.invalidURL
+                        }
+                        
+                        var logRequest = URLRequest(url: logURL)
+                        logRequest.setValue("sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
+                        
+                        let (logData, _) = try await session.data(for: logRequest)
+                        let logResponse = try JSONDecoder().decode(StartLogResponse.self, from: logData)
+                        
+                        // 处理日志
+                        if !logResponse.startlog.isEmpty {
+                            let logs = logResponse.startlog
+                                .components(separatedBy: "\n")
+                                .filter { !$0.isEmpty && $0 != "\n" }
+                            
+                            for log in logs {
+                                let trimmedLog = log.trimmingCharacters(in: .whitespacesAndNewlines)
+                                if !trimmedLog.isEmpty && !seenLogs.contains(trimmedLog) {
+                                    seenLogs.insert(trimmedLog)
+                                    continuation.yield(trimmedLog)
+                                    
+                                    // 检查日志是否包含成功标记
+                                    if trimmedLog.contains("启动成功") {
+                                        continuation.yield("✅ OpenClash 服务已完全就绪")
+                                        continuation.finish()
+                                        return
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // 检查服务状态
+                        var statusRequest = URLRequest(url: restartURL)
+                        statusRequest.httpMethod = "POST"
+                        statusRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                        statusRequest.setValue("sysauth=\(token)", forHTTPHeaderField: "Cookie")
+                        
+                        let statusCommand: [String: Any] = [
+                            "method": "exec",
+                            "params": ["pidof clash >/dev/null && echo 'running' || echo 'stopped'"]
+                        ]
+                        statusRequest.httpBody = try JSONSerialization.data(withJSONObject: statusCommand)
+                        
+                        let (statusData, _) = try await session.data(for: statusRequest)
+                        let statusResponse = try JSONDecoder().decode(ClashStatusResponse.self, from: statusData)
+                        
+                        if statusResponse.result.contains("running") {
+                            if !isRunning {
+                                isRunning = true
+                                waitStartTime = Date()
+                            }
+                            
+                            // 检查是否已经等待足够时间
+                            if let startTime = waitStartTime {
+                                let elapsedTime = Date().timeIntervalSince(startTime)
+                                if elapsedTime >= 20 {  // 等待20秒确保服务完全启动
+                                    hasWaitedAfterRunning = true
+                                    continuation.yield("✅ OpenClash 服务已就绪")
+                                    continuation.finish()
+                                    break
+                                }
+                            }
+                        }
+                        
+                        try await Task.sleep(nanoseconds: 100_000_000) // 0.1秒延迟
+                        
+                    } catch {
+                        continuation.yield("❌ 发生错误: \(error.localizedDescription)")
+                        continuation.finish()
+                        break
+                    }
+                }
+            }
+        }
+    }
+    
+    private func getOpenClashStatus(_ server: ClashServer) async throws -> ClashStatusResponse {
+        let scheme = server.useSSL ? "https" : "http"
+        let baseURL = "\(scheme)://\(server.url):\(server.openWRTPort ?? "80")"
+        
+        guard let username = server.openWRTUsername,
+              let password = server.openWRTPassword else {
+            throw NetworkError.unauthorized
+        }
+        
+        let token = try await getAuthToken(server, username: username, password: password)
+        
+        guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
+            throw NetworkError.invalidURL
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("sysauth=\(token)", forHTTPHeaderField: "Cookie")
+        
+        let command: [String: Any] = [
+            "method": "exec",
+            "params": ["/etc/init.d/openclash status"]
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: command)
+        
+        let session = makeURLSession(for: server)
+        let (data, response) = try await session.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse,
+              httpResponse.statusCode == 200 else {
+            throw NetworkError.serverError((response as? HTTPURLResponse)?.statusCode ?? 500)
+        }
+        
+        return try JSONDecoder().decode(ClashStatusResponse.self, from: data)
     }
 } 

@@ -52,7 +52,7 @@ struct YAMLTextView: UIViewRepresentable {
                 regex.enumerateMatches(in: textView.text, range: wholeRange) { match, _, _ in
                     if let range = match?.range {
                         attributedText.addAttribute(.foregroundColor, value: UIColor.systemBlue, range: range)
-                        attributedText.addAttribute(.font, value: UIFont.boldSystemFont(ofSize: font.pointSize), range: range)
+                        attributedText.addAttribute(.font,value: UIFont.boldSystemFont(ofSize: font.pointSize), range: range)
                     }
                 }
             }
