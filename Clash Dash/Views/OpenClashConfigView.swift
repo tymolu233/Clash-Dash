@@ -14,6 +14,7 @@ struct OpenClashConfigView: View {
     @State private var selectedConfig: OpenClashConfig?
     @State private var isDragging = false
     @State private var startupLogs: [String] = []
+    @State private var editingConfig: OpenClashConfig?
     
     var body: some View {
         NavigationStack {
@@ -51,11 +52,17 @@ struct OpenClashConfigView: View {
                     } else {
                         LazyVStack(spacing: 12) {
                             ForEach(configs) { config in
-                                ConfigCard(config: config) {
-                                    if !isDragging {
-                                        handleConfigSelection(config)
+                                ConfigCard(
+                                    config: config,
+                                    onSelect: {
+                                        if !isDragging {
+                                            handleConfigSelection(config)
+                                        }
+                                    },
+                                    onEdit: {
+                                        editingConfig = config
                                     }
-                                }
+                                )
                             }
                         }
                         .padding(.horizontal)
@@ -149,6 +156,13 @@ struct OpenClashConfigView: View {
             .presentationDetents([.height(300)])
             .presentationDragIndicator(.visible)
         }
+        .sheet(item: $editingConfig) { config in
+            ConfigEditorView(
+                viewModel: viewModel,
+                server: server,
+                configName: config.name
+            )
+        }
     }
     
     private func handleConfigSelection(_ config: OpenClashConfig) {
@@ -211,6 +225,7 @@ struct OpenClashConfigView: View {
 struct ConfigCard: View {
     let config: OpenClashConfig
     let onSelect: () -> Void
+    let onEdit: () -> Void
     
     @Environment(\.colorScheme) private var colorScheme
     
@@ -223,6 +238,14 @@ struct ConfigCard: View {
                         .font(.headline)
                         .lineLimit(1)
                     Spacer()
+                    
+                    Button(action: onEdit) {
+                        Image(systemName: "pencil.circle.fill")
+                            .foregroundColor(.blue)
+                            .font(.title3)
+                    }
+                    .padding(.trailing, 8)
+                    
                     StateLabel(state: config.state)
                 }
                 
@@ -512,7 +535,7 @@ private extension Date {
         } else if let seconds = components.second, seconds >= 0 {
             return "刚刚更新"
         } else {
-            // 如果是未来的时间，显示具体日期时间
+            // 如果是未来的时间���显示具体日期时间
             let formatter = DateFormatter()
             formatter.dateStyle = .medium
             formatter.timeStyle = .short

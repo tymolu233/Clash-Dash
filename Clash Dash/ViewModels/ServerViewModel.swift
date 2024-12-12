@@ -822,4 +822,50 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         
         return token
     }
+    
+    func fetchConfigContent(_ server: ClashServer, configName: String) async throws -> String {
+        let scheme = server.useSSL ? "https" : "http"
+        let baseURL = "\(scheme)://\(server.url):\(server.openWRTPort ?? "80")"
+        
+        // 获取认证 token
+        guard let username = server.openWRTUsername,
+              let password = server.openWRTPassword else {
+            throw NetworkError.unauthorized
+        }
+        
+        let token = try await getAuthToken(server, username: username, password: password)
+        
+        // 构建请求
+        guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
+            throw NetworkError.invalidURL
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("sysauth=\(token)", forHTTPHeaderField: "Cookie")
+        
+        let command: [String: Any] = [
+            "method": "exec",
+            "params": ["cat /etc/openclash/config/\(configName)"]
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: command)
+        
+        let session = makeURLSession(for: server)
+        let (data, response) = try await session.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse,
+              httpResponse.statusCode == 200 else {
+            throw NetworkError.serverError((response as? HTTPURLResponse)?.statusCode ?? 500)
+        }
+        
+        struct ConfigResponse: Codable {
+            let id: Int?
+            let result: String
+            let error: String?
+        }
+        
+        let configResponse = try JSONDecoder().decode(ConfigResponse.self, from: data)
+        return configResponse.result
+    }
 } 
