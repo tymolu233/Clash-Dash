@@ -326,28 +326,32 @@ class ConnectionsViewModel: ObservableObject {
             DispatchQueue.main.async { [weak self] in
                 guard let self = self else { return }
                 
-                // 只有在成功接收到消息且当前不是错误状态时才更新为已连接
-                if case .error = self.connectionState {
-                    return
-                }
+                // 更新连接状态
                 self.updateConnectionState(.connected)
+                
+                // 更新总流量
                 self.totalUpload = response.uploadTotal
                 self.totalDownload = response.downloadTotal
+                
+                // 如果连接数组为空，清空现有连接
+                if response.connections.isEmpty {
+                    self.connections = []
+                    self.previousConnections = [:]
+                    self.connectionHistory = [:]
+                    return
+                }
                 
                 var hasChanges = false
                 let currentIds = Set(response.connections.map { $0.id })
                 
-                // 更新现有连接状态
+                // 处理活跃连接
                 for connection in response.connections {
-                    let previousConnection = self.previousConnections[connection.id]
-                    
-                    // 计算速度
-                    let uploadSpeed = previousConnection.map { 
-                        Double(connection.upload - $0.upload) / 1.0
-                    } ?? 0
-                    let downloadSpeed = previousConnection.map { 
-                        Double(connection.download - $0.download) / 1.0
-                    } ?? 0
+                    let downloadSpeed = Double(
+                        connection.download - (self.previousConnections[connection.id]?.download ?? connection.download)
+                    )
+                    let uploadSpeed = Double(
+                        connection.upload - (self.previousConnections[connection.id]?.upload ?? connection.upload)
+                    )
                     
                     // 创建更新后的连接对象
                     let updatedConnection = ClashConnection(
@@ -361,17 +365,16 @@ class ConnectionsViewModel: ObservableObject {
                         rulePayload: connection.rulePayload,
                         downloadSpeed: max(0, downloadSpeed),
                         uploadSpeed: max(0, uploadSpeed),
-                        isAlive: true  // 活跃连接
+                        isAlive: true
                     )
                     
-                    // 检查是否已存在且需要更新
+                    // 检查是否需要更新
                     if let existingConnection = self.connectionHistory[connection.id] {
                         if existingConnection != updatedConnection {
                             hasChanges = true
                             self.connectionHistory[connection.id] = updatedConnection
                         }
                     } else {
-                        // 新连接
                         hasChanges = true
                         self.connectionHistory[connection.id] = updatedConnection
                     }
@@ -416,8 +419,17 @@ class ConnectionsViewModel: ObservableObject {
                     uniqueKeysWithValues: response.connections.map { ($0.id, $0) }
                 )
             }
+        } catch DecodingError.valueNotFound(_, _) {
+            // 处理空连接的情况
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+                self.connections = []
+                self.previousConnections = [:]
+                self.connectionHistory = [:]
+                self.updateConnectionState(.connected)  // 保持连接状态为已连接
+            }
         } catch {
-            log("❌ 解码误：\(error)")
+            log("❌ 解码错误：\(error)")
             self.updateConnectionState(.error("数据解析错误: \(error.localizedDescription)"))
         }
     }
