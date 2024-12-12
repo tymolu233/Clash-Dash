@@ -241,7 +241,7 @@ struct OpenClashConfigView: View {
         configToEdit = config
         
         if config.fileSize > maxEditSize {
-            errorMessage = 配置文件较大（\(formatFileSize(config.fileSize))），超过 100KB 将无法保存"
+            errorMessage = "配置文件较大（\(formatFileSize(config.fileSize))），超过 100KB 将无法保存"
             showingEditAlert = true
         } else {
             editingConfig = config
