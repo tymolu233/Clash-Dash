@@ -129,7 +129,7 @@ class ProxyViewModel: ObservableObject {
                 guard let providersRequest = makeRequest(path: "providers/proxies") else { return }
                 let (providersData, _) = try await URLSession.shared.data(for: providersRequest)
                 
-                // 解析 providers ���获取所有实际的代理节点
+                // 解析 providers ���有实际的代理节点
                 if let providersResponse = try? JSONDecoder().decode(ProxyProvidersResponse.self, from: providersData) {
                     // 更新 providers - 只包含 HTTP 类型或有订阅信息的 provider
                     self.providers = providersResponse.providers.compactMap { name, provider in
@@ -201,7 +201,7 @@ class ProxyViewModel: ObservableObject {
                             )
                         }
                         
-                        // 6. 合并所有点数据
+                        // 6. 合并所有数据
                         var allNodes: [ProxyNode] = []
                         
                         // 添加特殊节点
@@ -347,7 +347,7 @@ class ProxyViewModel: ObservableObject {
                 let (data, _) = try await URLSession.shared.data(for: connectionsRequest)
                 
                 if let connectionsResponse = try? JSONDecoder().decode(ConnectionsResponse.self, from: data) {
-                    // 遍历所有活跃连接
+                    // 遍所有活跃连接
                     for connection in connectionsResponse.connections {
                         // 如果连接的代理链包含当前切换的代理名称,则关闭该连接
                         if connection.chains.contains(proxyName) {
@@ -425,7 +425,7 @@ class ProxyViewModel: ObservableObject {
                         id: node.id,
                         name: node.name,
                         type: node.type,
-                        alive: true,  // 如果有延迟数据，说明节点是活的
+                        alive: true,  // 如果有延迟数据，明节点是活的
                         delay: delay,
                         history: node.history
                     )
@@ -473,12 +473,25 @@ class ProxyViewModel: ObservableObject {
     // 修改组测速方法
     @MainActor
     func testGroupSpeed(groupName: String) async {
+        print("开始测速组: \(groupName)")
+        print("测速前节点状态:")
+        if let group = groups.first(where: { $0.name == groupName }) {
+            for nodeName in group.all {
+                if let node = nodes.first(where: { $0.name == nodeName }) {
+                    print("节点: \(nodeName), 延迟: \(node.delay)")
+                }
+            }
+        }
+        
         // 添加到测速集合
         testingGroups.insert(groupName)
         objectWillChange.send()
         
         let encodedGroupName = groupName.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? groupName
-        guard var request = makeRequest(path: "proxies/\(encodedGroupName)/delay") else { return }
+        guard var request = makeRequest(path: "group/\(encodedGroupName)/delay") else {
+            print("创建请求失败")
+            return
+        }
         
         var components = URLComponents(url: request.url!, resolvingAgainstBaseURL: true)
         components?.queryItems = [
@@ -486,13 +499,18 @@ class ProxyViewModel: ObservableObject {
             URLQueryItem(name: "timeout", value: "\(testTimeout)")
         ]
         
-        guard let finalUrl = components?.url else { return }
+        guard let finalUrl = components?.url else {
+            print("创建最终 URL 失败")
+            return
+        }
         request.url = finalUrl
+        
+        print("发送测速请求: \(finalUrl)")
         
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
+            print("收到服务器响应: \(response)")
             
-            // 检查 HTTPS 响应
             if server.useSSL,
                let httpsResponse = response as? HTTPURLResponse,
                httpsResponse.statusCode == 400 {
@@ -502,23 +520,36 @@ class ProxyViewModel: ObservableObject {
                 return
             }
             
+            print("解析响应数据...")
             if let decodedData = try? JSONDecoder().decode([String: Int].self, from: data) {
+                print("\n收到测速响应:")
                 for (nodeName, delay) in decodedData {
+                    print("节点: \(nodeName), 新延迟: \(delay)")
+                    // 直接更新节点延迟，不需要先 fetchProxies
                     updateNodeDelay(nodeName: nodeName, delay: delay)
                 }
                 
-                // 等待一小段时间确保服务器处理完成
-                try? await Task.sleep(nanoseconds: 500_000_000) // 0.5秒
+                print("\n更新后节点状态:")
+                if let group = groups.first(where: { $0.name == groupName }) {
+                    for nodeName in group.all {
+                        if let node = nodes.first(where: { $0.name == nodeName }) {
+                            print("节点: \(nodeName), 最终延迟: \(node.delay)")
+                        }
+                    }
+                }
                 
-                // 刷新数据以更新 UI
-                await fetchProxies()
+                // 更新最后测试时间并通知视图更新
                 self.lastDelayTestTime = Date()
+                objectWillChange.send()
+            } else {
+                print("解析响应数据失败")
             }
         } catch {
+            print("测速过程出错: \(error)")
             handleNetworkError(error)
         }
         
-        // 从测速组集合中移除
+        print("测速完成，移除测速状态")
         testingGroups.remove(groupName)
         objectWillChange.send()
     }
@@ -684,13 +715,13 @@ class ProxyViewModel: ObservableObject {
             }
         }
         
-        // 如果找不到 GLOBAL 组，使用字母顺序
+        // 如果找不到 GLOBAL 组，用字母顺序
         return groups.sorted { $0.name < $1.name }
     }
     
     // 修改节点排序方法
     func getSortedNodes(_ nodes: [String], in group: ProxyGroup) -> [String] {
-        let specialNodes = ["DIRECT", "REJECT"]
+        let specialNodes = ["DIRECT", "REJECT", "Proxy"]  // 添加 "Proxy" 到特殊节点列表
         let hideUnavailable = UserDefaults.standard.bool(forKey: "hideUnavailableProxies")
         
         // 首先过滤掉不可用的节点（如果需要）
@@ -711,19 +742,20 @@ class ProxyViewModel: ObservableObject {
         let sortOrder = UserDefaults.standard.string(forKey: "proxyGroupSortOrder") ?? "default"
         
         return filteredNodes.sorted { node1, node2 in
-            // 特殊节点的处理
-            if node1 == "DIRECT" { return true }
-            if node2 == "DIRECT" { return false }
-            if node1 == "REJECT" { return true }
-            if node2 == "REJECT" { return false }
-            
-            // 获取节点延迟，如果延迟为 0（超时），则返回 Int.max
-            func getEffectiveDelay(_ nodeName: String) -> Int {
-                let delay = self.nodes.first(where: { $0.name == nodeName })?.delay ?? Int.max
-                return delay == 0 ? Int.max : delay
+            // 特殊节点的优先级排序
+            let specialOrder = ["DIRECT", "REJECT", "Proxy"]
+            if let index1 = specialOrder.firstIndex(of: node1),
+               let index2 = specialOrder.firstIndex(of: node2) {
+                return index1 < index2
+            }
+            if let index1 = specialOrder.firstIndex(of: node1) {
+                return true  // 特殊节点排在前面
+            }
+            if let index2 = specialOrder.firstIndex(of: node2) {
+                return false // 特殊节点排在前面
             }
             
-            // 根据排序设置进行排序
+            // 对于非特殊节点，按照选定的排序方式排序
             switch sortOrder {
             case "latencyAsc":
                 let delay1 = getEffectiveDelay(node1)
@@ -742,10 +774,15 @@ class ProxyViewModel: ObservableObject {
                 return node1 > node2
                 
             default:
-                // 默认排序：特殊节点在前，其他保持原顺序
                 return false
             }
         }
+    }
+    
+    // 添加辅助方法来获取有效延迟
+    private func getEffectiveDelay(_ nodeName: String) -> Int {
+        let delay = self.nodes.first(where: { $0.name == nodeName })?.delay ?? Int.max
+        return delay == 0 ? Int.max : delay
     }
 }
 

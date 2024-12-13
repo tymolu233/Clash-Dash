@@ -70,7 +70,7 @@ struct ProxyView: View {
                     Button {
                         showProviderSheet = true
                     } label: {
-                        Label("���加", systemImage: "square.stack.3d.up")
+                        Label("��加", systemImage: "square.stack.3d.up")
                     }
                     
                     Button {
@@ -224,6 +224,15 @@ struct GroupCard: View {
                 }
                 
                 Spacer()
+                
+                // 添加节点数量显示
+                Text("\(totalNodes) 个节点")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color(.systemGray6))
+                    .clipShape(Capsule())
             }
             
             Divider()
