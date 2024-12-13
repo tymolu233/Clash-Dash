@@ -5,7 +5,6 @@ struct RulesView: View {
     @StateObject private var viewModel: RulesViewModel
     @State private var selectedTab = RuleTab.rules
     @State private var showSearch = false
-    @State private var scrollOffset: CGFloat = 0
     
     init(server: ClashServer) {
         self.server = server
@@ -18,57 +17,40 @@ struct RulesView: View {
     }
     
     var body: some View {
-        VStack(spacing: 0) {
-            Picker("规则类型", selection: $selectedTab) {
-                Text("规则")
-                    .tag(RuleTab.rules)
-                Text("规则提供者")
-                    .tag(RuleTab.providers)
-            }
-            .pickerStyle(.segmented)
-            .padding()
-            
-            Group {
-                switch selectedTab {
-                case .rules:
-                    VStack(spacing: 0) {
-                        if showSearch {
-                            SearchBar(text: $viewModel.searchText, placeholder: "搜索规则")
-                                .padding(.horizontal)
-                                .padding(.vertical, 8)
-                                .transition(.move(edge: .top).combined(with: .opacity))
-                        }
-                        
+        ZStack(alignment: .bottomTrailing) {
+            VStack(spacing: 0) {
+                Picker("规则类型", selection: $selectedTab) {
+                    Text("规则")
+                        .tag(RuleTab.rules)
+                    Text("规则提供者")
+                        .tag(RuleTab.providers)
+                }
+                .pickerStyle(.segmented)
+                .padding()
+                
+                if showSearch {
+                    SearchBar(text: $viewModel.searchText, placeholder: "搜索规则")
+                        .padding(.horizontal)
+                        .padding(.vertical, 8)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
+                
+                Group {
+                    switch selectedTab {
+                    case .rules:
                         LazyView(rulesList)
                             .transition(.opacity)
-                            .simultaneousGesture(
-                                DragGesture()
-                                    .onChanged { value in
-                                        let translation = value.translation.height
-                                        
-                                        // 下拉超过50显示搜索框
-                                        if translation > 50 && !showSearch {
-                                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                                showSearch = true
-                                            }
-                                        }
-                                        // 向上滚动超过20隐藏搜索框
-                                        else if translation < -20 && showSearch {
-                                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                                showSearch = false
-                                                viewModel.searchText = ""
-                                            }
-                                        }
-                                    }
-                            )
+                    case .providers:
+                        LazyView(providersView)
+                            .transition(.opacity)
                     }
-                case .providers:
-                    LazyView(providersView)
-                        .transition(.opacity)
                 }
             }
+            
+            searchButton
         }
         .animation(.easeInOut, value: selectedTab)
+        .animation(.easeInOut, value: showSearch)
         .refreshable {
             await viewModel.fetchData()
         }
@@ -78,8 +60,8 @@ struct RulesView: View {
         RulesListRepresentable(
             rules: viewModel.rules,
             filteredRules: filteredRules,
-            sections: ["Rules"],
-            allSections: ["Rules"]
+            sections: filteredSections,
+            allSections: allSections.map(String.init)
         )
     }
     
@@ -124,6 +106,31 @@ struct RulesView: View {
     private var filteredSections: [String] {
         ["Rules"]
     }
+    
+    private var searchButton: some View {
+        Button(action: {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                showSearch.toggle()
+                if !showSearch {
+                    viewModel.searchText = ""
+                }
+            }
+        }) {
+            ZStack {
+                BlurView(style: .systemThinMaterial)
+                    .frame(width: 44, height: 44)
+                    .clipShape(Circle())
+                    .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+                
+                Image(systemName: showSearch ? "xmark" : "magnifyingglass")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.primary)
+                    .frame(width: 44, height: 44)
+            }
+        }
+        .padding(.trailing, 16)
+        .padding(.bottom, 16)
+    }
 }
 
 private let allSections = Array("ABCDEFGHIJKLMNOPQRSTUVWXYZ#")
@@ -140,11 +147,11 @@ struct RulesListRepresentable: UIViewRepresentable {
         tableView.delegate = context.coordinator
         tableView.dataSource = context.coordinator
         tableView.register(RuleCell.self, forCellReuseIdentifier: "RuleCell")
-        tableView.showsVerticalScrollIndicator = true
+        tableView.sectionIndexColor = .systemBlue
+        tableView.sectionIndexBackgroundColor = .clear
+        tableView.showsVerticalScrollIndicator = false
         
-        tableView.bounces = true
-        tableView.alwaysBounceVertical = true
-        
+        // 添加这些配置来优化视图切换
         tableView.estimatedRowHeight = 44
         tableView.estimatedSectionHeaderHeight = 28
         tableView.remembersLastFocusedIndexPath = true
@@ -152,12 +159,15 @@ struct RulesListRepresentable: UIViewRepresentable {
     }
     
     func updateUIView(_ tableView: UITableView, context: Context) {
+        // 先更新 coordinator 的数据
         context.coordinator.rules = rules
         context.coordinator.filteredRules = filteredRules
         context.coordinator.sections = sections
         context.coordinator.allSections = allSections
         
+        // 在主线程上安全地更新 UI
         DispatchQueue.main.async {
+            // 禁用动画以避免更新问题
             UIView.performWithoutAnimation {
                 tableView.reloadData()
             }
@@ -181,10 +191,7 @@ struct RulesListRepresentable: UIViewRepresentable {
             self.allSections = allSections
         }
         
-        func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
-            return nil
-        }
-        
+        // 实现必要的 UITableView 数据源方法
         func numberOfSections(in tableView: UITableView) -> Int {
             return sections.count
         }
@@ -203,11 +210,18 @@ struct RulesListRepresentable: UIViewRepresentable {
             return cell
         }
         
+        func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
+            return nil // 不显示分组标题
+        }
+        
+        // 添加视图生命周期方法
         func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
+            // 确保单元格在显示前已经完成布局
             cell.layoutIfNeeded()
         }
         
         func tableView(_ tableView: UITableView, didEndDisplaying cell: UITableViewCell, forRowAt indexPath: IndexPath) {
+            // 清理不再显示的单元格
         }
     }
 }
@@ -379,11 +393,8 @@ struct ProvidersListRepresentable: UIViewRepresentable {
             return cell
         }
         
-        func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
-            cell.layoutIfNeeded()
-        }
-        
-        func tableView(_ tableView: UITableView, didEndDisplaying cell: UITableViewCell, forRowAt indexPath: IndexPath) {
+        func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
+            return sections[section]
         }
     }
 }
@@ -415,7 +426,7 @@ class ProviderCell: UITableViewCell {
             createBottomRow()
         ])
         mainStack.axis = .vertical
-        mainStack.spacing = 6  // ��间距
+        mainStack.spacing = 6  // 减小间距
         
         contentView.addSubview(mainStack)
         mainStack.translatesAutoresizingMaskIntoConstraints = false
@@ -494,7 +505,7 @@ class ProviderCell: UITableViewCell {
         behaviorLabel.text = provider.behavior
         timeLabel.text = "更新于 " + provider.formattedUpdateTime
         
-        // 移除之前的所有动作
+        // 移除��前的所有动作
         refreshButton.removeTarget(nil, action: nil, for: .allEvents)
         refreshButton.addAction(UIAction { _ in
             onRefresh()
@@ -529,20 +540,11 @@ struct BlurView: UIViewRepresentable {
     }
 }
 
-// 添加 PreferenceKey 来追踪滚动偏移量
-struct ScrollOffsetPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
-    }
-}
-
 #Preview {
     NavigationStack {
-        RulesView(server: ClashServer(name: "测试服务器", 
-                                    url: "10.1.1.2", 
-                                    port: "9090", 
+        RulesView(server: ClashServer(name: "测试服务器",
+                                    url: "10.1.1.2",
+                                    port: "9090",
                                     secret: "123456"))
     }
 } 
