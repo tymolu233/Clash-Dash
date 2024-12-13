@@ -70,7 +70,7 @@ struct ProxyView: View {
                     Button {
                         showProviderSheet = true
                     } label: {
-                        Label("��加", systemImage: "square.stack.3d.up")
+                        Label("���加", systemImage: "square.stack.3d.up")
                     }
                     
                     Button {
@@ -200,13 +200,13 @@ struct GroupCard: View {
     }
     
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 8) {
             // 标题行
             HStack(alignment: .center) {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 2) {
                     HStack {
                         Text(group.name)
-                            .font(.system(.title3, design: .rounded))
+                            .font(.system(.headline, design: .rounded))
                             .fontWeight(.semibold)
                             .foregroundColor(.primary)
                             .lineLimit(1)
@@ -214,41 +214,40 @@ struct GroupCard: View {
                         if group.type == "URLTest" {
                             Image(systemName: "bolt.horizontal.circle.fill")
                                 .foregroundStyle(.blue)
-                                .font(.caption)
+                                .font(.caption2)
                         }
                     }
                     
                     Text(group.type)
-                        .font(.caption)
+                        .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
                 
                 Spacer()
                 
-                // 添加节点数量显示
+                // 节点数量标签
                 Text("\(totalNodes) 个节点")
-                    .font(.caption)
+                    .font(.caption2)
                     .foregroundStyle(.secondary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
                     .background(Color(.systemGray6))
                     .clipShape(Capsule())
             }
             
             Divider()
-                .padding(.horizontal, -16)
+                .padding(.horizontal, -12)
             
-            // 当前节点信息 - 使用更小巧的设计
-            HStack(spacing: 8) {
+            // 当前节点信息
+            HStack(spacing: 6) {
                 Image(systemName: getNodeIcon(for: group.now))
-                    .font(.system(size: 12))
+                    .font(.system(size: 10))
                     .foregroundStyle(.secondary)
                 
                 if viewModel.testingGroups.contains(group.name) {
-                    // 显示测速动画
                     DelayTestingView()
                         .foregroundStyle(.blue)
-                        .transition(.opacity)
+                        .scaleEffect(0.7)
                 } else if let currentNode = viewModel.nodes.first(where: { $0.name == group.now }) {
                     Text(currentNode.name)
                         .font(.subheadline)
@@ -257,9 +256,9 @@ struct GroupCard: View {
                     
                     if currentNode.delay > 0 {
                         Text("\(currentNode.delay) ms")
-                            .font(.caption)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
+                            .font(.caption2)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 1)
                             .background(DelayColor.color(for: currentNode.delay).opacity(0.1))
                             .foregroundStyle(DelayColor.color(for: currentNode.delay))
                             .clipShape(Capsule())
@@ -269,75 +268,47 @@ struct GroupCard: View {
                 Spacer()
                 
                 Image(systemName: "chevron.right")
-                    .font(.caption)
+                    .font(.caption2)
                     .foregroundStyle(.tertiary)
             }
-            .animation(.easeInOut(duration: 0.2), value: viewModel.testingGroups.contains(group.name))
             
-            // 延迟统计条
-            GeometryReader { geometry in
-                HStack(spacing: 1) {
-                    if delayStats.green > 0 {
-                        Rectangle()
-                            .fill(DelayColor.low.opacity(0.85))
-                            .frame(width: CGFloat(delayStats.green) / CGFloat(totalNodes) * geometry.size.width)
-                    }
-                    if delayStats.yellow > 0 {
-                        Rectangle()
-                            .fill(DelayColor.medium.opacity(0.85))
-                            .frame(width: CGFloat(delayStats.yellow) / CGFloat(totalNodes) * geometry.size.width)
-                    }
-                    if delayStats.red > 0 {
-                        Rectangle()
-                            .fill(DelayColor.high.opacity(0.85))
-                            .frame(width: CGFloat(delayStats.red) / CGFloat(totalNodes) * geometry.size.width)
-                    }
-                    if delayStats.timeout > 0 {
-                        Rectangle()
-                            .fill(DelayColor.disconnected.opacity(0.3))
-                            .frame(width: CGFloat(delayStats.timeout) / CGFloat(totalNodes) * geometry.size.width)
-                    }
-                }
-                .frame(height: 8)
-                .clipShape(Capsule())
-            }
-            .frame(height: 8)
+            // 使用新的延迟统计条
+            DelayBar(
+                green: delayStats.green,
+                yellow: delayStats.yellow,
+                red: delayStats.red,
+                timeout: delayStats.timeout,
+                total: totalNodes
+            )
+            .padding(.horizontal, 2)
             
-            // 延迟统计数据
-            HStack {
-                // 左侧延迟统计
-                HStack(spacing: 12) {
-                    ForEach([
-                        (count: delayStats.green, color: DelayColor.low, label: "低延迟"),
-                        (count: delayStats.yellow, color: DelayColor.medium, label: "中等"),
-                        (count: delayStats.red, color: DelayColor.high, label: "高延迟"),
-                        (count: delayStats.timeout, color: DelayColor.disconnected, label: "超时")
-                    ], id: \.label) { stat in
-                        if stat.count > 0 {
-                            HStack(spacing: 4) {
-                                Circle()
-                                    .fill(stat.color.opacity(0.85))
-                                    .frame(width: 6, height: 6)
-                                Text("\(stat.count)")
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                    }
-                }
-                
-                Spacer()
-                
-                // 右侧总点数
-                // Text("\(totalNodes) 个节点")
-                //     .font(.caption2)
-                //     .foregroundStyle(.secondary)
-            }
-            .padding(.top, 4)
+            // // 延迟统计数据
+            // HStack {
+            //     HStack(spacing: 8) {
+            //         ForEach([
+            //             (count: delayStats.green, color: DelayColor.low, label: "低延迟"),
+            //             (count: delayStats.yellow, color: DelayColor.medium, label: "中等"),
+            //             (count: delayStats.red, color: DelayColor.high, label: "高延迟"),
+            //             (count: delayStats.timeout, color: DelayColor.disconnected, label: "超时")
+            //         ], id: \.label) { stat in
+            //             if stat.count > 0 {
+            //                 HStack(spacing: 2) {
+            //                     Circle()
+            //                         .fill(stat.color.opacity(0.85))
+            //                         .frame(width: 4, height: 4)
+            //                     Text("\(stat.count)")
+            //                         .font(.caption2)
+            //                         .foregroundStyle(.secondary)
+            //                 }
+            //             }
+            //         }
+            //     }
+            // }
+            // .padding(.top, 2)
         }
-        .padding(16)
+        .padding(12)
         .background {
-            RoundedRectangle(cornerRadius: 16)
+            RoundedRectangle(cornerRadius: 12)
                 .fill(Color(.systemBackground))
                 .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
         }
@@ -787,7 +758,7 @@ struct ProxyNodeCard: View {
     }
 }
 
-// 更新 DelayColor 结构体，统一延迟颜色配置
+// 更新 DelayColor 结构体，增加颜色饱和度
 struct DelayColor {
     // 延迟范围常量
     static let lowRange = 0...150
@@ -797,20 +768,20 @@ struct DelayColor {
     static func color(for delay: Int) -> Color {
         switch delay {
         case 0:
-            return Color(.systemGray2) // 未连接
+            return Color(red: 1.0, green: 0.2, blue: 0.2) // 更鲜艳的红色
         case lowRange:
-            return Color(red: 0.2, green: 0.85, blue: 0.2) // 低延迟
+            return Color(red: 0.2, green: 0.8, blue: 0.2) // 鲜艳的绿色
         case mediumRange:
-            return Color(red: 1.0, green: 0.6, blue: 0.0) // 中等延迟
+            return Color(red: 1.0, green: 0.75, blue: 0.0) // 明亮的黄色
         default:
-            return Color(red: 1.0, green: 0.2, blue: 0.2) // 高延迟
+            return Color(red: 1.0, green: 0.5, blue: 0.0) // 鲜艳的橙色
         }
     }
     
-    static let disconnected = Color(.systemGray2)
-    static let low = Color(red: 0.2, green: 0.85, blue: 0.2)
-    static let medium = Color(red: 1.0, green: 0.6, blue: 0.0)
-    static let high = Color(red: 1.0, green: 0.2, blue: 0.2)
+    static let disconnected = Color(red: 1.0, green: 0.2, blue: 0.2) // 更鲜艳的红色
+    static let low = Color(red: 0.2, green: 0.8, blue: 0.2) // 鲜艳的绿色
+    static let medium = Color(red: 1.0, green: 0.75, blue: 0.0) // 明亮的黄色
+    static let high = Color(red: 1.0, green: 0.5, blue: 0.0) // 鲜艳的橙色
 }
 
 // 修改延迟测试动画组件
@@ -832,6 +803,114 @@ struct DelayTestingView: View {
             .onDisappear {
                 isAnimating = false
             }
+    }
+}
+
+// 在 GroupCard 中替换原来的延迟统计条部分
+struct DelayBar: View {
+    let green: Int
+    let yellow: Int
+    let red: Int
+    let timeout: Int
+    let total: Int
+    
+    var body: some View {
+        GeometryReader { geometry in
+            HStack(spacing: 2) {
+                // 低延迟部分
+                if green > 0 {
+                    DelaySegment(
+                        width: CGFloat(green) / CGFloat(total) * geometry.size.width,
+                        color: DelayColor.low,
+                        isFirst: true,
+                        isLast: yellow == 0 && red == 0 && timeout == 0
+                    )
+                }
+                
+                // 中等延迟部分
+                if yellow > 0 {
+                    DelaySegment(
+                        width: CGFloat(yellow) / CGFloat(total) * geometry.size.width,
+                        color: DelayColor.medium,
+                        isFirst: green == 0,
+                        isLast: red == 0 && timeout == 0
+                    )
+                }
+                
+                // 高延迟部分
+                if red > 0 {
+                    DelaySegment(
+                        width: CGFloat(red) / CGFloat(total) * geometry.size.width,
+                        color: DelayColor.high,
+                        isFirst: green == 0 && yellow == 0,
+                        isLast: timeout == 0
+                    )
+                }
+                
+                // 超时部分
+                if timeout > 0 {
+                    DelaySegment(
+                        width: CGFloat(timeout) / CGFloat(total) * geometry.size.width,
+                        color: DelayColor.disconnected,
+                        isFirst: green == 0 && yellow == 0 && red == 0,
+                        isLast: true
+                    )
+                }
+            }
+        }
+        .frame(height: 6)
+        .background(
+            RoundedRectangle(cornerRadius: 3)
+                .fill(Color(.systemGray6))
+        )
+    }
+}
+
+// 延迟条段组件
+struct DelaySegment: View {
+    let width: CGFloat
+    let color: Color
+    let isFirst: Bool
+    let isLast: Bool
+    
+    var body: some View {
+        color
+            .frame(width: max(width, 0))
+            .clipShape(
+                RoundedRectangle(
+                    cornerRadius: 3,
+                    style: .continuous
+                )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 3)
+                    .stroke(Color.white.opacity(0.2), lineWidth: 0.5)
+            )
+            .cornerRadius(isFirst ? 3 : 0, corners: .topLeft)
+            .cornerRadius(isFirst ? 3 : 0, corners: .bottomLeft)
+            .cornerRadius(isLast ? 3 : 0, corners: .topRight)
+            .cornerRadius(isLast ? 3 : 0, corners: .bottomRight)
+    }
+}
+
+// 添加圆角辅助扩展
+extension View {
+    func cornerRadius(_ radius: CGFloat, corners: UIRectCorner) -> some View {
+        clipShape(RoundedCorner(radius: radius, corners: corners))
+    }
+}
+
+struct RoundedCorner: Shape {
+    var radius: CGFloat = .infinity
+    var corners: UIRectCorner = .allCorners
+    
+    func path(in rect: CGRect) -> Path {
+        let path = UIBezierPath(
+            roundedRect: rect,
+            byRoundingCorners: corners,
+            cornerRadii: CGSize(width: radius, height: radius)
+        )
+        return Path(path.cgPath)
     }
 }
 
