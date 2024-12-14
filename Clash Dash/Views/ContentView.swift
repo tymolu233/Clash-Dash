@@ -73,18 +73,24 @@ struct ContentView: View {
                                 ServerRowView(server: server)
                                     .contextMenu {
                                         Button(role: .destructive) {
+                                            // 添加触觉反馈
+                                            impactFeedback.impactOccurred() 
                                             viewModel.deleteServer(server)
                                         } label: {
                                             Label("删除", systemImage: "trash")
                                         }
                                         
                                         Button {
+                                            // 添加触觉反馈
+                                            impactFeedback.impactOccurred() 
                                             editingServer = server
                                         } label: {
                                             Label("编辑", systemImage: "pencil")
                                         }
                                         
                                         Button {
+                                            // 添加触觉反馈
+                                            impactFeedback.impactOccurred() 
                                             viewModel.setQuickLaunch(server)
                                         } label: {
                                             Label(server.isQuickLaunch ? "取消快速启动" : "设为快速启动", 
@@ -92,15 +98,16 @@ struct ContentView: View {
                                         }
                                         
                                         if server.source == .openWRT {
-                                            Button {
-                                                // 打开管理页面
-                                                showManagementView(for: server)
-                                            } label: {
-                                                Label("管理", systemImage: "gear")
-                                            }
+                                            // Button {
+                                            //     // 打开管理页面
+                                            //     showManagementView(for: server)
+                                            // } label: {
+                                            //     Label("管理", systemImage: "gear")
+                                            // }
                                             
                                             Button {
-                                                // 打开切换配置页面
+                                                // 添加触觉反馈
+                                                impactFeedback.impactOccurred() 
                                                 showSwitchConfigView(for: server)
                                             } label: {
                                                 Label("切换配置", systemImage: "arrow.2.circlepath")

@@ -94,6 +94,9 @@ struct OpenClashConfigView: View {
                     Button {
                         Task {
                             await loadConfigs()
+                            // 添加成功触觉反馈
+                            let successFeedback = UINotificationFeedbackGenerator()
+                            successFeedback.notificationOccurred(.success)
                         }
                     } label: {
                         Image(systemName: "arrow.clockwise")
@@ -112,6 +115,9 @@ struct OpenClashConfigView: View {
         }
         .task {
             await loadConfigs()
+            // 添加成功的触觉反馈
+            let successFeedback = UINotificationFeedbackGenerator()
+            successFeedback.notificationOccurred(.success)
         }
         .alert("错误", isPresented: $showError) {
             Button("确定", role: .cancel) { }
@@ -160,6 +166,10 @@ struct OpenClashConfigView: View {
     }
     
     private func handleConfigSelection(_ config: OpenClashConfig) {
+        // 添加触觉反馈
+        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+        impactFeedback.impactOccurred()
+
         // 首先检查是否是当前启用的配置
         guard config.state != .enabled else { return }
         
@@ -181,9 +191,15 @@ struct OpenClashConfigView: View {
         
         do {
             configs = try await viewModel.fetchOpenClashConfigs(server)
+            // 添加成功的触觉反馈
+            let successFeedback = UINotificationFeedbackGenerator()
+            successFeedback.notificationOccurred(.success)
         } catch {
             errorMessage = error.localizedDescription
             showError = true
+            // 添加失败的触觉反馈
+            let errorFeedback = UINotificationFeedbackGenerator()
+            errorFeedback.notificationOccurred(.error)
         }
     }
     
@@ -216,6 +232,10 @@ struct OpenClashConfigView: View {
     }
     
     private func handleEditConfig(_ config: OpenClashConfig) {
+        // 添加触觉反馈
+        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+        impactFeedback.impactOccurred()
+
         let maxEditSize: Int64 = 100 * 1024  // 100KB
         configToEdit = config
         
