@@ -17,6 +17,8 @@ struct ConfigEditorView: View {
     @State private var isRestarting = false
     @State private var startupLogs: [String] = []
     
+    var onConfigSaved: (() -> Void)?
+    
     private func logColor(_ log: String) -> Color {
         if log.contains("警告") {
             return .orange
@@ -69,7 +71,7 @@ struct ConfigEditorView: View {
             }
         } message: {
             Text(isEnabled ? 
-                 "保存修改后的配置会重启 OpenClash 服务，这会导致当前连接中断。是否继续？" : 
+                 "保存修改后的配置会重启 OpenClash 服务，这会导致已有连接中断。是否继续？" : 
                  "确定要保存修改后的配置吗？这将覆盖原有配置文件。")
         }
         .sheet(isPresented: $isRestarting) {
@@ -118,6 +120,7 @@ struct ConfigEditorView: View {
                     
                     await MainActor.run {
                         isRestarting = false
+                        onConfigSaved?()
                         dismiss()
                     }
                 } catch {
@@ -128,6 +131,7 @@ struct ConfigEditorView: View {
                     }
                 }
             } else {
+                onConfigSaved?()
                 dismiss()
             }
         } catch {

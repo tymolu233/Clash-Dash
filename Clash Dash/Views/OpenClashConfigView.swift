@@ -147,7 +147,16 @@ struct OpenClashConfigView: View {
                 viewModel: viewModel,
                 server: server,
                 configName: config.name,
-                isEnabled: config.state == .enabled
+                isEnabled: config.state == .enabled,
+                onConfigSaved: {
+                    // 重新加载配置列表
+                    Task {
+                        await loadConfigs()
+                        // 添加成功的触觉反馈
+                        let successFeedback = UINotificationFeedbackGenerator()
+                        successFeedback.notificationOccurred(.success)
+                    }
+                }
             )
         }
         .alert("提示", isPresented: $showingEditAlert) {
@@ -562,7 +571,7 @@ struct InfoRow: View {
     }
 }
 
-// 添加相对时间格���化的扩展
+// 添加相对时间格化的扩展
 private extension Date {
     func relativeTimeString() -> String {
         let now = Date()
