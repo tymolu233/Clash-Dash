@@ -47,15 +47,17 @@ struct ProxyProvidersResponse: Codable {
 }
 
 // 添加 Provider 模型
-struct Provider: Identifiable {
-    let id = UUID()
+struct Provider: Identifiable, Codable, Equatable {
+    var id: String { name }
     let name: String
     let type: String
     let vehicleType: String
-    let nodeCount: Int
-    let testUrl: String?
-    let subscriptionInfo: SubscriptionInfo?
     let updatedAt: String?
+    let subscriptionInfo: SubscriptionInfo?
+    
+    static func == (lhs: Provider, rhs: Provider) -> Bool {
+        return lhs.id == rhs.id
+    }
 }
 
 struct SubscriptionInfo: Codable {
@@ -129,7 +131,7 @@ class ProxyViewModel: ObservableObject {
                 guard let providersRequest = makeRequest(path: "providers/proxies") else { return }
                 let (providersData, _) = try await URLSession.shared.data(for: providersRequest)
                 
-                // 解析 providers ���有实际的代理节点
+                // 解析 providers 有实际的代理节点
                 if let providersResponse = try? JSONDecoder().decode(ProxyProvidersResponse.self, from: providersData) {
                     // 更新 providers - 只包含 HTTP 类型或有订阅信息的 provider
                     self.providers = providersResponse.providers.compactMap { name, provider in
@@ -142,10 +144,8 @@ class ProxyViewModel: ObservableObject {
                             name: name,
                             type: provider.type,
                             vehicleType: provider.vehicleType,
-                            nodeCount: provider.proxies.count,
-                            testUrl: provider.testUrl,
-                            subscriptionInfo: provider.subscriptionInfo,
-                            updatedAt: provider.updatedAt
+                            updatedAt: provider.updatedAt,
+                            subscriptionInfo: provider.subscriptionInfo
                         )
                     }
                     
@@ -732,7 +732,7 @@ class ProxyViewModel: ObservableObject {
                 if specialNodes.contains(nodeName) {
                     return true
                 }
-                // 其他节点只显示延迟大于 0 的
+                // 其他节点只显示���迟大于 0 的
                 let delay = self.nodes.first(where: { $0.name == nodeName })?.delay ?? 0
                 return delay > 0
             }

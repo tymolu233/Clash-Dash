@@ -1,5 +1,21 @@
 import SwiftUI
 
+// 添加到文件顶部，在 LoadingView 之前
+struct CardShadowModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .background(Color(.systemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
+    }
+}
+
+extension View {
+    func cardShadow() -> some View {
+        modifier(CardShadowModifier())
+    }
+}
+
 struct LoadingView: View {
     var body: some View {
         VStack(spacing: 12) {
@@ -70,7 +86,7 @@ struct ProxyView: View {
                     Button {
                         showProviderSheet = true
                     } label: {
-                        Label("���加", systemImage: "square.stack.3d.up")
+                        Label("添加", systemImage: "square.stack.3d.up")
                     }
                     
                     Button {
@@ -287,7 +303,7 @@ struct GroupCard: View {
             //     HStack(spacing: 8) {
             //         ForEach([
             //             (count: delayStats.green, color: DelayColor.low, label: "低延迟"),
-            //             (count: delayStats.yellow, color: DelayColor.medium, label: "中等"),
+            //             (count: delayStats.yellow, color: DelayColor.medium, label: "等"),
             //             (count: delayStats.red, color: DelayColor.high, label: "高延迟"),
             //             (count: delayStats.timeout, color: DelayColor.disconnected, label: "超时")
             //         ], id: \.label) { stat in
@@ -379,7 +395,7 @@ struct ProxyProvidersSection: View {
                 .font(.title2.bold())
             
             ForEach(providers.sorted(by: { $0.name < $1.name })) { provider in
-                ProviderCard(provider: provider, 
+                ProxyProviderCard(provider: provider, 
                             nodes: nodes[provider.name] ?? [], 
                             viewModel: viewModel)
             }
@@ -387,91 +403,220 @@ struct ProxyProvidersSection: View {
     }
 }
 
-struct ProviderCard: View {
+// 修改 ProxyProviderCard
+struct ProxyProviderCard: View {
     let provider: Provider
     let nodes: [ProxyNode]
     @ObservedObject var viewModel: ProxyViewModel
-    @State private var isExpanded = false
+    @State private var isUpdating = false
+    @State private var updateStatus: UpdateStatus = .none
+    @State private var selectedProvider: Provider?
+    
+    // 添加更新状态枚举
+    private enum UpdateStatus {
+        case none
+        case updating
+        case success
+        case failure
+    }
+    
+    private var trafficInfo: (used: String, total: String, percentage: Double)? {
+        guard let info = provider.subscriptionInfo else { return nil }
+        let used = Double(info.upload + info.download)
+        let total = Double(info.total)
+        let percentage = (used / total) * 100
+        return (formatBytes(Int64(used)), formatBytes(info.total), percentage)
+    }
+    
+    private var relativeUpdateTime: String {
+        guard let updatedAt = provider.updatedAt else { 
+            print("Provider \(provider.name) updatedAt is nil")
+            return "从未更新" 
+        }
+        
+        print("Provider \(provider.name) updatedAt: \(updatedAt)")
+        
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        
+        guard let date = formatter.date(from: updatedAt) else {
+            print("Failed to parse date: \(updatedAt)")
+            return "未知"
+        }
+        
+        let interval = Date().timeIntervalSince(date)
+        
+        switch interval {
+        case 0..<60:
+            return "刚刚"
+        case 60..<3600:
+            let minutes = Int(interval / 60)
+            return " \(minutes) 分钟前"
+        case 3600..<86400:
+            let hours = Int(interval / 3600)
+            return " \(hours) 小时前"
+        case 86400..<604800:
+            let days = Int(interval / 86400)
+            return " \(days) 天前"
+        case 604800..<2592000:
+            let weeks = Int(interval / 604800)
+            return " \(weeks) 周前"
+        default:
+            let months = Int(interval / 2592000)
+            return " \(months) 个月前"
+        }
+    }
+    
+    private var expirationDate: String? {
+        guard let info = provider.subscriptionInfo else { return nil }
+        let date = Date(timeIntervalSince1970: TimeInterval(info.expire))
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        formatter.locale = Locale(identifier: "zh_CN")
+        return formatter.string(from: date)
+    }
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // 移除原有的展开按钮，整个卡片可点击
+            // 标题栏
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(provider.name)
-                        .font(.headline)
-                    
-                    if let info = provider.subscriptionInfo {
-                        Text("已用流量: \(formatBytes(info.upload + info.download)) / \(formatBytes(info.total))")
+                    HStack(spacing: 8) {
+                        Text(provider.name)
+                            .font(.headline)
+                        
+                        Text(provider.vehicleType)
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(.secondary.opacity(0.1))
+                            .clipShape(Capsule())
                     }
+                    
+                    // 更新时间
+                    HStack(spacing: 4) {
+                        Image(systemName: "clock")
+                            .font(.caption2)
+                        Text("更新时间：\(relativeUpdateTime)")
+                            .font(.caption)
+                    }
+                    .foregroundColor(.secondary)
                 }
                 
                 Spacer()
                 
-                Button {
-                    Task {
-                        await viewModel.updateProxyProvider(providerName: provider.name)
+                // 操作按钮
+                HStack(spacing: 12) {
+                    Button {
+                        Task {
+                            print("Updating provider: \(provider.name)")
+                            // 设置更新状态
+                            updateStatus = .updating
+                            
+                            do {
+                                await viewModel.updateProxyProvider(providerName: provider.name)
+                                // 更新成功
+                                updateStatus = .success
+                                // 延迟后重置状态
+                                try await Task.sleep(nanoseconds: 1_000_000_000) // 1秒
+                                updateStatus = .none
+                            } catch {
+                                // 更新失败
+                                print("Provider update failed: \(error)")
+                                updateStatus = .failure
+                                // 延迟后重置状态
+                                try await Task.sleep(nanoseconds: 2_000_000_000) // 2秒
+                                updateStatus = .none
+                            }
+                            
+                            await viewModel.fetchProxies()
+                        }
+                    } label: {
+                        Group {
+                            switch updateStatus {
+                            case .none:
+                                Image(systemName: "arrow.clockwise")
+                            case .updating:
+                                ProgressView()
+                                    .scaleEffect(0.7)
+                            case .success:
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundStyle(.green)
+                            case .failure:
+                                Image(systemName: "exclamationmark.circle.fill")
+                                    .foregroundStyle(.red)
+                            }
+                        }
+                        .frame(width: 20, height: 20) // 固定大小避免图标切换时的跳动
                     }
-                } label: {
-                    Image(systemName: "arrow.triangle.2.circlepath")
+                    .disabled(updateStatus != .none)
+                    .animation(.spring(), value: updateStatus)
+                    
+                    Button {
+                        print("Opening node selector for provider: \(provider.name)")
+                        selectedProvider = provider
+                    } label: {
+                        Image(systemName: "list.bullet")
+                    }
                 }
-                
-                Image(systemName: "chevron.right")
-                    .rotationEffect(.degrees(isExpanded ? 90 : 0))
             }
             
-            if isExpanded {
-                Divider()
-                
-                // 节点列表
-                LazyVStack(spacing: 8) {
-                    ForEach(nodes) { node in
-                        HStack {
-                            Text(node.name)
-                                .font(.subheadline)
+            // 流量信息
+            if let (used, total, percentage) = trafficInfo {
+                VStack(alignment: .leading, spacing: 8) {
+                    // 流量进度条
+                    GeometryReader { geometry in
+                        ZStack(alignment: .leading) {
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(Color(.systemGray5))
+                                .frame(height: 4)
                             
-                            Spacer()
-                            
-                            if viewModel.testingNodes.contains(node.id) {
-                                DelayTestingView()
-                                    .foregroundStyle(.blue)
-                                    .transition(.opacity)
-                            } else if node.delay > 0 {
-                                Text("\(node.delay) ms")
-                                    .font(.caption)
-                                    .foregroundStyle(getDelayColor(node.delay))
-                                    .transition(.opacity)
-                            } else {
-                                Text("超时")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .transition(.opacity)
-                            }
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(getTrafficColor(percentage: percentage))
+                                .frame(width: geometry.size.width * CGFloat(min(percentage, 100)) / 100, height: 4)
                         }
-                        .padding(.vertical, 4)
-                        .contentShape(Rectangle()) // 确保整行可点击
-                        .onTapGesture {
-                            Task {
-                                await viewModel.testNodeDelay(nodeName: node.name)
-                            }
-                        }
-                        .animation(.easeInOut(duration: 0.2), value: viewModel.testingNodes.contains(node.id))
+                    }
+                    .frame(height: 4)
+                    
+                    // 流量详情
+                    HStack {
+                        Text("\(used) / \(total)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        Spacer()
+                        
+                        Text(String(format: "%.1f%%", percentage))
+                            .font(.caption)
+                            .foregroundColor(getTrafficColor(percentage: percentage))
                     }
                 }
+            }
+            
+            // 到期时间
+            if let expireDate = expirationDate {
+                HStack(spacing: 4) {
+                    Image(systemName: "calendar")
+                        .font(.caption2)
+                    Text("到期时间：\(expireDate)")
+                        .font(.caption)
+                }
+                .foregroundColor(.secondary)
             }
         }
         .padding()
-        .background {
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color(.systemBackground))
-                .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
-        }
+        .cardShadow()
         .onTapGesture {
-            withAnimation {
-                isExpanded.toggle()
-            }
+            print("Opening node selector for provider: \(provider.name)")
+            selectedProvider = provider
+        }
+        .sheet(item: $selectedProvider) { provider in
+            ProviderNodeSelector(
+                provider: provider,
+                nodes: nodes,
+                viewModel: viewModel
+            )
         }
     }
     
@@ -481,8 +626,112 @@ struct ProviderCard: View {
         return formatter.string(fromByteCount: bytes)
     }
     
-    private func getDelayColor(_ delay: Int) -> Color {
-        DelayColor.color(for: delay)
+    private func getTrafficColor(percentage: Double) -> Color {
+        if percentage < 50 {
+            return .green
+        } else if percentage < 80 {
+            return .yellow
+        } else {
+            return .red
+        }
+    }
+}
+
+// 添加节点选择器 Sheet
+struct ProviderNodeSelector: View {
+    let provider: Provider
+    let nodes: [ProxyNode]
+    @ObservedObject var viewModel: ProxyViewModel
+    @Environment(\.dismiss) private var dismiss
+    @State private var isTestingAll = false
+    @State private var testingNodes = Set<String>()
+    
+    private let columns = [GridItem(.flexible()), GridItem(.flexible())]
+    
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                LazyVGrid(columns: columns, spacing: 12) {
+                    ForEach(nodes) { node in
+                        ProxyNodeCard(
+                            nodeName: node.name,
+                            node: node,
+                            isSelected: false,
+                            isTesting: testingNodes.contains(node.name) || isTestingAll
+                        )
+                        .onTapGesture {
+                            Task {
+                                print("Testing node: \(node.name) in provider: \(provider.name)")
+                                testingNodes.insert(node.name)
+                                
+                                do {
+                                    try await withTaskCancellationHandler {
+                                        await viewModel.healthCheckProviderProxy(
+                                            providerName: provider.name,
+                                            proxyName: node.name
+                                        )
+                                        await viewModel.fetchProxies()
+                                    } onCancel: {
+                                        print("Node test cancelled: \(node.name)")
+                                        testingNodes.remove(node.name)
+                                    }
+                                } catch {
+                                    print("Node test error: \(error)")
+                                }
+                                
+                                testingNodes.remove(node.name)
+                                print("Node test completed: \(node.name)")
+                            }
+                        }
+                    }
+                }
+                .padding()
+            }
+            .navigationTitle(provider.name)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        Task {
+                            print("Testing all nodes in provider: \(provider.name)")
+                            isTestingAll = true
+                            
+                            do {
+                                try await withTaskCancellationHandler {
+                                    await viewModel.healthCheckProvider(providerName: provider.name)
+                                    await viewModel.fetchProxies()
+                                } onCancel: {
+                                    print("Provider test cancelled")
+                                    isTestingAll = false
+                                }
+                            } catch {
+                                print("Provider test error: \(error)")
+                            }
+                            
+                            isTestingAll = false
+                            print("Provider test completed: \(provider.name)")
+                        }
+                    } label: {
+                        if isTestingAll {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                        } else {
+                            Label("测速", systemImage: "bolt.horizontal")
+                        }
+                    }
+                    .disabled(isTestingAll)
+                }
+                
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("关闭") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+        // .interactiveDismissDisabled() // 禁用下滑关闭，只允许通过按钮关闭
     }
 }
 
@@ -758,7 +1007,7 @@ struct ProxyNodeCard: View {
     }
 }
 
-// 更新 DelayColor 结构体，增加颜色饱和度
+// 更新 DelayColor 构体，增加颜色饱和度
 struct DelayColor {
     // 延迟范围常量
     static let lowRange = 0...150
@@ -768,7 +1017,7 @@ struct DelayColor {
     static func color(for delay: Int) -> Color {
         switch delay {
         case 0:
-            return Color(red: 1.0, green: 0.2, blue: 0.2) // 更鲜艳的红色
+            return Color(red: 1.0, green: 0.2, blue: 0.2) // 更艳的红色
         case lowRange:
             return Color(red: 0.2, green: 0.8, blue: 0.2) // 鲜艳的绿色
         case mediumRange:
@@ -806,7 +1055,7 @@ struct DelayTestingView: View {
     }
 }
 
-// 在 GroupCard 中替换原来的延迟统计条部分
+// ��� GroupCard 中替换原来的延迟统计条部分
 struct DelayBar: View {
     let green: Int
     let yellow: Int
