@@ -451,19 +451,19 @@ struct ProxyProviderCard: View {
             return "刚刚"
         case 60..<3600:
             let minutes = Int(interval / 60)
-            return " \(minutes) 分钟前"
+            return "\(minutes) 分钟前"
         case 3600..<86400:
             let hours = Int(interval / 3600)
-            return " \(hours) 小时前"
+            return "\(hours) 小时前"
         case 86400..<604800:
             let days = Int(interval / 86400)
-            return " \(days) 天前"
+            return "\(days) 天前"
         case 604800..<2592000:
             let weeks = Int(interval / 604800)
-            return " \(weeks) 周前"
+            return "\(weeks) 周前"
         default:
             let months = Int(interval / 2592000)
-            return " \(months) 个月前"
+            return "\(months) 个月前"
         }
     }
     
@@ -562,6 +562,18 @@ struct ProxyProviderCard: View {
                 }
             }
             
+            
+            
+            // 到期时间
+            if let expireDate = expirationDate {
+                HStack(spacing: 4) {
+                    Image(systemName: "calendar")
+                        .font(.caption2)
+                    Text("到期时间：\(expireDate)")
+                        .font(.caption)
+                }
+                .foregroundColor(.secondary)
+            }
             // 流量信息
             if let (used, total, percentage) = trafficInfo {
                 VStack(alignment: .leading, spacing: 8) {
@@ -592,17 +604,6 @@ struct ProxyProviderCard: View {
                             .foregroundColor(getTrafficColor(percentage: percentage))
                     }
                 }
-            }
-            
-            // 到期时间
-            if let expireDate = expirationDate {
-                HStack(spacing: 4) {
-                    Image(systemName: "calendar")
-                        .font(.caption2)
-                    Text("到期时间：\(expireDate)")
-                        .font(.caption)
-                }
-                .foregroundColor(.secondary)
             }
         }
         .padding()
