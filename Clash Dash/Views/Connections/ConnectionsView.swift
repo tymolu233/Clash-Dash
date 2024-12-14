@@ -393,7 +393,7 @@ struct ConnectionsView: View {
                 
                 // 搜索栏 - 有条件地显示
                 if showSearch {
-                    SearchBar(text: $searchText, placeholder: "搜索 IP、端口、主机名���设备标签")
+                    SearchBar(text: $searchText, placeholder: "搜索 IP、端口、主机名、设备标签")
                         .padding(.horizontal)
                         .padding(.vertical, 8)
                         .transition(.move(edge: .top).combined(with: .opacity))
@@ -408,7 +408,13 @@ struct ConnectionsView: View {
                                 ConnectionRow(
                                     connection: connection,
                                     viewModel: viewModel,
-                                    tagViewModel: tagViewModel
+                                    tagViewModel: tagViewModel,
+                                    onClose: {
+                                        // 添加触觉反馈
+                                        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+                                        impactFeedback.impactOccurred()
+                                        viewModel.closeConnection(connection.id)
+                                    }
                                 )
                             }
                         }

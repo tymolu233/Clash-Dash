@@ -5,6 +5,10 @@ struct ConnectionRow: View {
     let connection: ClashConnection
     let viewModel: ConnectionsViewModel
     @ObservedObject var tagViewModel: ClientTagViewModel
+    let onClose: () -> Void
+    
+    // 添加触觉反馈生成器
+    private let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
     
     // 添加格式化速度的辅助方法
     private func formatSpeed(_ bytesPerSecond: Double) -> String {
@@ -119,7 +123,7 @@ struct ConnectionRow: View {
                     Text(connection.formattedStartTime)
                         .foregroundColor(.secondary)
                     
-                    // 根据连接状态显示不同的信息
+                    // 根据��接状态显示不同的信息
                     if connection.isAlive {
                         SpeedView(download: connection.downloadSpeed, upload: connection.uploadSpeed)
                     } else {
@@ -139,13 +143,16 @@ struct ConnectionRow: View {
                 
                 // 只在连接活跃时显示关闭按钮
                 if connection.isAlive {
-                    Button(action: {
-                        viewModel.closeConnection(connection.id)
-                    }) {
+                    Button {
+                        // 添加触觉反馈
+                        impactFeedback.impactOccurred()
+                        onClose()
+                    } label: {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundColor(.secondary.opacity(0.5))
                             .frame(width: 20, height: 20)
                     }
+                    .buttonStyle(.plain)
                 }
             }
             
@@ -233,7 +240,8 @@ struct ConnectionRow: View {
     ConnectionRow(
         connection: .preview(),
         viewModel: ConnectionsViewModel(),
-        tagViewModel: ClientTagViewModel()
+        tagViewModel: ClientTagViewModel(),
+        onClose: {}
     )
 } 
 

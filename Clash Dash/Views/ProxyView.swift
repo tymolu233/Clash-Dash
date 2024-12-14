@@ -38,6 +38,9 @@ struct ProxyView: View {
     @State private var showProviderSheet = false
     @Namespace private var animation
     
+    // 添加触觉反馈生成器
+    private let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+    
     init(server: ClashServer) {
         self.server = server
         self._viewModel = StateObject(wrappedValue: ProxyViewModel(server: server))
@@ -84,12 +87,16 @@ struct ProxyView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 HStack(spacing: 12) {
                     Button {
+                        // 添加触觉反馈
+                        impactFeedback.impactOccurred()
                         showProviderSheet = true
                     } label: {
                         Label("添加", systemImage: "square.stack.3d.up")
                     }
                     
                     Button {
+                        // 添加触觉反馈
+                        impactFeedback.impactOccurred()
                         Task { await refreshData() }
                     } label: {
                         Label("刷新", systemImage: "arrow.clockwise")
@@ -118,6 +125,10 @@ struct ProxyView: View {
         withAnimation { isRefreshing = true }
         await viewModel.fetchProxies()
         withAnimation { isRefreshing = false }
+        
+        // 添加成功的触觉反馈
+        let successFeedback = UINotificationFeedbackGenerator()
+        successFeedback.notificationOccurred(.success)
     }
     
     private func sortNodes(_ nodeNames: [String], _ allNodes: [ProxyNode], groupName: String) -> [ProxyNode] {
@@ -838,7 +849,7 @@ struct ProxySelectorSheet: View {
                 VStack(alignment: .leading) {
                     // 节点统计
                     HStack {
-                        Text("��点列表")
+                        Text("节点列表")
                             .font(.headline)
                         Spacer()
                         Text("\(group.all.count) 个节点")
