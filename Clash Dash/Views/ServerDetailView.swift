@@ -7,12 +7,18 @@ struct ServerDetailView: View {
     @StateObject private var networkMonitor = NetworkMonitor()
     @State private var selectedTab = 0
     @Environment(\.dismiss) private var dismiss
+    // 添加触觉反馈生成器
+    private let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
     
     var body: some View {
         NavigationStack {
             TabView(selection: $selectedTab) {
                 // 概览标签页
                 OverviewTab(server: server)
+                    .onAppear {
+                        // 添加触觉反馈
+                        impactFeedback.impactOccurred()
+                    }
                     .tabItem {
                         Label("概览", systemImage: "chart.line.uptrend.xyaxis")
                     }
@@ -20,6 +26,10 @@ struct ServerDetailView: View {
                 
                 // 代理标签页
                 ProxyView(server: server)
+                    .onAppear {
+                        // 添加触觉反馈
+                        impactFeedback.impactOccurred()
+                    }
                     .tabItem {
                         Label("代理", systemImage: "globe")
                     }
@@ -27,6 +37,10 @@ struct ServerDetailView: View {
                 
                 // 规则标签页
                 RulesView(server: server)
+                    .onAppear {
+                        // 添加触觉反馈
+                        impactFeedback.impactOccurred()
+                    }
                     .tabItem {
                         Label("规则", systemImage: "ruler")
                     }
@@ -34,6 +48,10 @@ struct ServerDetailView: View {
                 
                 // 连接标签页
                 ConnectionsView(server: server)
+                    .onAppear {
+                        // 添加触觉反馈
+                        impactFeedback.impactOccurred()
+                    }
                     .tabItem {
                         Label("连接", systemImage: "link")
                     }
@@ -41,6 +59,10 @@ struct ServerDetailView: View {
                 
                 // 更多标签页
                 MoreView(server: server)
+                    .onAppear {
+                        // 添加触觉反馈
+                        impactFeedback.impactOccurred()
+                    }
                     .tabItem {
                         Label("More", systemImage: "ellipsis")
                     }
