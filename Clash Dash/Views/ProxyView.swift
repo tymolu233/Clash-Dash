@@ -420,6 +420,9 @@ struct ProxyProviderCard: View {
         case failure
     }
     
+    // 添加触觉反馈生成器
+    private let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+    
     private var trafficInfo: (used: String, total: String, percentage: Double)? {
         guard let info = provider.subscriptionInfo else { return nil }
         let used = Double(info.upload + info.download)
@@ -510,23 +513,29 @@ struct ProxyProviderCard: View {
                 HStack(spacing: 12) {
                     Button {
                         Task {
+                            // 添加触觉反馈
+                            impactFeedback.impactOccurred()
+                            
                             print("Updating provider: \(provider.name)")
-                            // 设置更新状态
                             updateStatus = .updating
                             
                             do {
                                 await viewModel.updateProxyProvider(providerName: provider.name)
-                                // 更新成功
                                 updateStatus = .success
-                                // 延迟后重置状态
-                                try await Task.sleep(nanoseconds: 1_000_000_000) // 1秒
+                                // 成功时的触觉反馈
+                                let successFeedback = UINotificationFeedbackGenerator()
+                                successFeedback.notificationOccurred(.success)
+                                
+                                try await Task.sleep(nanoseconds: 1_000_000_000)
                                 updateStatus = .none
                             } catch {
-                                // 更新失败
                                 print("Provider update failed: \(error)")
                                 updateStatus = .failure
-                                // 延迟后重置状态
-                                try await Task.sleep(nanoseconds: 2_000_000_000) // 2秒
+                                // 失败时的触觉反馈
+                                let errorFeedback = UINotificationFeedbackGenerator()
+                                errorFeedback.notificationOccurred(.error)
+                                
+                                try await Task.sleep(nanoseconds: 2_000_000_000)
                                 updateStatus = .none
                             }
                             
@@ -554,6 +563,9 @@ struct ProxyProviderCard: View {
                     .animation(.spring(), value: updateStatus)
                     
                     Button {
+                        // 添加触觉反馈
+                        impactFeedback.impactOccurred()
+                        
                         print("Opening node selector for provider: \(provider.name)")
                         selectedProvider = provider
                     } label: {
@@ -609,6 +621,9 @@ struct ProxyProviderCard: View {
         .padding()
         .cardShadow()
         .onTapGesture {
+            // 添加触觉反馈
+            impactFeedback.impactOccurred()
+            
             print("Opening node selector for provider: \(provider.name)")
             selectedProvider = provider
         }
@@ -647,6 +662,9 @@ struct ProviderNodeSelector: View {
     @State private var isTestingAll = false
     @State private var testingNodes = Set<String>()
     
+    // 添加触觉反馈生成器
+    private let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+    
     private let columns = [GridItem(.flexible()), GridItem(.flexible())]
     
     var body: some View {
@@ -661,6 +679,9 @@ struct ProviderNodeSelector: View {
                             isTesting: testingNodes.contains(node.name) || isTestingAll
                         )
                         .onTapGesture {
+                            // 添加触觉反馈
+                            impactFeedback.impactOccurred()
+                            
                             Task {
                                 print("Testing node: \(node.name) in provider: \(provider.name)")
                                 testingNodes.insert(node.name)
@@ -693,6 +714,9 @@ struct ProviderNodeSelector: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
+                        // 添加触觉反馈
+                        impactFeedback.impactOccurred()
+                        
                         Task {
                             print("Testing all nodes in provider: \(provider.name)")
                             isTestingAll = true
@@ -725,6 +749,8 @@ struct ProviderNodeSelector: View {
                 
                 ToolbarItem(placement: .topBarLeading) {
                     Button("关闭") {
+                        // 添加触觉反馈
+                        impactFeedback.impactOccurred()
                         dismiss()
                     }
                 }
@@ -732,7 +758,6 @@ struct ProviderNodeSelector: View {
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
-        // .interactiveDismissDisabled() // 禁用下滑关闭，只允许通过按钮关闭
     }
 }
 
@@ -813,7 +838,7 @@ struct ProxySelectorSheet: View {
                 VStack(alignment: .leading) {
                     // 节点统计
                     HStack {
-                        Text("节点列表")
+                        Text("��点列表")
                             .font(.headline)
                         Spacer()
                         Text("\(group.all.count) 个节点")
@@ -1056,7 +1081,7 @@ struct DelayTestingView: View {
     }
 }
 
-// ��� GroupCard 中替换原来的延迟统计条部分
+//  GroupCard 中替换原来的延迟统计条部分
 struct DelayBar: View {
     let green: Int
     let yellow: Int
