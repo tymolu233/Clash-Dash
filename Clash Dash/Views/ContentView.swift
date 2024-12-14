@@ -9,6 +9,9 @@ struct ContentView: View {
     @State private var showQuickLaunchDestination = false
     @State private var showingAddOpenWRTSheet = false
     
+    // 添加触觉反馈生成器
+    private let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+    
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -34,12 +37,14 @@ struct ContentView: View {
                         
                         Menu {
                             Button(action: {
+                                impactFeedback.impactOccurred()
                                 showingAddSheet = true
                             }) {
                                 Label("Clash 控制器", systemImage: "server.rack")
                             }
                             
                             Button(action: {
+                                impactFeedback.impactOccurred()
                                 showingAddOpenWRTSheet = true
                             }) {
                                 Label("OpenWRT 服务器", systemImage: "wifi.router")
@@ -51,6 +56,9 @@ struct ContentView: View {
                                 .frame(width: 160, height: 44)
                                 .background(Color.blue)
                                 .cornerRadius(22)
+                                .onTapGesture {
+                                    impactFeedback.impactOccurred()
+                                }
                         }
                         .padding(.top, 20)
                         
@@ -150,12 +158,14 @@ struct ContentView: View {
                 ToolbarItem(placement: .primaryAction) {
                     Menu {
                         Button(action: {
+                            impactFeedback.impactOccurred()
                             showingAddSheet = true
                         }) {
                             Label("Clash 控制器", systemImage: "server.rack")
                         }
                         
                         Button(action: {
+                            impactFeedback.impactOccurred()
                             showingAddOpenWRTSheet = true
                         }) {
                             Label("OpenWRT 服务器", systemImage: "wifi.router")
@@ -164,6 +174,9 @@ struct ContentView: View {
                         Image(systemName: "plus.circle.fill")
                             .font(.title2)
                             .foregroundColor(.blue)
+                            .onTapGesture {
+                                impactFeedback.impactOccurred()
+                            }
                     }
                 }
             }
