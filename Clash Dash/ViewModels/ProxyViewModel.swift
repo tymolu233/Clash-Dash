@@ -244,7 +244,7 @@ class ProxyViewModel: ObservableObject {
                         
                         // 对 DIRECT 节点进行延迟测试
                         if let directNode = self.nodes.first(where: { $0.name == "DIRECT" }) {
-                            print("Testing DIRECT node delay")
+                            // print("Testing DIRECT node delay")
                             await testNodeDelay(nodeName: "DIRECT")
                         }
                         
@@ -346,7 +346,7 @@ class ProxyViewModel: ObservableObject {
             if server.useSSL,
                let httpsResponse = response as? HTTPURLResponse,
                httpsResponse.statusCode == 400 {
-                print("SSL 连接失败，服务器可能不支持 HTTPS")
+                // print("SSL 连接失败，服务器可能不支持 HTTPS")
                 return
             }
             
@@ -369,7 +369,7 @@ class ProxyViewModel: ObservableObject {
                             let (_, closeResponse) = try await URLSession.shared.data(for: closeRequest)
                             if let closeHttpResponse = closeResponse as? HTTPURLResponse,
                                closeHttpResponse.statusCode == 204 {
-                                print("成功关闭连接: \(connection.id)")
+                                // print("成功关闭连接: \(connection.id)")
                             }
                         }
                     }
@@ -411,7 +411,7 @@ class ProxyViewModel: ObservableObject {
             if server.useSSL,
                let httpsResponse = response as? HTTPURLResponse,
                httpsResponse.statusCode == 400 {
-                print("SSL 连接失败，服务器可能不支持 HTTPS")
+                // print("SSL 连接失败，服务器可能不支持 HTTPS")
                 testingNodes.remove(nodeName)
                 objectWillChange.send()
                 return
@@ -498,12 +498,12 @@ class ProxyViewModel: ObservableObject {
     // 修改组测速方法
     @MainActor
     func testGroupSpeed(groupName: String) async {
-        print("开始测速组: \(groupName)")
-        print("测速前节点状态:")
+        // print("开始测速组: \(groupName)")
+        // print("测速前节点状态:")
         if let group = groups.first(where: { $0.name == groupName }) {
             for nodeName in group.all {
                 if let node = nodes.first(where: { $0.name == nodeName }) {
-                    print("节点: \(nodeName), 延迟: \(node.delay)")
+                    // print("节点: \(nodeName), 延迟: \(node.delay)")
                 }
             }
         }
@@ -514,7 +514,7 @@ class ProxyViewModel: ObservableObject {
         
         let encodedGroupName = groupName.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? groupName
         guard var request = makeRequest(path: "group/\(encodedGroupName)/delay") else {
-            print("创建请求失败")
+            // print("创建请求失败")
             return
         }
         
@@ -530,11 +530,11 @@ class ProxyViewModel: ObservableObject {
         }
         request.url = finalUrl
         
-        print("发送测速请求: \(finalUrl)")
+        // print("发送测速请求: \(finalUrl)")
         
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
-            print("收到服务器响应: \(response)")
+            // print("收到服务器响应: \(response)")
             
             if server.useSSL,
                let httpsResponse = response as? HTTPURLResponse,
@@ -545,20 +545,20 @@ class ProxyViewModel: ObservableObject {
                 return
             }
             
-            print("解析响应数据...")
+            // print("解析响应数据...")
             if let decodedData = try? JSONDecoder().decode([String: Int].self, from: data) {
-                print("\n收到测速响应:")
+                // print("\n收到测速响应:")
                 for (nodeName, delay) in decodedData {
-                    print("节点: \(nodeName), 新延迟: \(delay)")
+                    // print("节点: \(nodeName), 新延迟: \(delay)")
                     // 直接更新节点延迟，不需要先 fetchProxies
                     updateNodeDelay(nodeName: nodeName, delay: delay)
                 }
                 
-                print("\n更新后节点状态:")
+                // print("\n更新后节点状态:")
                 if let group = groups.first(where: { $0.name == groupName }) {
                     for nodeName in group.all {
                         if let node = nodes.first(where: { $0.name == nodeName }) {
-                            print("节点: \(nodeName), 最终延迟: \(node.delay)")
+                            // print("节点: \(nodeName), 最终延迟: \(node.delay)")
                         }
                     }
                 }
@@ -574,7 +574,7 @@ class ProxyViewModel: ObservableObject {
             handleNetworkError(error)
         }
         
-        print("测速完成，移除测速状态")
+        // print("测速完成，移除测速状态")
         testingGroups.remove(groupName)
         objectWillChange.send()
     }
@@ -598,7 +598,7 @@ class ProxyViewModel: ObservableObject {
             
             if let httpResponse = response as? HTTPURLResponse,
                (200...299).contains(httpResponse.statusCode) {
-                print("代理提供者 \(providerName) 更新成功")
+                // print("代理提供者 \(providerName) 更新成功")
                 
                 // 等待一小段时间确保服务器处理完成
                 try? await Task.sleep(nanoseconds: 500_000_000) // 0.5秒

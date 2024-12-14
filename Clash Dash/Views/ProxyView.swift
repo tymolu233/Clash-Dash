@@ -448,7 +448,7 @@ struct ProxyProviderCard: View {
             return "从未更新" 
         }
         
-        print("Provider \(provider.name) updatedAt: \(updatedAt)")
+        // print("Provider \(provider.name) updatedAt: \(updatedAt)")
         
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
@@ -577,7 +577,7 @@ struct ProxyProviderCard: View {
                         // 添加触觉反馈
                         impactFeedback.impactOccurred()
                         
-                        print("Opening node selector for provider: \(provider.name)")
+                        // print("Opening node selector for provider: \(provider.name)")
                         selectedProvider = provider
                     } label: {
                         Image(systemName: "list.bullet")
@@ -635,7 +635,7 @@ struct ProxyProviderCard: View {
             // 添加触觉反馈
             impactFeedback.impactOccurred()
             
-            print("Opening node selector for provider: \(provider.name)")
+            // print("Opening node selector for provider: \(provider.name)")
             selectedProvider = provider
         }
         .sheet(item: $selectedProvider) { provider in
@@ -694,7 +694,7 @@ struct ProviderNodeSelector: View {
                             impactFeedback.impactOccurred()
                             
                             Task {
-                                print("Testing node: \(node.name) in provider: \(provider.name)")
+                                // print("Testing node: \(node.name) in provider: \(provider.name)")
                                 testingNodes.insert(node.name)
                                 
                                 do {
@@ -702,18 +702,29 @@ struct ProviderNodeSelector: View {
                                         await viewModel.healthCheckProviderProxy(
                                             providerName: provider.name,
                                             proxyName: node.name
+
                                         )
                                         await viewModel.fetchProxies()
+                                        // 添加成功的触觉反馈
+                                        let successFeedback = UINotificationFeedbackGenerator()
+                                        successFeedback.notificationOccurred(.success)
+
                                     } onCancel: {
-                                        print("Node test cancelled: \(node.name)")
+                                        // print("Node test cancelled: \(node.name)")
                                         testingNodes.remove(node.name)
+                                        // 添加失败的触觉反馈
+                                        let errorFeedback = UINotificationFeedbackGenerator()
+                                        errorFeedback.notificationOccurred(.error)
                                     }
                                 } catch {
                                     print("Node test error: \(error)")
+                                    // 添加失败的触觉反馈
+                                    let errorFeedback = UINotificationFeedbackGenerator()
+                                    errorFeedback.notificationOccurred(.error)
                                 }
                                 
                                 testingNodes.remove(node.name)
-                                print("Node test completed: \(node.name)")
+                                // print("Node test completed: \(node.name)")
                             }
                         }
                     }
@@ -736,16 +747,25 @@ struct ProviderNodeSelector: View {
                                 try await withTaskCancellationHandler {
                                     await viewModel.healthCheckProvider(providerName: provider.name)
                                     await viewModel.fetchProxies()
+                                    // 添加成功的触觉反馈
+                                    let successFeedback = UINotificationFeedbackGenerator()
+                                    successFeedback.notificationOccurred(.success)
                                 } onCancel: {
-                                    print("Provider test cancelled")
+                                    // print("Provider test cancelled")
                                     isTestingAll = false
+                                    // 添加失败的触觉反馈
+                                    let errorFeedback = UINotificationFeedbackGenerator()
+                                    errorFeedback.notificationOccurred(.error)
                                 }
                             } catch {
                                 print("Provider test error: \(error)")
+                                // 添加失败的触觉反馈
+                                let errorFeedback = UINotificationFeedbackGenerator()
+                                errorFeedback.notificationOccurred(.error)
                             }
                             
                             isTestingAll = false
-                            print("Provider test completed: \(provider.name)")
+                            // print("Provider test completed: \(provider.name)")
                         }
                     } label: {
                         if isTestingAll {
@@ -883,6 +903,11 @@ struct ProxySelectorSheet: View {
                                         if nodeName != "REJECT" {
                                             await viewModel.testNodeDelay(nodeName: nodeName)
                                         }
+
+                                        // 添加成功的触觉反馈
+                                        let successFeedback = UINotificationFeedbackGenerator()
+                                        successFeedback.notificationOccurred(.success)
+
                                         // 移除自动关闭
                                         // dismiss()
                                     }
@@ -917,6 +942,9 @@ struct ProxySelectorSheet: View {
                         
                         Task {
                             await viewModel.testGroupSpeed(groupName: group.name)
+                            // 添加成功的触觉反馈
+                            let successFeedback = UINotificationFeedbackGenerator()
+                            successFeedback.notificationOccurred(.success)
                         }
                     } label: {
                         Label("测速", systemImage: "bolt.horizontal")
@@ -926,6 +954,10 @@ struct ProxySelectorSheet: View {
                 
                 ToolbarItem(placement: .topBarLeading) {
                     Button("关闭") {
+                        // 添加触觉反馈
+                        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+                        impactFeedback.impactOccurred()
+                        
                         dismiss()
                     }
                 }
