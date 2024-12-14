@@ -69,28 +69,31 @@ struct ContentView: View {
                     VStack(spacing: 20) {
                         // 服务器卡片列表
                         ForEach(viewModel.servers) { server in
-                            NavigationLink(destination: ServerDetailView(server: server)) {
+                            NavigationLink {
+                                ServerDetailView(server: server)
+                                    .onAppear {
+                                        // 添加触觉反馈
+                                        impactFeedback.impactOccurred()
+                                    }
+                            } label: {
                                 ServerRowView(server: server)
                                     .contextMenu {
                                         Button(role: .destructive) {
-                                            // 添加触觉反馈
-                                            impactFeedback.impactOccurred() 
+                                            impactFeedback.impactOccurred()
                                             viewModel.deleteServer(server)
                                         } label: {
                                             Label("删除", systemImage: "trash")
                                         }
                                         
                                         Button {
-                                            // 添加触觉反馈
-                                            impactFeedback.impactOccurred() 
+                                            impactFeedback.impactOccurred()
                                             editingServer = server
                                         } label: {
                                             Label("编辑", systemImage: "pencil")
                                         }
                                         
                                         Button {
-                                            // 添加触觉反馈
-                                            impactFeedback.impactOccurred() 
+                                            impactFeedback.impactOccurred()
                                             viewModel.setQuickLaunch(server)
                                         } label: {
                                             Label(server.isQuickLaunch ? "取消快速启动" : "设为快速启动", 
@@ -99,15 +102,15 @@ struct ContentView: View {
                                         
                                         if server.source == .openWRT {
                                             // Button {
-                                            //     // 打开管理页面
+                                            //     impactFeedback.impactOccurred()
                                             //     showManagementView(for: server)
                                             // } label: {
                                             //     Label("管理", systemImage: "gear")
                                             // }
                                             
+
                                             Button {
-                                                // 添加触觉反馈
-                                                impactFeedback.impactOccurred() 
+                                                impactFeedback.impactOccurred()
                                                 showSwitchConfigView(for: server)
                                             } label: {
                                                 Label("切换配置", systemImage: "arrow.2.circlepath")
@@ -116,6 +119,10 @@ struct ContentView: View {
                                     }
                             }
                             .buttonStyle(PlainButtonStyle())
+                            .onTapGesture {
+                                // 添加触觉反馈
+                                impactFeedback.impactOccurred()
+                            }
                         }
                         
                         // 设置卡片
