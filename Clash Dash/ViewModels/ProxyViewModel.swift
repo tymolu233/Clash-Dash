@@ -206,9 +206,9 @@ class ProxyViewModel: ObservableObject {
                         
                         // 添加特殊节点
                         let specialNodes = ["DIRECT", "REJECT"].map { name in
-                            // 尝试从现节点中找到对应的特殊节点
+                            // 尝试从现有节点中找到对应的特殊节点
                             if let existingNode = self.nodes.first(where: { $0.name == name }) {
-                                return existingNode  // 如果找到，保留现有节点的所有信息（包括延迟）
+                                return existingNode
                             }
                             // 如果是新建的节点，才使用默认值
                             return ProxyNode(
@@ -239,8 +239,18 @@ class ProxyViewModel: ObservableObject {
                         // 添加所有 provider 中的实际代理节点
                         allNodes.append(contentsOf: allProviderNodes)
                         
-                        // 更新 nodes 数组
+                        // 更新节点列表
                         self.nodes = allNodes
+                        
+                        // 对 DIRECT 节点进行延迟测试
+                        if let directNode = self.nodes.first(where: { $0.name == "DIRECT" }) {
+                            print("Testing DIRECT node delay")
+                            await testNodeDelay(nodeName: "DIRECT")
+                        }
+                        
+                        self.lastUpdated = Date()
+                        objectWillChange.send()
+                        
                     }
                 }
             } catch {
@@ -376,16 +386,12 @@ class ProxyViewModel: ObservableObject {
         }
     }
     
-    // 添加新方用于测试单个节点延迟
+    // 修改 testNodeDelay 方法以支持 DIRECT 节点
+    @MainActor
     func testNodeDelay(nodeName: String) async {
-        // REJECT 节点不需要测试
-        if nodeName == "REJECT" {
-            return
-        }
+        guard var request = makeRequest(path: "proxies/\(nodeName)/delay") else { return }
         
-        let encodedNodeName = nodeName.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? nodeName
-        guard var request = makeRequest(path: "proxies/\(encodedNodeName)/delay") else { return }
-        
+        // 添加测试参数
         var components = URLComponents(url: request.url!, resolvingAgainstBaseURL: true)
         components?.queryItems = [
             URLQueryItem(name: "url", value: testUrl),
@@ -395,22 +401,41 @@ class ProxyViewModel: ObservableObject {
         guard let finalUrl = components?.url else { return }
         request.url = finalUrl
         
-        _ = await MainActor.run {
-            testingNodes.insert(nodeName)
-        }
+        // 设置测试状态
+        testingNodes.insert(nodeName)
+        objectWillChange.send()
         
         do {
-            let (data, _) = try await URLSession.shared.data(for: request)
-            if let delay = try? JSONDecoder().decode([String: Int].self, from: data).values.first {
-                _ = await MainActor.run {
-                    updateNodeDelay(nodeName: nodeName, delay: delay)
-                    testingNodes.remove(nodeName)
-                }
-            }
-        } catch {
-            _ = await MainActor.run {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            
+            if server.useSSL,
+               let httpsResponse = response as? HTTPURLResponse,
+               httpsResponse.statusCode == 400 {
+                print("SSL 连接失败，服务器可能不支持 HTTPS")
                 testingNodes.remove(nodeName)
+                objectWillChange.send()
+                return
             }
+            
+            // 解析延迟数据
+            struct DelayResponse: Codable {
+                let delay: Int
+            }
+            
+            if let delayResponse = try? JSONDecoder().decode(DelayResponse.self, from: data) {
+                // 更新节点延迟
+                updateNodeDelay(nodeName: nodeName, delay: delayResponse.delay)
+                testingNodes.remove(nodeName)
+                self.lastDelayTestTime = Date()
+                objectWillChange.send()
+            } else {
+                testingNodes.remove(nodeName)
+                objectWillChange.send()
+            }
+            
+        } catch {
+            testingNodes.remove(nodeName)
+            objectWillChange.send()
             handleNetworkError(error)
         }
     }
@@ -732,7 +757,7 @@ class ProxyViewModel: ObservableObject {
                 if specialNodes.contains(nodeName) {
                     return true
                 }
-                // 其他节点只显示���迟大于 0 的
+                // 其他节点只显示迟大于 0 的
                 let delay = self.nodes.first(where: { $0.name == nodeName })?.delay ?? 0
                 return delay > 0
             }
