@@ -107,6 +107,13 @@ struct ContentView: View {
                                             // } label: {
                                             //     Label("管理", systemImage: "gear")
                                             // }
+
+                                            Button {
+                                                impactFeedback.impactOccurred()
+                                                showConfigSubscriptionView(for: server)
+                                            } label: {
+                                                Label("配置订阅", systemImage: "cloud.fill")
+                                            }
                                             
 
                                             Button {
@@ -210,7 +217,7 @@ struct ContentView: View {
             .refreshable {
                 await viewModel.checkAllServersStatus()
             }
-            .alert("连接错误", isPresented: $viewModel.showError) {
+            .alert("连���错误", isPresented: $viewModel.showError) {
                 Button("确定", role: .cancel) {}
             } message: {
                 if let details = viewModel.errorDetails {
@@ -235,6 +242,23 @@ struct ContentView: View {
     private func showSwitchConfigView(for server: ClashServer) {
         editingServer = nil  // 清除编辑状态
         let configView = OpenClashConfigView(viewModel: viewModel, server: server)
+        let sheet = UIHostingController(rootView: configView)
+        
+        // 设置 sheet 的首选样式
+        sheet.modalPresentationStyle = .formSheet
+        sheet.sheetPresentationController?.detents = [.medium(), .large()]
+        sheet.sheetPresentationController?.prefersGrabberVisible = true
+        
+        // 获取当前的 window scene
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let rootViewController = windowScene.windows.first?.rootViewController {
+            rootViewController.present(sheet, animated: true)
+        }
+    }
+    
+    private func showConfigSubscriptionView(for server: ClashServer) {
+        editingServer = nil  // 清除编辑状态
+        let configView = ConfigSubscriptionView(server: server)
         let sheet = UIHostingController(rootView: configView)
         
         // 设置 sheet 的首选样式
