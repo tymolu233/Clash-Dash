@@ -6,6 +6,7 @@ struct SubscriptionEditView: View {
     let subscription: ConfigSubscription?
     let onSave: (ConfigSubscription) -> Void
     @State private var isTemplateLoaded = false
+    @State private var showingDeleteAlert = false
     
     // 基本信息
     @State private var name = ""
@@ -123,6 +124,21 @@ struct SubscriptionEditView: View {
                         viewModel: viewModel
                     )
                 }
+                
+                // 删除订阅按钮
+                if subscription != nil {  // 只在编辑模式显示
+                    Section {
+                        Button(role: .destructive) {
+                            showingDeleteAlert = true
+                        } label: {
+                            HStack {
+                                Spacer()
+                                Text("删除订阅")
+                                Spacer()
+                            }
+                        }
+                    }
+                }
             }
             .navigationTitle(subscription == nil ? "添加订阅" : "编辑订阅")
             .navigationBarTitleDisplayMode(.inline)
@@ -141,6 +157,19 @@ struct SubscriptionEditView: View {
                     template = viewModel.templateOptions.first ?? ""
                 }
                 isTemplateLoaded = true
+            }
+            .alert("删除订阅", isPresented: $showingDeleteAlert) {
+                Button("取消", role: .cancel) { }
+                Button("删除", role: .destructive) {
+                    if let sub = subscription {
+                        Task {
+                            await viewModel.deleteSubscription(sub)
+                            dismiss()
+                        }
+                    }
+                }
+            } message: {
+                Text("确定要删除这个订阅吗？此操作无法撤销。")
             }
         }
     }

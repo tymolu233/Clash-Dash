@@ -762,4 +762,63 @@ class ConfigSubscriptionViewModel: ObservableObject {
             showError = true
         }
     }
+    
+    func deleteSubscription(_ subscription: ConfigSubscription) async {
+        do {
+            print("🗑️ 开始删除订阅: \(subscription.name)")
+            
+            let token = try await getAuthToken()
+            
+            // 构建请求
+            let scheme = server.useSSL ? "https" : "http"
+            let baseURL = "\(scheme)://\(server.url):\(server.openWRTPort ?? "80")"
+            guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
+                throw NetworkError.invalidURL
+            }
+            
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.setValue("sysauth=\(token)", forHTTPHeaderField: "Cookie")
+            
+            // 删除命令
+            let commands = [
+                "uci delete openclash.@config_subscribe[\(subscription.id)]",
+                "uci commit openclash"
+            ]
+            
+            let command: [String: Any] = [
+                "method": "exec",
+                "params": [commands.joined(separator: " && ")]
+            ]
+            request.httpBody = try JSONSerialization.data(withJSONObject: command)
+            
+            let (data, response) = try await URLSession.shared.data(for: request)
+            
+            guard let httpResponse = response as? HTTPURLResponse,
+                  httpResponse.statusCode == 200 else {
+                throw NetworkError.serverError(500)
+            }
+            
+            struct UCIResponse: Codable {
+                let result: String
+                let error: String?
+            }
+            
+            let uciResponse = try JSONDecoder().decode(UCIResponse.self, from: data)
+            if let error = uciResponse.error, !error.isEmpty {
+                throw NetworkError.serverError(500)
+            }
+            
+            print("✅ 删除成功")
+            
+            // 重新加载订阅列表
+            await loadSubscriptions()
+            
+        } catch {
+            print("❌ 删除订阅失败: \(error.localizedDescription)")
+            errorMessage = error.localizedDescription
+            showError = true
+        }
+    }
 }
