@@ -127,7 +127,7 @@ struct OpenClashConfigView: View {
         } message: {
             Text(errorMessage)
         }
-        .alert("切换配��", isPresented: $showingSwitchAlert) {
+        .alert("切换配置", isPresented: $showingSwitchAlert) {
             Button("取消", role: .cancel) {
                 selectedConfig = nil
             }

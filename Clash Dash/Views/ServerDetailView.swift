@@ -116,7 +116,7 @@ struct SpeedChartView: View {
         let maxDownload = speedHistory.map { $0.download }.max() ?? 0
         let currentMax = max(maxUpload, maxDownload)
         
-        // 如果没有数据或数据��小，使用最小刻度
+        // 如果没有数据或数据小，使用最小刻度
         if currentMax < 100_000 { // 小于 100KB/s
             return 100_000 // 100KB/s
         }

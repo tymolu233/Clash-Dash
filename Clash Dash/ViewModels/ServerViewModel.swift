@@ -880,7 +880,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                 let timeDiff = Date().timeIntervalSince(fileDate)
                 print("⏱ 文件修改时间差: \(timeDiff)秒")
                 if timeDiff < 0 || timeDiff > 5 {
-                    print("❌ 文件时间验证��败")
+                    print("❌ 文件时间验证失败")
                     throw NetworkError.invalidResponse
                 }
             }

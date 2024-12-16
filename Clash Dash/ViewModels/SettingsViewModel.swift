@@ -134,7 +134,7 @@ class SettingsViewModel: ObservableObject {
                (200...299).contains(httpResponse.statusCode) {
                 print("GEO 数据库更新成功")
             } else if let error = error {
-                print("GEO 数据库��新失败：\(error.localizedDescription)")
+                print("GEO 数据库更新失败：\(error.localizedDescription)")
             }
         }.resume()
     }

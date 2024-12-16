@@ -425,7 +425,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
                         }
                     }
 
-                    // 布尔值选项：当 subConvert 为 true 时，��终设置值
+                    // 布尔值选项：当 subConvert 为 true 时，始终设置值
                     let boolOptions = [
                         "emoji": subscription.emoji,
                         "udp": subscription.udp,
@@ -865,7 +865,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
         }
         
         // 等待3秒
-        try await Task.sleep(nanoseconds: 3_000_000_000)
+        try await Task.sleep(nanoseconds: 1_000_000_000)
         
         // 重新加载订阅列表
         await loadSubscriptions()

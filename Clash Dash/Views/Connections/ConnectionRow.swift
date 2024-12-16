@@ -123,7 +123,7 @@ struct ConnectionRow: View {
                     Text(connection.formattedStartTime)
                         .foregroundColor(.secondary)
                     
-                    // 根据��接状态显示不同的信息
+                    // 根据连接状态显示不同的信息
                     if connection.isAlive {
                         SpeedView(download: connection.downloadSpeed, upload: connection.uploadSpeed)
                     } else {

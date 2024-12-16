@@ -505,7 +505,7 @@ class ProviderCell: UITableViewCell {
         behaviorLabel.text = provider.behavior
         timeLabel.text = "更新于 " + provider.formattedUpdateTime
         
-        // 移除��前的所有动作
+        // 移除之前的所有动作
         refreshButton.removeTarget(nil, action: nil, for: .allEvents)
         refreshButton.addAction(UIAction { _ in
             onRefresh()
