@@ -6,7 +6,7 @@ struct SubscriptionList: View {
     let onToggle: (ConfigSubscription, Bool) -> Void
     
     var body: some View {
-        LazyVStack(spacing: 12) {
+        VStack(spacing: 12) {
             ForEach(subscriptions) { subscription in
                 SubscriptionCard(
                     subscription: subscription,

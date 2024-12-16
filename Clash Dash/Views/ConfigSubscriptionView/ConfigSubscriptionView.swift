@@ -15,20 +15,24 @@ struct ConfigSubscriptionView: View {
     
     var body: some View {
         NavigationStack {
-            Group {
-                if viewModel.isLoading {
-                    SubscriptionLoadingView()
-                } else if viewModel.subscriptions.isEmpty {
-                    SubscriptionEmptyView()
-                } else {
-                    SubscriptionList(
-                        subscriptions: viewModel.subscriptions,
-                        onEdit: { editingSubscription = $0 },
-                        onToggle: { sub, enabled in
-                            Task { await viewModel.toggleSubscription(sub, enabled: enabled) }
-                        }
-                    )
+            ScrollView {
+                VStack(spacing: 12) {
+                    if viewModel.isLoading {
+                        SubscriptionLoadingView()
+                    } else if viewModel.subscriptions.isEmpty {
+                        SubscriptionEmptyView()
+                    } else {
+                        SubscriptionList(
+                            subscriptions: viewModel.subscriptions,
+                            onEdit: { editingSubscription = $0 },
+                            onToggle: { sub, enabled in
+                                Task { await viewModel.toggleSubscription(sub, enabled: enabled) }
+                            }
+                        )
+                    }
                 }
+                .padding(.horizontal)
+                .padding(.top, 4)
             }
             .navigationTitle("订阅管理")
             .navigationBarTitleDisplayMode(.inline)
