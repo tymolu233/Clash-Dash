@@ -13,7 +13,7 @@ Clash Dash 是一款原生 SwiftUI 开发的 OpenClash 管理工具。
 ## 主要功能
 
 - 便捷管理多个 Clash 服务器
-- 换、编辑 Clash 配置文件
+- 切换、编辑 Clash 配置文件
 - 编辑 Clash 订阅信息
 - 实时监控服务器状态和性能
 - 可视化流量统计和速率图表
