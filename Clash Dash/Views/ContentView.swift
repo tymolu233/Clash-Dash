@@ -78,20 +78,26 @@ struct ContentView: View {
                             } label: {
                                 ServerRowView(server: server)
                                     .contextMenu {
-                                        Button(role: .destructive) {
-                                            impactFeedback.impactOccurred()
-                                            viewModel.deleteServer(server)
-                                        } label: {
-                                            Label("删除", systemImage: "trash")
+                                        // 基础操作组
+                                        Group {
+                                            Button(role: .destructive) {
+                                                impactFeedback.impactOccurred()
+                                                viewModel.deleteServer(server)
+                                            } label: {
+                                                Label("删除", systemImage: "trash")
+                                            }
+                                            
+                                            Button {
+                                                impactFeedback.impactOccurred()
+                                                editingServer = server
+                                            } label: {
+                                                Label("编辑", systemImage: "pencil")
+                                            }
                                         }
                                         
-                                        Button {
-                                            impactFeedback.impactOccurred()
-                                            editingServer = server
-                                        } label: {
-                                            Label("编辑", systemImage: "pencil")
-                                        }
+                                        Divider()
                                         
+                                        // 快速启动组
                                         Button {
                                             impactFeedback.impactOccurred()
                                             viewModel.setQuickLaunch(server)
@@ -100,22 +106,16 @@ struct ContentView: View {
                                                   systemImage: server.isQuickLaunch ? "bolt.slash.circle" : "bolt.circle")
                                         }
                                         
+                                        // OpenWRT 特有功能组
                                         if server.source == .openWRT {
-                                            // Button {
-                                            //     impactFeedback.impactOccurred()
-                                            //     showManagementView(for: server)
-                                            // } label: {
-                                            //     Label("管理", systemImage: "gear")
-                                            // }
-
+                                            Divider()
                                             Button {
                                                 impactFeedback.impactOccurred()
                                                 showConfigSubscriptionView(for: server)
                                             } label: {
-                                                Label("配置订阅", systemImage: "cloud.fill")
+                                                Label("订阅管理", systemImage: "cloud.fill")
                                             }
                                             
-
                                             Button {
                                                 impactFeedback.impactOccurred()
                                                 showSwitchConfigView(for: server)
@@ -160,7 +160,7 @@ struct ContentView: View {
                         .cornerRadius(16)
                         
                         // 版本信息
-                        Text("Ver: 1.1.1")
+                        Text("Ver: 1.2.0")
                             .foregroundColor(.secondary)
                             .font(.footnote)
                             .padding(.top, 8)
@@ -217,7 +217,7 @@ struct ContentView: View {
             .refreshable {
                 await viewModel.checkAllServersStatus()
             }
-            .alert("连���错误", isPresented: $viewModel.showError) {
+            .alert("连接错误", isPresented: $viewModel.showError) {
                 Button("确定", role: .cancel) {}
             } message: {
                 if let details = viewModel.errorDetails {

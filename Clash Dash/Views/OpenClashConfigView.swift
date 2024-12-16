@@ -63,6 +63,9 @@ struct OpenClashConfigView: View {
                                     },
                                     onEdit: {
                                         handleEditConfig(config)
+                                    },
+                                    onDelete: {
+                                        handleDeleteConfig(config)
                                     }
                                 )
                             }
@@ -124,7 +127,7 @@ struct OpenClashConfigView: View {
         } message: {
             Text(errorMessage)
         }
-        .alert("切换配置", isPresented: $showingSwitchAlert) {
+        .alert("切换配��", isPresented: $showingSwitchAlert) {
             Button("取消", role: .cancel) {
                 selectedConfig = nil
             }
@@ -262,14 +265,45 @@ struct OpenClashConfigView: View {
         formatter.countStyle = .file
         return formatter.string(fromByteCount: size)
     }
+    
+    private func handleDeleteConfig(_ config: OpenClashConfig) {
+        // 添加触觉反馈
+        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+        impactFeedback.impactOccurred()
+        
+        // 如果是当前启用的配置，不允许删除
+        guard config.state != .enabled else {
+            errorMessage = "无法删除当前正在使用的配置文件"
+            showError = true
+            return
+        }
+        
+        Task {
+            do {
+                try await viewModel.deleteOpenClashConfig(server, configName: config.name)
+                await loadConfigs()  // 重新加载配置列表
+                // 添加成功触觉反馈
+                let successFeedback = UINotificationFeedbackGenerator()
+                successFeedback.notificationOccurred(.success)
+            } catch {
+                errorMessage = error.localizedDescription
+                showError = true
+                // 添加失败触觉反馈
+                let errorFeedback = UINotificationFeedbackGenerator()
+                errorFeedback.notificationOccurred(.error)
+            }
+        }
+    }
 }
 
 struct ConfigCard: View {
     let config: OpenClashConfig
     let onSelect: () -> Void
     let onEdit: () -> Void
+    let onDelete: () -> Void
     
     @Environment(\.colorScheme) private var colorScheme
+    @State private var showingDeleteAlert = false
     
     private func formatFileSize(_ size: Int64) -> String {
         let formatter = ByteCountFormatter()
@@ -288,6 +322,15 @@ struct ConfigCard: View {
                         .lineLimit(1)
                     Spacer()
                     
+                    // 删除按钮
+                    Button(action: { showingDeleteAlert = true }) {
+                        Image(systemName: "trash.circle.fill")
+                            .foregroundColor(.red)
+                            .font(.title3)
+                    }
+                    .padding(.trailing, 4)
+                    
+                    // 编辑按钮
                     Button(action: onEdit) {
                         Image(systemName: "pencil.circle.fill")
                             .foregroundColor(.blue)
@@ -351,6 +394,14 @@ struct ConfigCard: View {
             )
         }
         .buttonStyle(ConfigCardButtonStyle())
+        .alert("删除配置", isPresented: $showingDeleteAlert) {
+            Button("取消", role: .cancel) { }
+            Button("删除", role: .destructive) {
+                onDelete()
+            }
+        } message: {
+            Text("确定要删除该配置文件吗？此操作不可恢复。")
+        }
     }
 }
 
@@ -590,7 +641,7 @@ private extension Date {
         } else if let seconds = components.second, seconds >= 0 {
             return "刚刚更新"
         } else {
-            // 如果是未来的时显示具体日期时间
+            // 果是未来的时显示具体日期时间
             let formatter = DateFormatter()
             formatter.dateStyle = .medium
             formatter.timeStyle = .short

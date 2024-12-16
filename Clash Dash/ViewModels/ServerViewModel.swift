@@ -311,7 +311,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                 throw NetworkError.invalidResponse
             }
             
-            print("�� 登录响应状态码: \(httpResponse.statusCode)")
+            print("📥 登录响应状态码: \(httpResponse.statusCode)")
             if let responseStr = String(data: loginData, encoding: .utf8) {
                 print("📥 JSON-RPC 登录响应: \(responseStr)")
             }
@@ -654,7 +654,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         let baseURL = "\(scheme)://\(server.url):\(server.openWRTPort ?? "80")"
         print("🔄 开始切换配置: \(configName)")
         
-        // 获取��证 token
+        // 获取认证 token
         guard let username = server.openWRTUsername,
               let password = server.openWRTPassword else {
             throw NetworkError.unauthorized
@@ -880,7 +880,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                 let timeDiff = Date().timeIntervalSince(fileDate)
                 print("⏱ 文件修改时间差: \(timeDiff)秒")
                 if timeDiff < 0 || timeDiff > 5 {
-                    print("❌ 文件时间验证失败")
+                    print("❌ 文件时间验证��败")
                     throw NetworkError.invalidResponse
                 }
             }
@@ -1053,5 +1053,58 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         }
         
         return try JSONDecoder().decode(ClashStatusResponse.self, from: data)
+    }
+    
+    func deleteOpenClashConfig(_ server: ClashServer, configName: String) async throws {
+        let scheme = server.useSSL ? "https" : "http"
+        let baseURL = "\(scheme)://\(server.url):\(server.openWRTPort ?? "80")"
+        
+        print("🗑 开始删除配置文件: \(configName)")
+        
+        guard let username = server.openWRTUsername,
+              let password = server.openWRTPassword else {
+            print("❌ 未找到认证信息")
+            throw NetworkError.unauthorized
+        }
+        
+        print("🔑 获取认证令牌...")
+        let token = try await getAuthToken(server, username: username, password: password)
+        print("✅ 获取令牌成功: \(token)")
+        
+        guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
+            print("❌ 无效的 URL")
+            throw NetworkError.invalidURL
+        }
+        
+        let deleteCommand = """
+        rm -f /tmp/Proxy_Group && \
+        rm -f /etc/openclash/backup/\(configName) && \
+        rm -f /etc/openclash/history/\(configName) && \
+        rm -f /etc/openclash/history/\(configName).db && \
+        rm -f /etc/openclash/\(configName) && \
+        rm -f /etc/openclash/config/\(configName)
+        """
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("sysauth=\(token)", forHTTPHeaderField: "Cookie")
+        
+        let command: [String: Any] = [
+            "method": "exec",
+            "params": [deleteCommand]
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: command)
+        
+        let session = makeURLSession(for: server)
+        let (data, response) = try await session.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse,
+              httpResponse.statusCode == 200 else {
+            print("❌ 删除失败")
+            throw NetworkError.serverError((response as? HTTPURLResponse)?.statusCode ?? 500)
+        }
+        
+        print("✅ 配置文件删除成功")
     }
 } 

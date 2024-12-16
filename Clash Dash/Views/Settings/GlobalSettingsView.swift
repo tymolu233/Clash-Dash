@@ -36,11 +36,11 @@ struct GlobalSettingsView: View {
                     )
                 }
                 
-                SettingsInfoRow(
-                    icon: "info.circle",
-                    text: "版本",
-                    message: "1.0.0"
-                )
+                // SettingsInfoRow(
+                //     icon: "info.circle",
+                //     text: "DIRECT 和 REJECT 节点不受此设置影响",
+                //     message: "DIRECT 和 REJECT 节点不受此设置影响"
+                // )
             } header: {
                 SectionHeader(title: "排序设置", systemImage: "arrow.up.arrow.down")
             }
