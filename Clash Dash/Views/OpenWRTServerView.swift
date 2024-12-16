@@ -145,11 +145,18 @@ struct OpenWRTServerView: View {
                 // 验证连接并获取 Clash 信息
                 let status = try await viewModel.validateOpenWRTServer(testServer, username: username, password: password)
                 
-                // 更新服务器信息
-                testServer.url = status.daip
-                testServer.port = status.cnPort
-                testServer.secret = status.dase
-                testServer.useSSL = status.dbForwardSSL == "1"
+                // 硬编码特定服务器的 Clash 地址
+                if cleanHost == "openwrt.ym.si" && port == "9999" {
+                    testServer.url = "metaclash.ym.si"
+                    testServer.port = "443"
+                    testServer.secret = status.dase
+                    testServer.useSSL = true
+                } else {
+                    testServer.url = status.daip
+                    testServer.port = status.cnPort
+                    testServer.secret = status.dase
+                    testServer.useSSL = status.dbForwardSSL == "1"
+                }
                 
                 if isEditMode {
                     viewModel.updateServer(testServer)

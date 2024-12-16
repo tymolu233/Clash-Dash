@@ -248,11 +248,11 @@ struct OpenClashConfigView: View {
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
         impactFeedback.impactOccurred()
 
-        let maxEditSize: Int64 = 100 * 1024  // 100KB
+        let maxEditSize: Int64 = 90 * 1024  // 90KB
         configToEdit = config
         
         if config.fileSize > maxEditSize {
-            errorMessage = "配置文件较大（\(formatFileSize(config.fileSize))），超过 100KB 将无法保存"
+            errorMessage = "配置文件较大（\(formatFileSize(config.fileSize))），超过 90KB 将无法保存"
             showingEditAlert = true
         } else {
             editingConfig = config
