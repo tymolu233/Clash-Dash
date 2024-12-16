@@ -212,10 +212,147 @@ class ConfigSubscriptionViewModel: ObservableObject {
     }
     
     func addSubscription(_ subscription: ConfigSubscription) async {
-        // TODO: 实现添加订阅逻辑
-    }
+        do {
+            print("🔄 开始添加订阅: \(subscription.name)")
+            print("📝 订阅信息:")
+            printSubscriptionState(subscription)
+            
+            let token = try await getAuthToken()
+            
+            // 构建请求
+            let scheme = server.useSSL ? "https" : "http"
+            let baseURL = "\(scheme)://\(server.url):\(server.openWRTPort ?? "80")"
+            guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
+                throw NetworkError.invalidURL
+            }
+            
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.setValue("sysauth=\(token)", forHTTPHeaderField: "Cookie")
+            
+            // 首先获取当前订阅数量
+            let countCommand: [String: Any] = [
+                "method": "exec",
+                "params": ["uci show openclash | grep 'config_subscribe.*name' | wc -l"]
+            ]
+            request.httpBody = try JSONSerialization.data(withJSONObject: countCommand)
+            
+            let (countData, _) = try await URLSession.shared.data(for: request)
+            let countResponse = try JSONDecoder().decode(UCIResponse.self, from: countData)
+            
+            guard let countStr = countResponse.result.trimmingCharacters(in: .whitespacesAndNewlines).components(separatedBy: .newlines).first,
+                  let count = Int(countStr) else {
+                throw NetworkError.serverError(500)
+            }
+            
+            // 生成添加命令
+            var commands = [
+                "uci add openclash config_subscribe",
+                "uci set openclash.@config_subscribe[\(count)].enabled='\(subscription.enabled ? 1 : 0)'",
+                "uci set openclash.@config_subscribe[\(count)].name='\(subscription.name)'",
+                "uci set openclash.@config_subscribe[\(count)].address='\(subscription.address)'",
+                "uci set openclash.@config_subscribe[\(count)].sub_ua='\(subscription.subUA)'",
+                "uci set openclash.@config_subscribe[\(count)].sub_convert='\(subscription.subConvert ? 1 : 0)'"
+            ]
+            
+            // 添加可选参数
+            // 转换选项
+            if subscription.subConvert {
+                if let addr = subscription.convertAddress {
+                    commands.append("uci set openclash.@config_subscribe[\(count)].convert_address='\(addr)'")
+                }
+                
+                if let template = subscription.template {
+                    commands.append("uci set openclash.@config_subscribe[\(count)].template='\(template)'")
+                }
 
-        // 修改解析关键词的方法
+                // 布尔值选项：当 subConvert 为 true 时，始终设置值
+                let boolOptions = [
+                    "emoji": subscription.emoji,
+                    "udp": subscription.udp,
+                    "skip_cert_verify": subscription.skipCertVerify,
+                    "sort": subscription.sort,
+                    "node_type": subscription.nodeType,
+                    "rule_provider": subscription.ruleProvider
+                ]
+                
+                for (key, value) in boolOptions {
+                    // 如果值为 nil 或为 false，设置为 false
+                    // 如果值为 true，设置为 true
+                    let finalValue = value ?? false
+                    commands.append("uci set openclash.@config_subscribe[\(count)].\(key)='\(finalValue ? "true" : "false")'")
+                }
+            }
+            
+            // 关键词比较
+            if subscription.keyword != nil {
+                    
+                let keywords = parseKeywordValues(subscription.keyword) // 使用新的解析方法
+                
+                if !keywords.isEmpty{
+                    for keyword in keywords {
+                        print("添加关键词: \(keyword)")
+                        commands.append("uci add_list openclash.@config_subscribe[\(count)].keyword='\(keyword)'")
+                    }
+                }
+            }
+            
+            // 排除关键词比较
+            if subscription.exKeyword != nil {
+                let keywords = parseKeywordValues(subscription.exKeyword) // 使用新的解析方法
+                if !keywords.isEmpty{
+                    for keyword in keywords {
+                        print("添加关键词: \(keyword)")
+                        commands.append("uci add_list openclash.@config_subscribe[\(count)].ex_keyword='\(keyword)'")
+                    }
+                }
+            }
+            
+            print("📤 发送的命令:")
+            print(commands.joined(separator: " && "))
+            
+            // 执行添加命令
+            let addCommand: [String: Any] = [
+                "method": "exec",
+                "params": [commands.joined(separator: " && ")]
+            ]
+            request.httpBody = try JSONSerialization.data(withJSONObject: addCommand)
+            
+            let (data, response) = try await URLSession.shared.data(for: request)
+            
+            guard let httpResponse = response as? HTTPURLResponse,
+                  httpResponse.statusCode == 200 else {
+                throw NetworkError.serverError(500)
+            }
+            struct UCIResponse: Codable {
+                let result: String
+                let error: String?
+            }
+            
+            let uciResponse = try JSONDecoder().decode(UCIResponse.self, from: data)
+            if let error = uciResponse.error, !error.isEmpty {
+                throw NetworkError.serverError(500)
+            }
+            
+            print("✅ UCI命令执行成功")
+            
+            // 提交更改
+            try await commitChanges(token: token)
+            print("✅ 更改已提交")
+            
+            // 重新加载订阅列表
+            await loadSubscriptions()
+            print("✅ 订阅列表已刷新")
+            
+        } catch {
+            print("❌ 添加订阅失败: \(error.localizedDescription)")
+            errorMessage = error.localizedDescription
+            showError = true
+        }
+    }
+    
+    // 修改解析关键词的方法
     func parseKeywordValues(_ input: String?) -> [String] {
         guard let input = input else { return [] }
         
@@ -411,7 +548,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
             }
             
         } catch {
-            print("❌ ��新订阅失败: \(error.localizedDescription)")
+            print("❌ 更新订阅失败: \(error.localizedDescription)")
             errorMessage = error.localizedDescription
             showError = true
         }
@@ -608,19 +745,21 @@ class ConfigSubscriptionViewModel: ObservableObject {
                 let result: String
                 let error: String?
             }
-            
+
             let templateResponse = try JSONDecoder().decode(TemplateResponse.self, from: data)
             if let error = templateResponse.error, !error.isEmpty {
-                throw NetworkError.serverError(500)
+                throw NetworkError.serverError(500) 
             }
-            
-            // 解析模板选项
+
             templateOptions = templateResponse.result
                 .components(separatedBy: "\n")
                 .filter { !$0.isEmpty }
-                .map { $0.trimmingCharacters(in: CharacterSet(charactersIn: "'")) }  // 移除单引号
+                .map { $0.trimmingCharacters(in: CharacterSet(charactersIn: "'")) }
+
         } catch {
-            print("加载模板选项失败: \(error)")
+            print("❌ 加载模板选项失败: \(error.localizedDescription)")
+            errorMessage = error.localizedDescription
+            showError = true
         }
     }
-} 
+}
