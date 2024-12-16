@@ -8,7 +8,7 @@ Clash Dash 是一款原生 SwiftUI 开发的 OpenClash 管理工具。
 
 ## 预览
 
-<img src="preview.png" alt="Clash Dash Preview" width="500">
+<img src="preview.png" alt="Clash Dash Preview" width="900">
 
 ## 主要功能
 
