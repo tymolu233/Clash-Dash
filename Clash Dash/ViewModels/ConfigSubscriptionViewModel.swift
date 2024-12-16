@@ -7,6 +7,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
     @Published var showError = false
     @Published var errorMessage: String?
     @Published var templateOptions: [String] = []
+    @Published var isUpdating = false
     
     private let server: ClashServer
     
@@ -424,7 +425,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
                         }
                     }
 
-                    // 布尔值选项：当 subConvert 为 true 时，始终设置值
+                    // 布尔值选项：当 subConvert 为 true 时，��终设置值
                     let boolOptions = [
                         "emoji": subscription.emoji,
                         "udp": subscription.udp,
@@ -655,7 +656,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
     // 修改格式化关键词的方法
     func formatQuotedValues(_ values: [String]) -> String? {
         let filtered = values.filter { !$0.isEmpty }
-        // 每个关键词只需要一层单引号
+        // 每个关键词需要一层单引号
         let formatted = filtered.isEmpty ? nil : filtered.map { 
             let trimmed = $0.trimmingCharacters(in: .whitespaces)
             return "'\(trimmed)'"
@@ -820,5 +821,53 @@ class ConfigSubscriptionViewModel: ObservableObject {
             errorMessage = error.localizedDescription
             showError = true
         }
+    }
+    
+    
+    // 添加更新所有订阅的方法
+    func updateAllSubscriptions() async throws {
+        isUpdating = true
+        defer { isUpdating = false }
+        
+        let token = try await getAuthToken()
+        
+        let scheme = server.useSSL ? "https" : "http"
+        let baseURL = "\(scheme)://\(server.url):\(server.openWRTPort ?? "80")"
+        guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
+            throw NetworkError.invalidURL
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("sysauth=\(token)", forHTTPHeaderField: "Cookie")
+        
+        let command: [String: Any] = [
+            "method": "exec",
+            "params": ["rm -f /tmp/Proxy_Group && uci set openclash.config.enable=1 && uci commit openclash && rm -f /etc/openclash/backup/*.yaml && rm -f /etc/openclash/backup/*.yml && /usr/share/openclash/openclash.sh"]
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: command)
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse,
+              httpResponse.statusCode == 200 else {
+            throw NetworkError.serverError(500)
+        }
+        struct UCIResponse: Codable {
+            let result: String
+            let error: String?
+        }
+        
+        let uciResponse = try JSONDecoder().decode(UCIResponse.self, from: data)
+        if let error = uciResponse.error, !error.isEmpty {
+            throw NetworkError.serverError(500)
+        }
+        
+        // 等待3秒
+        try await Task.sleep(nanoseconds: 3_000_000_000)
+        
+        // 重新加载订阅列表
+        await loadSubscriptions()
     }
 }

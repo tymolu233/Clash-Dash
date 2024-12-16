@@ -15,49 +15,63 @@ struct ConfigSubscriptionView: View {
     
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 12) {
-                    if viewModel.isLoading {
-                        SubscriptionLoadingView()
-                    } else if viewModel.subscriptions.isEmpty {
-                        SubscriptionEmptyView()
-                    } else {
-                        SubscriptionList(
-                            subscriptions: viewModel.subscriptions,
-                            onEdit: { editingSubscription = $0 },
-                            onToggle: { subscription, enabled in
-                                Task {
-                                    await viewModel.toggleSubscription(subscription, enabled: enabled)
-                                }
-                            },
-                            onUpdate: { subscription in
-                                Task {
-                                    await viewModel.updateSubscription(subscription)
-                                }
-                            }
-                        )
-                    }
+            Group {
+                if viewModel.isLoading {
+                    SubscriptionLoadingView()
+                } else if viewModel.subscriptions.isEmpty {
+                    SubscriptionEmptyView()
+                } else {
+                    SubscriptionList(
+                        subscriptions: viewModel.subscriptions,
+                        onEdit: { editingSubscription = $0 },
+                        onToggle: { sub, enabled in
+                            Task { await viewModel.toggleSubscription(sub, enabled: enabled) }
+                        }
+                    )
                 }
-                .padding(.horizontal)
-                .padding(.top, 4)
             }
             .navigationTitle("订阅管理")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("关闭") { dismiss() }
+                    Button("关闭", action: { dismiss() })
                 }
+                
                 ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        showingAddSheet = true
-                    } label: {
-                        Image(systemName: "plus")
+                    HStack {
+                        // 更新按钮
+                        Button {
+                            Task {
+                                do {
+                                    try await viewModel.updateAllSubscriptions()
+                                } catch {
+                                    print("更新失败: \(error)")
+                                    viewModel.errorMessage = error.localizedDescription
+                                    viewModel.showError = true
+                                }
+                            }
+                        } label: {
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                        }
+                        .disabled(viewModel.isUpdating)
+                        
+                        // 添加按钮
+                        Button {
+                            showingAddSheet = true
+                        } label: {
+                            Image(systemName: "plus")
+                        }
                     }
                 }
             }
-        }
-        .task {
-            await viewModel.loadSubscriptions()
+            .overlay {
+                if viewModel.isUpdating {
+                    ProgressView()
+                        .scaleEffect(1.5)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Color(.systemBackground).opacity(0.8))
+                }
+            }
         }
         .sheet(isPresented: $showingAddSheet) {
             SubscriptionEditView(
@@ -73,9 +87,9 @@ struct ConfigSubscriptionView: View {
             SubscriptionEditView(
                 viewModel: viewModel,
                 subscription: subscription,
-                onSave: { updated in
+                onSave: { updatedSubscription in
                     Task {
-                        await viewModel.updateSubscription(updated)
+                        await viewModel.updateSubscription(updatedSubscription)
                     }
                 }
             )
@@ -84,6 +98,9 @@ struct ConfigSubscriptionView: View {
             Button("确定", role: .cancel) { }
         } message: {
             Text(viewModel.errorMessage ?? "")
+        }
+        .task {
+            await viewModel.loadSubscriptions()
         }
     }
 }
