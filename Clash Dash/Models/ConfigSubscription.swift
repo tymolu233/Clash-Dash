@@ -17,7 +17,6 @@ struct ConfigSubscription: Identifiable, Codable, Equatable {
     var ruleProvider: Bool?
     var keyword: String?
     var exKeyword: String?
-    var customParams: [String]?
     
     // 转换模板选项
     static let templateOptions = [
@@ -64,8 +63,7 @@ struct ConfigSubscription: Identifiable, Codable, Equatable {
          nodeType: Bool? = nil,
          ruleProvider: Bool? = nil,
          keyword: String? = nil,
-         exKeyword: String? = nil,
-         customParams: [String]? = nil) {
+         exKeyword: String? = nil) {
         self.id = id
         self.name = name
         self.address = address
@@ -82,7 +80,6 @@ struct ConfigSubscription: Identifiable, Codable, Equatable {
         self.ruleProvider = ruleProvider
         self.keyword = keyword
         self.exKeyword = exKeyword
-        self.customParams = customParams
     }
 }
 
@@ -111,8 +108,8 @@ extension ConfigSubscription {
             "uci set openclash.@config_subscribe[\(index)].name='\(name)'",
             "uci set openclash.@config_subscribe[\(index)].address='\(address)'",
             "uci set openclash.@config_subscribe[\(index)].sub_ua='\(subUA)'",
-            "uci set openclash.@config_subscribe[\(index)].enabled='\(enabled ? "1" : "0")'",
-            "uci set openclash.@config_subscribe[\(index)].sub_convert='\(subConvert ? "1" : "0")'"
+            "uci set openclash.@config_subscribe[\(index)].enabled='\(enabled ? 1 : 0)'",
+            "uci set openclash.@config_subscribe[\(index)].sub_convert='\(subConvert ? 1 : 0)'"
         ]
         
         // 添加可选参数的命令
@@ -163,14 +160,6 @@ extension ConfigSubscription {
             for kw in exKeywords {
                 commands.append("uci add_list openclash.@config_subscribe[\(index)].ex_keyword=\(kw)")
             }
-        }
-        
-        // 处理自定义参数
-        if let customParams = customParams, !customParams.isEmpty {
-            commands.append("uci delete openclash.@config_subscribe[\(index)].custom_params")
-            commands.append(contentsOf: customParams.map {
-                "uci add_list openclash.@config_subscribe[\(index)].custom_params='\($0)'"
-            })
         }
 
         print("🔍 生成的 UCI 命令: \(commands)")

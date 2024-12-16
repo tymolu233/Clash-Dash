@@ -37,11 +37,18 @@ class ConfigSubscriptionViewModel: ObservableObject {
             return (key, value.replacingOccurrences(of: "'", with: "").lowercased())
         }
         
-        if key.contains(".enabled") {
+        if key.contains(".enabled") || key.contains(".sub_convert") {
             return (key, value.replacingOccurrences(of: "'", with: ""))
         }
         
-        if key.contains(".name") || key.contains(".address") {
+        if key.contains(".emoji") || key.contains(".udp") || 
+           key.contains(".skip_cert_verify") || key.contains(".sort") || 
+           key.contains(".node_type") || key.contains(".rule_provider") {
+            return (key, value.replacingOccurrences(of: "'", with: ""))
+        }
+        
+        if key.contains(".name") || key.contains(".address") || 
+           key.contains(".convert_address") || key.contains(".template") {
             return (key, value.replacingOccurrences(of: "'", with: ""))
         }
         
@@ -116,23 +123,23 @@ class ConfigSubscriptionViewModel: ObservableObject {
                     } else if key.contains(".sub_ua") {
                         currentSub.subUA = value
                     } else if key.contains(".sub_convert") {
-                        currentSub.subConvert = value == "1"
+                        currentSub.subConvert = value.trimmingCharacters(in: CharacterSet(charactersIn: "'")) == "1"
                     } else if key.contains(".convert_address") {
                         currentSub.convertAddress = value
                     } else if key.contains(".template") {
                         currentSub.template = value
                     } else if key.contains(".emoji") {
-                        currentSub.emoji = value == "true"
+                        currentSub.emoji = value.trimmingCharacters(in: CharacterSet(charactersIn: "'")) == "true"
                     } else if key.contains(".udp") {
-                        currentSub.udp = value == "true"
+                        currentSub.udp = value.trimmingCharacters(in: CharacterSet(charactersIn: "'")) == "true"
                     } else if key.contains(".skip_cert_verify") {
-                        currentSub.skipCertVerify = value == "true"
+                        currentSub.skipCertVerify = value.trimmingCharacters(in: CharacterSet(charactersIn: "'")) == "true"
                     } else if key.contains(".sort") {
-                        currentSub.sort = value == "true"
+                        currentSub.sort = value.trimmingCharacters(in: CharacterSet(charactersIn: "'")) == "true"
                     } else if key.contains(".node_type") {
-                        currentSub.nodeType = value == "true"
+                        currentSub.nodeType = value.trimmingCharacters(in: CharacterSet(charactersIn: "'")) == "true"
                     } else if key.contains(".rule_provider") {
-                        currentSub.ruleProvider = value == "true"
+                        currentSub.ruleProvider = value.trimmingCharacters(in: CharacterSet(charactersIn: "'")) == "true"
                     } else if key.contains(".keyword") {
                         let cleanValue = value.trimmingCharacters(in: .whitespaces)
                         if currentSub.keyword == nil {
@@ -261,10 +268,10 @@ class ConfigSubscriptionViewModel: ObservableObject {
                     commands.append("uci set openclash.@config_subscribe[\(subscription.id)].sub_ua='\(subscription.subUA)'")
                 }
                 if oldSub.enabled != subscription.enabled {
-                    commands.append("uci set openclash.@config_subscribe[\(subscription.id)].enabled='\(subscription.enabled ? "1" : "0")'")
+                    commands.append("uci set openclash.@config_subscribe[\(subscription.id)].enabled='\(subscription.enabled ? 1 : 0)'")
                 }
                 if oldSub.subConvert != subscription.subConvert {
-                    commands.append("uci set openclash.@config_subscribe[\(subscription.id)].sub_convert='\(subscription.subConvert ? "1" : "0")'")
+                    commands.append("uci set openclash.@config_subscribe[\(subscription.id)].sub_convert='\(subscription.subConvert ? 1 : 0)'")
                 }
                 
                 // 转换选项比较
@@ -335,16 +342,16 @@ class ConfigSubscriptionViewModel: ObservableObject {
                 }
                 
                 // 自定义参数比较
-                if oldSub.customParams != subscription.customParams {
-                    if let params = subscription.customParams {
-                        if oldSub.customParams != nil {
-                            commands.append("uci delete openclash.@config_subscribe[\(subscription.id)].custom_params")
-                        }
-                        for param in params {
-                            commands.append("uci add_list openclash.@config_subscribe[\(subscription.id)].custom_params='\(param)'")
-                        }
-                    }
-                }
+//                if oldSub.customParams != subscription.customParams {
+//                    if let params = subscription.customParams {
+//                        if oldSub.customParams != nil {
+//                            commands.append("uci delete openclash.@config_subscribe[\(subscription.id)].custom_params")
+//                        }
+//                        for param in params {
+//                            commands.append("uci add_list openclash.@config_subscribe[\(subscription.id)].custom_params='\(param)'")
+//                        }
+//                    }
+//                }
                 
                 if commands.isEmpty {
                     print("ℹ️ 没有字段被更改，跳过更新")
@@ -396,7 +403,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
                 
                 // 提交更改
                 try await commitChanges(token: token)
-                print("✅ 更改已提��")
+                print("✅ 更改已提交")
                 
                 // 重新加载订阅列表
                 await loadSubscriptions()
@@ -404,7 +411,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
             }
             
         } catch {
-            print("❌ 更新订阅失败: \(error.localizedDescription)")
+            print("❌ ��新订阅失败: \(error.localizedDescription)")
             errorMessage = error.localizedDescription
             showError = true
         }
@@ -429,7 +436,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
             
             let command: [String: Any] = [
                 "method": "exec",
-                "params": ["uci set openclash.@config_subscribe[\(subscription.id)].enabled='\(enabled ? "1" : "0")' && uci commit openclash"]
+                "params": ["uci set openclash.@config_subscribe[\(subscription.id)].enabled='\(enabled ? 1 : 0)' && uci commit openclash"]
             ]
             request.httpBody = try JSONSerialization.data(withJSONObject: command)
             
@@ -563,7 +570,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
             print("  - 排序: \(subscription.sort ?? false)")
             print("  - 节点类型: \(subscription.nodeType ?? false)")
             print("  - 规则集: \(subscription.ruleProvider ?? false)")
-            print("  - 自定义参数: \(subscription.customParams ?? [])")
+//            print("  - 自定义参数: \(subscription.customParams ?? [])")
         }
         print("- 包含关键词: \(subscription.keyword ?? "无")")
         print("- 排除关键词: \(subscription.exKeyword ?? "无")")
@@ -611,6 +618,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
             templateOptions = templateResponse.result
                 .components(separatedBy: "\n")
                 .filter { !$0.isEmpty }
+                .map { $0.trimmingCharacters(in: CharacterSet(charactersIn: "'")) }  // 移除单引号
         } catch {
             print("加载模板选项失败: \(error)")
         }

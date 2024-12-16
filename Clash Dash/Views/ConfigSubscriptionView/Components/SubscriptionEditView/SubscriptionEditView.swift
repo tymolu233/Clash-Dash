@@ -5,6 +5,7 @@ struct SubscriptionEditView: View {
     @ObservedObject var viewModel: ConfigSubscriptionViewModel
     let subscription: ConfigSubscription?
     let onSave: (ConfigSubscription) -> Void
+    @State private var isTemplateLoaded = false
     
     // 基本信息
     @State private var name = ""
@@ -16,7 +17,6 @@ struct SubscriptionEditView: View {
     // 过滤相关
     @State private var keywords: [String] = [""]
     @State private var exKeywords: [String] = [""]
-    @State private var customParams: [String] = [""]
     
     // 转换相关
     @State private var convertAddress = "https://api.dler.io/sub"
@@ -50,11 +50,9 @@ struct SubscriptionEditView: View {
             let parsedExKeywords = viewModel.parseQuotedValues(sub.exKeyword)
             _exKeywords = State(initialValue: parsedExKeywords.isEmpty ? [] : parsedExKeywords)
             
-            _customParams = State(initialValue: sub.customParams ?? [])
-            
             // 订阅转换相关设置
             _convertAddress = State(initialValue: sub.subConvert ? sub.convertAddress ?? ConfigSubscription.convertAddressOptions[0] : ConfigSubscription.convertAddressOptions[0])
-            _template = State(initialValue: sub.subConvert ? sub.template ?? viewModel.templateOptions.first ?? "" : viewModel.templateOptions.first ?? "")
+            _template = State(initialValue: sub.template ?? "")
             _emoji = State(initialValue: sub.subConvert ? sub.emoji ?? false : false)
             _udp = State(initialValue: sub.subConvert ? sub.udp ?? false : false)
             _skipCertVerify = State(initialValue: sub.subConvert ? sub.skipCertVerify ?? false : false)
@@ -77,15 +75,6 @@ struct SubscriptionEditView: View {
             _subConvert = State(initialValue: false)
             _keywords = State(initialValue: [])
             _exKeywords = State(initialValue: [])
-            _customParams = State(initialValue: [])
-            _convertAddress = State(initialValue: ConfigSubscription.convertAddressOptions[0])
-            _template = State(initialValue: viewModel.templateOptions.first ?? "")
-            _emoji = State(initialValue: false)
-            _udp = State(initialValue: false)
-            _skipCertVerify = State(initialValue: false)
-            _sort = State(initialValue: false)
-            _nodeType = State(initialValue: false)
-            _ruleProvider = State(initialValue: false)
         }
     }
     
@@ -103,8 +92,7 @@ struct SubscriptionEditView: View {
                     skipCertVerify: $skipCertVerify,
                     sort: $sort,
                     nodeType: $nodeType,
-                    ruleProvider: $ruleProvider,
-                    customParams: $customParams
+                    ruleProvider: $ruleProvider
                 )
                 
                 FilterSection(
@@ -123,7 +111,6 @@ struct SubscriptionEditView: View {
                         sort: $sort,
                         nodeType: $nodeType,
                         ruleProvider: $ruleProvider,
-                        customParams: $customParams,
                         viewModel: viewModel
                     )
                 }
@@ -141,6 +128,10 @@ struct SubscriptionEditView: View {
             }
             .task {
                 await viewModel.loadTemplateOptions()
+                if template.isEmpty {
+                    template = viewModel.templateOptions.first ?? ""
+                }
+                isTemplateLoaded = true
             }
         }
     }
@@ -148,7 +139,6 @@ struct SubscriptionEditView: View {
     private func saveSubscription() {
         let filteredKeywords = keywords.filter { !$0.isEmpty }
         let filteredExKeywords = exKeywords.filter { !$0.isEmpty }
-        let filteredCustomParams = customParams.filter { !$0.isEmpty }
         
         let sub = ConfigSubscription(
             id: subscription?.id ?? 0,
@@ -166,8 +156,7 @@ struct SubscriptionEditView: View {
             nodeType: subConvert ? nodeType : nil,
             ruleProvider: subConvert ? ruleProvider : nil,
             keyword: filteredKeywords.isEmpty ? nil : viewModel.formatQuotedValues(filteredKeywords),
-            exKeyword: filteredExKeywords.isEmpty ? nil : viewModel.formatQuotedValues(filteredExKeywords),
-            customParams: subConvert ? (filteredCustomParams.isEmpty ? nil : filteredCustomParams) : nil
+            exKeyword: filteredExKeywords.isEmpty ? nil : viewModel.formatQuotedValues(filteredExKeywords)
         )
         onSave(sub)
         dismiss()

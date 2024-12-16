@@ -13,7 +13,6 @@ struct BasicInfoSection: View {
     @Binding var sort: Bool
     @Binding var nodeType: Bool
     @Binding var ruleProvider: Bool
-    @Binding var customParams: [String]
     
     var body: some View {
         Section {
@@ -44,7 +43,6 @@ struct BasicInfoSection: View {
                         sort = false
                         nodeType = false
                         ruleProvider = false
-                        customParams = []
                     }
                 }
         } header: {
