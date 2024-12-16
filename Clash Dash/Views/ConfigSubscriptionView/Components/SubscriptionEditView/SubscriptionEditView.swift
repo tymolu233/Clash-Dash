@@ -51,7 +51,16 @@ struct SubscriptionEditView: View {
             _exKeywords = State(initialValue: parsedExKeywords.isEmpty ? [] : parsedExKeywords)
             
             // 订阅转换相关设置
-            _convertAddress = State(initialValue: sub.subConvert ? sub.convertAddress ?? ConfigSubscription.convertAddressOptions[0] : ConfigSubscription.convertAddressOptions[0])
+            if let addr = sub.convertAddress {
+                if ConfigSubscription.convertAddressOptions.contains(addr) {
+                    _convertAddress = State(initialValue: addr)
+                } else {
+                    _convertAddress = State(initialValue: "custom")
+                    _customConvertAddress = State(initialValue: addr)
+                }
+            } else {
+                _convertAddress = State(initialValue: ConfigSubscription.convertAddressOptions[0])
+            }
             _template = State(initialValue: sub.template ?? "")
             _emoji = State(initialValue: sub.subConvert ? sub.emoji ?? false : false)
             _udp = State(initialValue: sub.subConvert ? sub.udp ?? false : false)
@@ -140,6 +149,9 @@ struct SubscriptionEditView: View {
         let filteredKeywords = keywords.filter { !$0.isEmpty }
         let filteredExKeywords = exKeywords.filter { !$0.isEmpty }
         
+        // 处理转换地址
+        let finalConvertAddress = convertAddress == "custom" ? customConvertAddress : convertAddress
+        
         let sub = ConfigSubscription(
             id: subscription?.id ?? 0,
             name: name,
@@ -147,7 +159,7 @@ struct SubscriptionEditView: View {
             enabled: enabled,
             subUA: subUA,
             subConvert: subConvert,
-            convertAddress: subConvert ? convertAddress : nil,
+            convertAddress: subConvert ? finalConvertAddress : nil,
             template: subConvert ? template : nil,
             emoji: subConvert ? emoji : nil,
             udp: subConvert ? udp : nil,
