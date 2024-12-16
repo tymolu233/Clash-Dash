@@ -4,15 +4,14 @@ struct SubscriptionCard: View {
     let subscription: ConfigSubscription
     let onEdit: () -> Void
     let onToggle: (Bool) -> Void
-    let onUpdate: () -> Void
     
     @State private var isEnabled: Bool
+    @Environment(\.colorScheme) private var colorScheme
     
-    init(subscription: ConfigSubscription, onEdit: @escaping () -> Void, onToggle: @escaping (Bool) -> Void, onUpdate: @escaping () -> Void) {
+    init(subscription: ConfigSubscription, onEdit: @escaping () -> Void, onToggle: @escaping (Bool) -> Void) {
         self.subscription = subscription
         self.onEdit = onEdit
         self.onToggle = onToggle
-        self.onUpdate = onUpdate
         self._isEnabled = State(initialValue: subscription.enabled)
     }
     
@@ -20,68 +19,107 @@ struct SubscriptionCard: View {
         VStack(alignment: .leading, spacing: 12) {
             // 标题栏
             HStack {
-                Text(subscription.name)
-                    .font(.headline)
-                    .lineLimit(1)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(subscription.name)
+                        .font(.headline)
+                        .lineLimit(1)
+                    
+                    Text(subscription.address)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
                 
                 Spacer()
                 
-                Button(action: onEdit) {
-                    Image(systemName: "pencil.circle.fill")
-                        .foregroundColor(.blue)
-                        .font(.title3)
+                // 编辑和开关按钮
+                HStack(spacing: 12) {
+                    Button(action: onEdit) {
+                        Image(systemName: "pencil.circle.fill")
+                            .foregroundColor(.blue)
+                            .font(.title3)
+                    }
+                    
+                    Toggle("", isOn: $isEnabled)
+                        .labelsHidden()
+                        .onChange(of: isEnabled) { newValue in
+                            onToggle(newValue)
+                        }
+                }
+            }
+            
+            // 分隔线
+            Divider()
+            
+            // 过滤信息
+            VStack(alignment: .leading, spacing: 8) {
+                if let keyword = subscription.keyword {
+                    FilterBadge(icon: "text.magnifyingglass", text: "包含: \(keyword)", color: .blue)
                 }
                 
-                Toggle("", isOn: $isEnabled)
-                    .labelsHidden()
-                    .onChange(of: isEnabled) { newValue in
-                        onToggle(newValue)
-                    }
+                if let exKeyword = subscription.exKeyword {
+                    FilterBadge(icon: "text.magnifyingglass", text: "排除: \(exKeyword)", color: .red)
+                }
             }
             
-            // 订阅地址
-            Text(subscription.address)
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .lineLimit(2)
-            
-            // 过滤规则
-            if let keyword = subscription.keyword {
-                FilterRuleView(icon: "text.magnifyingglass", text: "包含: \(keyword)", color: .blue)
+            // 订阅转换状态
+            if subscription.subConvert {
+                HStack {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .foregroundColor(.green)
+                    Text("已启用订阅转换")
+                        .font(.caption)
+                        .foregroundColor(.green)
+                }
+                .padding(.top, 4)
             }
-            
-            if let exKeyword = subscription.exKeyword {
-                FilterRuleView(icon: "text.magnifyingglass", text: "排除: \(exKeyword)", color: .red)
-            }
-            
-            // 更新按钮
-            Button(action: onUpdate) {
-                Label("更新", systemImage: "arrow.triangle.2.circlepath")
-            }
-            .buttonStyle(.bordered)
-            .tint(.blue)
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground))
-        .cornerRadius(16)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.secondarySystemGroupedBackground))
+                .shadow(
+                    color: isEnabled ? 
+                        Color.accentColor.opacity(0.3) : 
+                        Color.black.opacity(colorScheme == .dark ? 0.3 : 0.1),
+                    radius: isEnabled ? 8 : 4,
+                    y: 2
+                )
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(
+                    isEnabled ? 
+                        Color.accentColor.opacity(0.5) : 
+                        Color(.systemGray4),
+                    lineWidth: isEnabled ? 2 : 0.5
+                )
+        )
     }
 }
 
-// 抽取过滤规则视图为独立组件
-struct FilterRuleView: View {
+struct FilterBadge: View {
     let icon: String
     let text: String
     let color: Color
     
     var body: some View {
-        HStack {
-            Label {
-                Text(text)
-            } icon: {
-                Image(systemName: icon)
-            }
-            .font(.caption)
-            .foregroundColor(color)
+        HStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.caption)
+            Text(text)
+                .font(.caption)
         }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(
+            Capsule()
+                .fill(color.opacity(0.15))
+        )
+        .foregroundColor(color)
+        .overlay(
+            Capsule()
+                .stroke(color.opacity(0.3), lineWidth: 0.5)
+        )
     }
 } 

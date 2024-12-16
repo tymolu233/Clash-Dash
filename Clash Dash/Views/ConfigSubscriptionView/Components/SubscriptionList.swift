@@ -12,8 +12,8 @@ struct SubscriptionList: View {
                 SubscriptionCard(
                     subscription: subscription,
                     onEdit: { onEdit(subscription) },
-                    onToggle: { enabled in onToggle(subscription, enabled) },
-                    onUpdate: { onUpdate(subscription) }
+                    onToggle: { enabled in onToggle(subscription, enabled) }
+//                    onUpdate: { onUpdate(subscription) }
                 )
             }
         }
