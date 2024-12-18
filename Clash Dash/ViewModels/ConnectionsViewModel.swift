@@ -333,6 +333,11 @@ class ConnectionsViewModel: ObservableObject {
                 self.totalUpload = response.uploadTotal
                 self.totalDownload = response.downloadTotal
                 
+                // 更新设备缓存
+                for connection in response.connections {
+                    self.deviceCache.insert(connection.metadata.sourceIP)
+                }
+                
                 // 如果连接数组为空，清空现有连接
                 if response.connections.isEmpty {
                     self.connections = []
@@ -657,4 +662,7 @@ class ConnectionsViewModel: ObservableObject {
             startMonitoring(server: server)
         }
     }
+    
+    // 添加设备缓存
+    private(set) var deviceCache: Set<String> = []  // 存储所有出现过的设备IP
 } 

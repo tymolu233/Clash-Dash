@@ -75,9 +75,95 @@ struct ConnectionsView: View {
     // 添加控制搜索栏显示的状态
     @State private var showSearch = false
     
+    // 在 struct ConnectionsView 的开头添加状态变量
+    @State private var showDeviceFilter = false
+    @State private var selectedDevices: Set<String> = []  // 存储选中的设备ID（IP或设备名称）
+    
+    // 在 SortOption 枚举前添加 DeviceFilterButton
+    private var deviceFilterButton: some View {
+        Menu {
+            let devices = getActiveDevices()
+            if devices.isEmpty {
+                Text("暂无设备记录")
+            } else {
+                ForEach(Array(devices).sorted(by: { $0.isActive && !$1.isActive }), id: \.id) { device in
+                    Button {
+                        if selectedDevices.contains(device.id) {
+                            selectedDevices.remove(device.id)
+                        } else {
+                            selectedDevices.insert(device.id)
+                        }
+                    } label: {
+                        HStack {
+                            Text(device.displayName)
+                                .foregroundColor(device.isActive ? .primary : .secondary)
+                            if !selectedDevices.contains(device.id) {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
+                
+                Divider()
+                
+                Button("显示全部") {
+                    selectedDevices.removeAll()
+                }
+                
+                Button("全部隐藏") {
+                    selectedDevices = Set(devices.map(\.id))
+                }
+            }
+        } label: {
+            Image(systemName: "desktopcomputer")
+                .foregroundColor(selectedDevices.isEmpty ? .accentColor : .gray)
+                .font(.system(size: 16))
+                .frame(width: 28, height: 28)
+        }
+    }
+    
+    // 添加一个设备模型来存储设备信息
+    private struct Device: Identifiable, Hashable {
+        let id: String      // IP 地址
+        let name: String?   // 设备标签名称（如果有）
+        let isActive: Bool  // 当前是否有活跃连接
+        
+        var displayName: String {
+            if let name = name {
+                return "\(name) \(isActive ? "●" : "○")"
+            }
+            return "\(id) \(isActive ? "●" : "○")"
+        }
+        
+        func hash(into hasher: inout Hasher) {
+            hasher.combine(id)
+        }
+        
+        static func == (lhs: Device, rhs: Device) -> Bool {
+            lhs.id == rhs.id
+        }
+    }
+    
+    // 修改获取设备的方法，使用缓存的设备列表
+    private func getActiveDevices() -> Set<Device> {
+        // 获取所有缓存的设备
+        return Set(viewModel.deviceCache.map { ip in
+            Device(
+                id: ip,
+                name: tagViewModel.tags.first(where: { $0.ip == ip })?.name,
+                isActive: viewModel.connections.contains(where: { 
+                    $0.isAlive && $0.metadata.sourceIP == ip 
+                })
+            )
+        })
+    }
+    
     // 修改过滤连接的计算属性
     private var filteredConnections: [ClashConnection] {
         var connections = viewModel.connections.filter { connection in
+            // 反转设备过滤条件：如果设备在选中列表中,则不显示
+            let deviceMatches = !selectedDevices.contains(connection.metadata.sourceIP)
+            
             // 根据连接状态过滤
             let stateMatches = connectionFilter == .active ? connection.isAlive : !connection.isAlive
             
@@ -108,7 +194,7 @@ struct ConnectionsView: View {
                 return false
             }()
             
-            return stateMatches && protocolMatches && searchMatches
+            return deviceMatches && stateMatches && protocolMatches && searchMatches
         }
         
         // 修改排序逻辑
@@ -232,7 +318,7 @@ struct ConnectionsView: View {
                 showMenu = false
             }
         } message: {
-            Text("确定要清理所有已断开的连接吗？\n这将从列表中移除 \(closedConnectionsCount) 个已断开的连接。")
+            Text("确定要清理所有已断开的��接吗？\n这将从列表中移除 \(closedConnectionsCount) 个已断开的连接。")
         }
         .alert("确认终止所有连接", isPresented: $showCloseAllConfirmation) {
             Button("取消", role: .cancel) { }
@@ -304,6 +390,9 @@ struct ConnectionsView: View {
             }
             
             Spacer(minLength: 0)
+            
+            // 添加设备过滤按钮
+            deviceFilterButton
             
             // 排序按钮
             Menu {
