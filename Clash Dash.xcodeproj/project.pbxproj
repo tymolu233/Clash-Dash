@@ -6,6 +6,12 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		9D38295C2D114F52002FF881 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9D38295B2D114F52002FF881 /* WidgetKit.framework */; };
+		9D38295E2D114F52002FF881 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9D38295D2D114F52002FF881 /* SwiftUI.framework */; };
+		9D38296D2D114F54002FF881 /* WidgetExtensionExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 9D3829592D114F52002FF881 /* WidgetExtensionExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		9D3823F12D0816F9002FF881 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -21,19 +27,51 @@
 			remoteGlobalIDString = 9D3823DF2D0816F7002FF881;
 			remoteInfo = "Clash Dash";
 		};
+		9D38296B2D114F54002FF881 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 9D3823D82D0816F7002FF881 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 9D3829582D114F52002FF881;
+			remoteInfo = WidgetExtensionExtension;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		9D3829722D114F54002FF881 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				9D38296D2D114F54002FF881 /* WidgetExtensionExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		9D3823E02D0816F7002FF881 /* Clash Dash.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Clash Dash.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D3823F02D0816F9002FF881 /* Clash DashTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Clash DashTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D3823FA2D0816F9002FF881 /* Clash DashUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Clash DashUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		9D3829592D114F52002FF881 /* WidgetExtensionExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = WidgetExtensionExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		9D38295B2D114F52002FF881 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		9D38295D2D114F52002FF881 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		9D3829772D114FD3002FF881 /* WidgetExtensionExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WidgetExtensionExtension.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		9D3829542D114E5A002FF881 /* Exceptions for "Clash Dash" folder in "Clash Dash" target */ = {
+		9D3829712D114F54002FF881 /* Exceptions for "WidgetExtension" folder in "WidgetExtensionExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				"Clash-Dash-Info.plist",
+				Info.plist,
+			);
+			target = 9D3829582D114F52002FF881 /* WidgetExtensionExtension */;
+		};
+		9D3829F52D115DFE002FF881 /* Exceptions for "WidgetExtension" folder in "Clash Dash" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				WidgetButton.swift,
 			);
 			target = 9D3823DF2D0816F7002FF881 /* Clash Dash */;
 		};
@@ -42,9 +80,6 @@
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		9D3823E22D0816F7002FF881 /* Clash Dash */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				9D3829542D114E5A002FF881 /* Exceptions for "Clash Dash" folder in "Clash Dash" target */,
-			);
 			path = "Clash Dash";
 			sourceTree = "<group>";
 		};
@@ -56,6 +91,15 @@
 		9D3823FD2D0816F9002FF881 /* Clash DashUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = "Clash DashUITests";
+			sourceTree = "<group>";
+		};
+		9D38295F2D114F52002FF881 /* WidgetExtension */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				9D3829F52D115DFE002FF881 /* Exceptions for "WidgetExtension" folder in "Clash Dash" target */,
+				9D3829712D114F54002FF881 /* Exceptions for "WidgetExtension" folder in "WidgetExtensionExtension" target */,
+			);
+			path = WidgetExtension;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -82,6 +126,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		9D3829562D114F52002FF881 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9D38295E2D114F52002FF881 /* SwiftUI.framework in Frameworks */,
+				9D38295C2D114F52002FF881 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -91,7 +144,10 @@
 				9D3823E22D0816F7002FF881 /* Clash Dash */,
 				9D3823F32D0816F9002FF881 /* Clash DashTests */,
 				9D3823FD2D0816F9002FF881 /* Clash DashUITests */,
+				9D38295F2D114F52002FF881 /* WidgetExtension */,
+				9D38295A2D114F52002FF881 /* Frameworks */,
 				9D3823E12D0816F7002FF881 /* Products */,
+				9D3829772D114FD3002FF881 /* WidgetExtensionExtension.entitlements */,
 			);
 			sourceTree = "<group>";
 		};
@@ -101,8 +157,18 @@
 				9D3823E02D0816F7002FF881 /* Clash Dash.app */,
 				9D3823F02D0816F9002FF881 /* Clash DashTests.xctest */,
 				9D3823FA2D0816F9002FF881 /* Clash DashUITests.xctest */,
+				9D3829592D114F52002FF881 /* WidgetExtensionExtension.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		9D38295A2D114F52002FF881 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				9D38295B2D114F52002FF881 /* WidgetKit.framework */,
+				9D38295D2D114F52002FF881 /* SwiftUI.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -115,10 +181,12 @@
 				9D3823DC2D0816F7002FF881 /* Sources */,
 				9D3823DD2D0816F7002FF881 /* Frameworks */,
 				9D3823DE2D0816F7002FF881 /* Resources */,
+				9D3829722D114F54002FF881 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				9D38296C2D114F54002FF881 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				9D3823E22D0816F7002FF881 /* Clash Dash */,
@@ -176,6 +244,28 @@
 			productReference = 9D3823FA2D0816F9002FF881 /* Clash DashUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		9D3829582D114F52002FF881 /* WidgetExtensionExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 9D38296E2D114F54002FF881 /* Build configuration list for PBXNativeTarget "WidgetExtensionExtension" */;
+			buildPhases = (
+				9D3829552D114F52002FF881 /* Sources */,
+				9D3829562D114F52002FF881 /* Frameworks */,
+				9D3829572D114F52002FF881 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				9D38295F2D114F52002FF881 /* WidgetExtension */,
+			);
+			name = WidgetExtensionExtension;
+			packageProductDependencies = (
+			);
+			productName = WidgetExtensionExtension;
+			productReference = 9D3829592D114F52002FF881 /* WidgetExtensionExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -197,6 +287,9 @@
 						CreatedOnToolsVersion = 16.0;
 						TestTargetID = 9D3823DF2D0816F7002FF881;
 					};
+					9D3829582D114F52002FF881 = {
+						CreatedOnToolsVersion = 16.0;
+					};
 				};
 			};
 			buildConfigurationList = 9D3823DB2D0816F7002FF881 /* Build configuration list for PBXProject "Clash Dash" */;
@@ -216,6 +309,7 @@
 				9D3823DF2D0816F7002FF881 /* Clash Dash */,
 				9D3823EF2D0816F9002FF881 /* Clash DashTests */,
 				9D3823F92D0816F9002FF881 /* Clash DashUITests */,
+				9D3829582D114F52002FF881 /* WidgetExtensionExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -236,6 +330,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		9D3823F82D0816F9002FF881 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9D3829572D114F52002FF881 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -266,6 +367,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		9D3829552D114F52002FF881 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -278,6 +386,11 @@
 			isa = PBXTargetDependency;
 			target = 9D3823DF2D0816F7002FF881 /* Clash Dash */;
 			targetProxy = 9D3823FB2D0816F9002FF881 /* PBXContainerItemProxy */;
+		};
+		9D38296C2D114F54002FF881 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 9D3829582D114F52002FF881 /* WidgetExtensionExtension */;
+			targetProxy = 9D38296B2D114F54002FF881 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -406,6 +519,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "Clash Dash/Clash Dash.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -440,6 +554,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "Clash Dash/Clash Dash.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -541,6 +656,64 @@
 			};
 			name = Release;
 		};
+		9D38296F2D114F54002FF881 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = WidgetExtensionExtension.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = M943S3MQCS;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = WidgetExtension/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = WidgetExtension;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.2.0;
+				PRODUCT_BUNDLE_IDENTIFIER = ym.si.clashdash.WidgetExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		9D3829702D114F54002FF881 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = WidgetExtensionExtension.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = M943S3MQCS;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = WidgetExtension/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = WidgetExtension;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.2.0;
+				PRODUCT_BUNDLE_IDENTIFIER = ym.si.clashdash.WidgetExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -576,6 +749,15 @@
 			buildConfigurations = (
 				9D38240B2D0816F9002FF881 /* Debug */,
 				9D38240C2D0816F9002FF881 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		9D38296E2D114F54002FF881 /* Build configuration list for PBXNativeTarget "WidgetExtensionExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9D38296F2D114F54002FF881 /* Debug */,
+				9D3829702D114F54002FF881 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
