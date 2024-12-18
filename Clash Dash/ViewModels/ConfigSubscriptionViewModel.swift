@@ -172,7 +172,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
     private func getAuthToken() async throws -> String {
         guard let username = server.openWRTUsername,
               let password = server.openWRTPassword else {
-            throw NetworkError.unauthorized
+            throw NetworkError.unauthorized(message: "获取 Token 错误")
         }
         
         let scheme = server.useSSL ? "https" : "http"
@@ -196,7 +196,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
         
         guard let httpResponse = response as? HTTPURLResponse,
               httpResponse.statusCode == 200 else {
-            throw NetworkError.unauthorized
+            throw NetworkError.unauthorized(message: "登录失败")
         }
         
         struct AuthResponse: Codable {
@@ -206,7 +206,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
         
         let authResponse = try JSONDecoder().decode(AuthResponse.self, from: data)
         guard let token = authResponse.result else {
-            throw NetworkError.unauthorized
+            throw NetworkError.unauthorized(message: "登录失败")
         }
         
         return token

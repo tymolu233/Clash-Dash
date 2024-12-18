@@ -92,7 +92,7 @@ struct ClashServer: Identifiable, Codable {
                  .clientCertificateRequired:
                 return .serverError(-1)  // 使用状态码 -1 表示 SSL 问题
             case .userAuthenticationRequired:
-                return .unauthorized
+                return .unauthorized(message: "认证失败")
             case .badServerResponse, .cannotParseResponse:
                 return .invalidResponse
             default:

@@ -171,6 +171,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                 }
             case 401:
                 updateServerStatus(server, status: .unauthorized, message: "认证失败，请检查密钥")
+                throw NetworkError.unauthorized(message: "认证失败: 服务器返回 401 未授权")
             case 404:
                 updateServerStatus(server, status: .error, message: "API 路径不存在")
             case 500...599:
@@ -324,12 +325,17 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                 
                 guard let token = authResponse.result, !token.isEmpty else {
                     if authResponse.result == nil && authResponse.error == nil {
-                        print("❌ 用户名或密码错误")
-                        throw NetworkError.unauthorized
+                        print("❌ 认证响应异常: result 和 error 都为 nil")
+                        if let responseStr = String(data: loginData, encoding: .utf8) {
+                            print("📥 原始响应内容: \(responseStr)")
+                            throw NetworkError.unauthorized(message: "认证失败: \(responseStr)") 
+                        } else {
+                            throw NetworkError.unauthorized(message: "认证失败: 响应内容为空")
+                        }
                     }
                     if let error = authResponse.error {
                         print("❌ JSON-RPC 错误: \(error)")
-                        throw NetworkError.unauthorized
+                        throw NetworkError.unauthorized(message: "认证失败: \(error)")
                     }
                     print("❌ 无效的响应结果")
                     throw NetworkError.invalidResponse
@@ -396,7 +402,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                     }
                 case 403:
                     print("🔒 认证令牌已过期")
-                    throw NetworkError.unauthorized
+                    throw NetworkError.unauthorized(message: "认证令牌已过期")
                 default:
                     print("❌ 状态请求失败: \(statusHttpResponse.statusCode)")
                     throw NetworkError.serverError(statusHttpResponse.statusCode)
@@ -434,7 +440,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
     func fetchClashConfig(_ server: ClashServer) async throws -> ClashConfig {
         guard let username = server.openWRTUsername,
               let password = server.openWRTPassword else {
-            throw NetworkError.unauthorized
+            throw NetworkError.unauthorized(message: "未设置 OpenWRT 用户名或密码")
         }
         
         let scheme = server.useSSL ? "https" : "http"
@@ -464,7 +470,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             case 200:
                 return try JSONDecoder().decode(ClashConfig.self, from: data)
             case 401:
-                throw NetworkError.unauthorized
+                throw NetworkError.unauthorized(message: "认证失败: 服务器返回 401 未授权")
             default:
                 throw NetworkError.serverError(httpResponse.statusCode)
             }
@@ -496,7 +502,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         guard let username = server.openWRTUsername,
               let password = server.openWRTPassword else {
             print("❌ 未找到认证信息")
-            throw NetworkError.unauthorized
+            throw NetworkError.unauthorized(message: "未设置 OpenWRT 用户名或密码")
         }
         
         print("🔑 获取认证令牌...")
@@ -657,7 +663,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         // 获取认证 token
         guard let username = server.openWRTUsername,
               let password = server.openWRTPassword else {
-            throw NetworkError.unauthorized
+            throw NetworkError.unauthorized(message: "未设置 OpenWRT 用户名或密码")
         }
         
         let token = try await getAuthToken(server, username: username, password: password)
@@ -685,7 +691,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         // 2. 使用 restartOpenClash 来重启服务并监控状态
         let restartStream = try await restartOpenClash(server)
         
-        // 3. 将 AsyncThrowingStream 转换为 AsyncStream
+        // 3. �� AsyncThrowingStream 转换为 AsyncStream
         return AsyncStream { continuation in
             Task {
                 do {
@@ -727,7 +733,10 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         let authResponse = try JSONDecoder().decode(OpenWRTAuthResponse.self, from: data)
         
         guard let token = authResponse.result, !token.isEmpty else {
-            throw NetworkError.unauthorized
+            if let error = authResponse.error {
+                throw NetworkError.unauthorized(message: "认证失败: \(error)")
+            }
+            throw NetworkError.unauthorized(message: "认证失败: 服务器未返回有效的认证令牌")
         }
         
         return token
@@ -740,7 +749,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         // 获取认证 token
         guard let username = server.openWRTUsername,
               let password = server.openWRTPassword else {
-            throw NetworkError.unauthorized
+            throw NetworkError.unauthorized(message: "未设置 OpenWRT 用户名或密码")
         }
         
         let token = try await getAuthToken(server, username: username, password: password)
@@ -788,12 +797,12 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         guard let username = server.openWRTUsername,
               let password = server.openWRTPassword else {
             print("❌ 未找到认证信息")
-            throw NetworkError.unauthorized
+            throw NetworkError.unauthorized(message: "未找到认证信息")
         }
         
         print("🔑 获取认证令牌...")
         let token = try await getAuthToken(server, username: username, password: password)
-        print("✅ 获取令牌成功: \(token)")
+        print("✅ 获取��牌成功: \(token)")
         
         // 构建请求
         guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
@@ -898,7 +907,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         guard let username = server.openWRTUsername,
               let password = server.openWRTPassword else {
             print("❌ 未找到认证信息")
-            throw NetworkError.unauthorized
+            throw NetworkError.unauthorized(message: "未设置 OpenWRT 用户名或密码")
         }
         
         print("🔑 获取认证令牌...")
@@ -1024,7 +1033,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         
         guard let username = server.openWRTUsername,
               let password = server.openWRTPassword else {
-            throw NetworkError.unauthorized
+            throw NetworkError.unauthorized(message: "未设置 OpenWRT 用户名或密码")
         }
         
         let token = try await getAuthToken(server, username: username, password: password)
@@ -1064,7 +1073,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         guard let username = server.openWRTUsername,
               let password = server.openWRTPassword else {
             print("❌ 未找到认证信息")
-            throw NetworkError.unauthorized
+            throw NetworkError.unauthorized(message: "未设置 OpenWRT 用户名或密码")
         }
         
         print("🔑 获取认证令牌...")

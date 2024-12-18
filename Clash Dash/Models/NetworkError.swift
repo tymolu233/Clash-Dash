@@ -3,7 +3,7 @@ import Foundation
 enum NetworkError: LocalizedError {
     case invalidURL
     case invalidResponse
-    case unauthorized
+    case unauthorized(message: String)
     case serverError(Int)
     case missingDependencies(String)
     case unknown(Error)
@@ -14,8 +14,8 @@ enum NetworkError: LocalizedError {
             return "无效的 URL"
         case .invalidResponse:
             return "无效的服务器响应，请检查服务器配置"
-        case .unauthorized:
-            return "认证失败，请检查用户名或密码"
+        case .unauthorized(let message):
+            return message
         case .serverError(let code):
             return "服务器错误（状态码：\(code)）"
         case .missingDependencies(let message):
