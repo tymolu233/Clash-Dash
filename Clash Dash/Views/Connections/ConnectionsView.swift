@@ -86,19 +86,22 @@ struct ConnectionsView: View {
             if devices.isEmpty {
                 Text("暂无设备记录")
             } else {
-                ForEach(Array(devices).sorted(by: { $0.isActive && !$1.isActive }), id: \.id) { device in
-                    Button {
-                        if selectedDevices.contains(device.id) {
-                            selectedDevices.remove(device.id)
-                        } else {
-                            selectedDevices.insert(device.id)
-                        }
-                    } label: {
-                        HStack {
-                            Text(device.displayName)
-                                .foregroundColor(device.isActive ? .primary : .secondary)
-                            if !selectedDevices.contains(device.id) {
-                                Image(systemName: "checkmark")
+                ForEach(viewModel.deviceCache, id: \.self) { ip in
+                    if let device = devices.first(where: { $0.id == ip }) {
+                        Button {
+                            if selectedDevices.contains(device.id) {
+                                selectedDevices.remove(device.id)
+                            } else {
+                                selectedDevices.insert(device.id)
+                            }
+                        } label: {
+                            HStack {
+                                Text(device.displayName)
+                                    .foregroundColor(device.isActive ? .primary : .secondary)
+                                
+                                if !selectedDevices.contains(device.id) {
+                                    Image(systemName: "checkmark")
+                                }
                             }
                         }
                     }
@@ -129,10 +132,9 @@ struct ConnectionsView: View {
         let isActive: Bool  // 当前是否有活跃连接
         
         var displayName: String {
-            if let name = name {
-                return "\(name) \(isActive ? "●" : "○")"
-            }
-            return "\(id) \(isActive ? "●" : "○")"
+            let baseName = name ?? id
+            let status = isActive ? "（活跃中）" : "（已断开）"
+            return "\(baseName)\(status)"
         }
         
         func hash(into hasher: inout Hasher) {
@@ -144,9 +146,8 @@ struct ConnectionsView: View {
         }
     }
     
-    // 修改获取设备的方法，使用缓存的设备列表
+    // 修改获取设备的方法，不需要排序
     private func getActiveDevices() -> Set<Device> {
-        // 获取所有缓存的设备
         return Set(viewModel.deviceCache.map { ip in
             Device(
                 id: ip,
@@ -318,7 +319,7 @@ struct ConnectionsView: View {
                 showMenu = false
             }
         } message: {
-            Text("确定要清理所有已断开的��接吗？\n这将从列表中移除 \(closedConnectionsCount) 个已断开的连接。")
+            Text("确定要清理所有已断开的连接吗？\n这将从列表中移除 \(closedConnectionsCount) 个已断开的连接。")
         }
         .alert("确认终止所有连接", isPresented: $showCloseAllConfirmation) {
             Button("取消", role: .cancel) { }
