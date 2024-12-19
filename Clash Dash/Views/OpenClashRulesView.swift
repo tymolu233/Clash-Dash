@@ -11,6 +11,7 @@ struct OpenClashRulesView: View {
     @State private var showError = false
     @State private var isUpdating = false
     @State private var isProcessing = false
+    @State private var editingRule: OpenClashRule?
     
     var body: some View {
         NavigationStack {
@@ -91,8 +92,7 @@ struct OpenClashRulesView: View {
                                 }
                                 
                                 Button {
-                                    // TODO: 实现编辑功能
-                                    print("编辑规则: \(rule.target)")
+                                    editingRule = rule  // 设置要编辑的规则，触发编辑视图
                                 } label: {
                                     Label("编辑", systemImage: "pencil")
                                 }
@@ -104,9 +104,9 @@ struct OpenClashRulesView: View {
                                     }
                                 } label: {
                                     Label(rule.isEnabled ? "禁用" : "启用", 
-                                          systemImage: rule.isEnabled ? "eye.slash" : "eye")
+                                          systemImage: rule.isEnabled ? "livephoto.slash" : "livephoto")
                                 }
-                                .tint(.orange)
+                                .tint(rule.isEnabled ? .orange : .green)
                             }
                         }
                     }
@@ -158,6 +158,20 @@ struct OpenClashRulesView: View {
         } message: {
             if let errorMessage = errorMessage {
                 Text(errorMessage)
+            }
+        }
+        .sheet(isPresented: $showingAddSheet) {
+            RuleEditView { rule in
+                Task {
+                    await addRule(rule)
+                }
+            }
+        }
+        .sheet(item: $editingRule) { rule in
+            RuleEditView(title: "编辑规则", rule: rule) { updatedRule in
+                Task {
+                    await updateRule(updatedRule)
+                }
             }
         }
     }
@@ -347,13 +361,38 @@ struct OpenClashRulesView: View {
         case "IP-CIDR":
             return .orange       // 橙色用于目标IP
         case "SRC-IP-CIDR":
-            return .red          // 红色用于源IP
+            return .cyan          // XX用于源IP
         case "DST-PORT":
             return .teal         // 青色用于目标端口
         case "SRC-PORT":
             return .mint         // 薄荷色用于源端口
         default:
             return .secondary
+        }
+    }
+    
+    private func addRule(_ rule: OpenClashRule) async {
+        rules.insert(rule, at: 0)
+        do {
+            try await saveRules()
+        } catch {
+            rules.removeFirst()
+            errorMessage = error.localizedDescription
+            showError = true
+        }
+    }
+    
+    private func updateRule(_ rule: OpenClashRule) async {
+        guard let index = rules.firstIndex(where: { $0.id == rule.id }) else { return }
+        let originalRule = rules[index]
+        rules[index] = rule
+        
+        do {
+            try await saveRules()
+        } catch {
+            rules[index] = originalRule
+            errorMessage = error.localizedDescription
+            showError = true
         }
     }
 }
@@ -388,7 +427,7 @@ struct RuleRowView: View {
         case "IP-CIDR":
             return .orange       // 橙色用于目标IP
         case "SRC-IP-CIDR":
-            return .red          // 红色用于源IP
+            return .cyan          // XX用于源IP
         case "DST-PORT":
             return .teal         // 青色用于目标端口
         case "SRC-PORT":
@@ -461,9 +500,9 @@ struct RuleRowView: View {
                 }
             } label: {
                 Label(rule.isEnabled ? "禁用" : "启用", 
-                      systemImage: rule.isEnabled ? "eye.slash" : "eye")
+                      systemImage: rule.isEnabled ? "checkmark.circle.fill" : "xmark.circle.fill")
             }
-            .tint(.orange)
+            .tint(rule.isEnabled ? .green : .orange)
         }
     }
 }
