@@ -810,22 +810,15 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             throw NetworkError.invalidURL
         }
         
-        // 将内容转换为 base64
-        guard let contentData = content.data(using: .utf8) else {
-            print("❌ 内容编码失败")
-            throw NetworkError.invalidResponse
-        }
-        let base64Content = contentData.base64EncodedString()
-        print("✅ 内容已转换为 base64")
+        // 转义内容中的特殊字符
+        let escapedContent = content.replacingOccurrences(of: "'", with: "'\\''")
         
-        // 构建写入命令
+        // 构建写入命令,使用 echo 直接写入
         let filePath = "/etc/openclash/config/\(configName)"
-        // let cmd = "printf '%s' '\(base64Content)' | base64 -d > \(filePath)"
-        let cmd = "echo '\(base64Content)' | base64 -d | tee \(filePath) >/dev/null 2>&1"
-        // print("📤 执行写入命令: \(cmd)")
+        let cmd = "echo '\(escapedContent)' > \(filePath) 2>&1 && echo '写入成功' || echo '写入失败'"
         
         var request = URLRequest(url: url)
-        request.httpMethod = "POST"
+        request.httpMethod = "POST" 
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("sysauth=\(token)", forHTTPHeaderField: "Cookie")
         
@@ -1073,7 +1066,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         guard let username = server.openWRTUsername,
               let password = server.openWRTPassword else {
             print("❌ 未找到认证信息")
-            throw NetworkError.unauthorized(message: "未设置 OpenWRT ��户名或密码")
+            throw NetworkError.unauthorized(message: "未设置 OpenWRT 用户名或密码")
         }
         
         print("🔑 获取认证令牌...")
