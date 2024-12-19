@@ -8,7 +8,7 @@ struct VersionResponse: Codable {
 }
 
 // 添加一个结构体来表示启动状态
-struct StartLogResponse: Codable {
+public struct StartLogResponse: Codable {
     let startlog: String
 }
 
@@ -188,7 +188,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             case .secureConnectionFailed:
                 updateServerStatus(server, status: .error, message: "SSL/TLS 连接失败")
             case .serverCertificateUntrusted:
-                updateServerStatus(server, status: .error, message: "证书不���信任")
+                updateServerStatus(server, status: .error, message: "证书不信任")
             case .timedOut:
                 updateServerStatus(server, status: .error, message: "连接超时")
             case .cannotConnectToHost:
@@ -262,7 +262,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                 servers[index].isQuickLaunch = false
             }
             
-            // 然后设置选中的服务器为快速���动
+            // 然后设置选中的服务器为快速启动
             if let index = servers.firstIndex(where: { $0.id == server.id }) {
                 servers[index].isQuickLaunch = true
             }
@@ -1073,7 +1073,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         guard let username = server.openWRTUsername,
               let password = server.openWRTPassword else {
             print("❌ 未找到认证信息")
-            throw NetworkError.unauthorized(message: "未设置 OpenWRT 用户名或密码")
+            throw NetworkError.unauthorized(message: "未设置 OpenWRT ��户名或密码")
         }
         
         print("🔑 获取认证令牌...")

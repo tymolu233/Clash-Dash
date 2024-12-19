@@ -129,6 +129,13 @@ struct ContentView: View {
                                             } label: {
                                                 Label("覆写规则", systemImage: "list.bullet.rectangle")
                                             }
+                                            
+                                            Button {
+                                                impactFeedback.impactOccurred()
+                                                showRestartServiceView(for: server)
+                                            } label: {
+                                                Label("重启服务", systemImage: "arrow.clockwise.circle")
+                                            }
                                         }
                                     }
                             }
@@ -289,6 +296,21 @@ struct ContentView: View {
         sheet.sheetPresentationController?.detents = [.medium(), .large()]
         sheet.sheetPresentationController?.prefersGrabberVisible = true
         sheet.sheetPresentationController?.selectedDetentIdentifier = .medium
+        
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let rootViewController = windowScene.windows.first?.rootViewController {
+            rootViewController.present(sheet, animated: true)
+        }
+    }
+    
+    private func showRestartServiceView(for server: ClashServer) {
+        editingServer = nil  // 清除编辑状态
+        let restartView = RestartServiceView(viewModel: viewModel, server: server)
+        let sheet = UIHostingController(rootView: restartView)
+        
+        sheet.modalPresentationStyle = .formSheet
+        sheet.sheetPresentationController?.detents = [.medium(), .large()]
+        sheet.sheetPresentationController?.prefersGrabberVisible = true
         
         if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
            let rootViewController = windowScene.windows.first?.rootViewController {
