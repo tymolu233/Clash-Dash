@@ -1,14 +1,15 @@
 import Foundation
 
 struct OpenClashRule: Identifiable, Equatable {
-    let id = UUID()
+    let id: UUID
     let target: String      // 例如: checkipv6.dyndns.org
     let type: String        // 例如: DOMAIN-SUFFIX
     let action: String      // 例如: DIRECT
-    let isEnabled: Bool     // 是否启用
+    var isEnabled: Bool     // 是否启用
     let comment: String?    // 备注
     
     init(from ruleString: String) {
+        self.id = UUID()
         // 移除前导空格
         let trimmedString = ruleString.trimmingCharacters(in: .whitespacesAndNewlines)
         
@@ -40,5 +41,27 @@ struct OpenClashRule: Identifiable, Equatable {
         } else {
             self.comment = nil
         }
+    }
+    
+    // 添加一个用于创建修改后副本的方法
+    func toggled() -> OpenClashRule {
+        OpenClashRule(
+            id: self.id,
+            target: target,
+            type: type,
+            action: action,
+            isEnabled: !isEnabled,
+            comment: comment
+        )
+    }
+    
+    // 添加一个完整的初始化方法
+    init(id: UUID = UUID(), target: String, type: String, action: String, isEnabled: Bool, comment: String? = nil) {
+        self.id = id
+        self.target = target
+        self.type = type
+        self.action = action
+        self.isEnabled = isEnabled
+        self.comment = comment
     }
 } 

@@ -123,12 +123,12 @@ struct ContentView: View {
                                                 Label("切换配置", systemImage: "arrow.2.circlepath")
                                             }
                                             
-                                            // Button {
-                                            //     impactFeedback.impactOccurred()
-                                            //     showCustomRulesView(for: server)
-                                            // } label: {
-                                            //     Label("覆写规则", systemImage: "list.bullet.rectangle")
-                                            // }
+                                            Button {
+                                                impactFeedback.impactOccurred()
+                                                showCustomRulesView(for: server)
+                                            } label: {
+                                                Label("覆写规则", systemImage: "list.bullet.rectangle")
+                                            }
                                         }
                                     }
                             }

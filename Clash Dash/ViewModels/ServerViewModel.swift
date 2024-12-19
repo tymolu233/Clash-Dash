@@ -188,7 +188,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             case .secureConnectionFailed:
                 updateServerStatus(server, status: .error, message: "SSL/TLS 连接失败")
             case .serverCertificateUntrusted:
-                updateServerStatus(server, status: .error, message: "证书不受信任")
+                updateServerStatus(server, status: .error, message: "证书不���信任")
             case .timedOut:
                 updateServerStatus(server, status: .error, message: "连接超时")
             case .cannotConnectToHost:
@@ -262,7 +262,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                 servers[index].isQuickLaunch = false
             }
             
-            // 然后设置选中的服务器为快速启动
+            // 然后设置选中的服务器为快速���动
             if let index = servers.firstIndex(where: { $0.id == server.id }) {
                 servers[index].isQuickLaunch = true
             }
@@ -707,8 +707,8 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         }
     }
     
-    // 辅助方法：获取认证 token
-    private func getAuthToken(_ server: ClashServer, username: String, password: String) async throws -> String {
+    // 将 getAuthToken 改为 public
+    public func getAuthToken(_ server: ClashServer, username: String, password: String) async throws -> String {
         let scheme = server.useSSL ? "https" : "http"
         let baseURL = "\(scheme)://\(server.url):\(server.openWRTPort ?? "80")"
         
