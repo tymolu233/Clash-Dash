@@ -2,35 +2,48 @@ import SwiftUI
 
 struct OpenClashRulesView: View {
     let server: ClashServer
+    @Environment(\.dismiss) private var dismiss
     @State private var rules: [OpenClashRule] = []
     @State private var isLoading = true
     @State private var errorMessage: String?
+    @State private var showingAddSheet = false
     
     var body: some View {
-        List {
-            ForEach(rules) { rule in
-                HStack {
-                    // 左侧目标
-                    Text(rule.target)
-                        .foregroundColor(rule.isEnabled ? .primary : .secondary)
-                    
-                    Spacer()
-                    
-                    // 右侧类型和动作
-                    VStack(alignment: .trailing, spacing: 4) {
-                        Text(rule.type)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        Text(rule.action)
-                            .font(.caption)
-                            .foregroundColor(.blue)
+        NavigationView {
+            List {
+                ForEach(rules) { rule in
+                    RuleRowView(rule: rule)
+                }
+            }
+            .listStyle(.insetGrouped)
+            .navigationTitle("覆写规则")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("关闭") {
+                        dismiss()
                     }
                 }
-                .opacity(rule.isEnabled ? 1 : 0.6)
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    HStack(spacing: 16) {
+                        Button {
+                            Task {
+                                await loadRules()
+                            }
+                        } label: {
+                            Image(systemName: "arrow.clockwise")
+                        }
+                        
+                        Button {
+                            showingAddSheet = true
+                        } label: {
+                            Image(systemName: "plus")
+                        }
+                    }
+                }
             }
         }
-        .navigationTitle("覆写规则")
-        .navigationBarTitleDisplayMode(.inline)
         .task {
             await loadRules()
         }
@@ -161,4 +174,52 @@ struct OpenWRTAuthResponse: Codable {
     let id: Int?
     let result: String?
     let error: String?
+}
+
+struct RuleRowView: View {
+    let rule: OpenClashRule
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // 第一行：目标和类型
+            HStack {
+                Text(rule.target)
+                    .font(.system(.body, design: .monospaced))
+                    .foregroundColor(rule.isEnabled ? .primary : .secondary)
+                
+                Spacer()
+                
+                Text(rule.type)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.secondary.opacity(0.1))
+                    .cornerRadius(4)
+            }
+            
+            // 第二行：动作和备注
+            HStack {
+                Text(rule.action)
+                    .font(.caption)
+                    .foregroundColor(.blue)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.blue.opacity(0.1))
+                    .cornerRadius(4)
+                
+                if let comment = rule.comment {
+                    Text("•")
+                        .foregroundColor(.secondary)
+                        .font(.caption)
+                    
+                    Text(comment)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+        .padding(.vertical, 4)
+        .opacity(rule.isEnabled ? 1 : 0.6)
+    }
 } 

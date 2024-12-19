@@ -155,7 +155,6 @@ struct OpenWRTServerView: View {
                     testServer.url = status.daip
                     testServer.port = status.cnPort
                     testServer.secret = status.dase
-                    testServer.useSSL = status.dbForwardSSL == "1"
                 }
                 
                 if isEditMode {

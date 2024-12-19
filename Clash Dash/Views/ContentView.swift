@@ -123,12 +123,12 @@ struct ContentView: View {
                                                 Label("切换配置", systemImage: "arrow.2.circlepath")
                                             }
                                             
-                                            Button {
-                                                impactFeedback.impactOccurred()
-                                                showCustomRulesView(for: server)
-                                            } label: {
-                                                Label("覆写规则", systemImage: "list.bullet.rectangle")
-                                            }
+                                            // Button {
+                                            //     impactFeedback.impactOccurred()
+                                            //     showCustomRulesView(for: server)
+                                            // } label: {
+                                            //     Label("覆写规则", systemImage: "list.bullet.rectangle")
+                                            // }
                                         }
                                     }
                             }
@@ -167,7 +167,7 @@ struct ContentView: View {
                         .cornerRadius(16)
                         
                         // 版本信息
-                        Text("Ver: 1.2.1")
+                        Text("Ver: 1.2.2")
                             .foregroundColor(.secondary)
                             .font(.footnote)
                             .padding(.top, 8)
@@ -189,7 +189,7 @@ struct ContentView: View {
                             impactFeedback.impactOccurred()
                             showingAddSheet = true
                         }) {
-                            Label("Clash 控制���", systemImage: "server.rack")
+                            Label("Clash 控制器", systemImage: "server.rack")
                         }
                         
                         Button(action: {
@@ -286,8 +286,9 @@ struct ContentView: View {
         let sheet = UIHostingController(rootView: rulesView)
         
         sheet.modalPresentationStyle = .formSheet
-        sheet.sheetPresentationController?.detents = [.large()]
+        sheet.sheetPresentationController?.detents = [.medium(), .large()]
         sheet.sheetPresentationController?.prefersGrabberVisible = true
+        sheet.sheetPresentationController?.selectedDetentIdentifier = .medium
         
         if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
            let rootViewController = windowScene.windows.first?.rootViewController {
