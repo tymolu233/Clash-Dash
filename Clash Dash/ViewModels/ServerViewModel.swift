@@ -691,7 +691,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         // 2. 使用 restartOpenClash 来重启服务并监控状态
         let restartStream = try await restartOpenClash(server)
         
-        // 3. �� AsyncThrowingStream 转换为 AsyncStream
+        // 3. 使用 AsyncThrowingStream 转换为 AsyncStream
         return AsyncStream { continuation in
             Task {
                 do {
@@ -802,7 +802,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         
         print("🔑 获取认证令牌...")
         let token = try await getAuthToken(server, username: username, password: password)
-        print("✅ 获取��牌成功: \(token)")
+        print("✅ 获取令牌成功: \(token)")
         
         // 构建请求
         guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {

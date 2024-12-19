@@ -97,7 +97,7 @@ struct ConnectionsView: View {
                         } label: {
                             HStack {
                                 Text(device.displayName)
-                                    .foregroundColor(device.isActive ? .primary : .secondary)
+                                    .foregroundColor(device.activeCount > 0 ? .primary : .secondary)
                                 
                                 if !selectedDevices.contains(device.id) {
                                     Image(systemName: "checkmark")
@@ -129,12 +129,11 @@ struct ConnectionsView: View {
     private struct Device: Identifiable, Hashable {
         let id: String      // IP 地址
         let name: String?   // 设备标签名称（如果有）
-        let isActive: Bool  // 当前是否有活跃连接
+        let activeCount: Int  // 活跃连接数
         
         var displayName: String {
             let baseName = name ?? id
-            let status = isActive ? "（活跃中）" : "（已断开）"
-            return "\(baseName)\(status)"
+            return "\(baseName) (\(activeCount))"
         }
         
         func hash(into hasher: inout Hasher) {
@@ -146,15 +145,17 @@ struct ConnectionsView: View {
         }
     }
     
-    // 修改获取设备的方法，不需要排序
+    // 修改获取设备的方法
     private func getActiveDevices() -> Set<Device> {
         return Set(viewModel.deviceCache.map { ip in
-            Device(
+            let activeCount = viewModel.connections.filter { 
+                $0.isAlive && $0.metadata.sourceIP == ip 
+            }.count
+            
+            return Device(
                 id: ip,
                 name: tagViewModel.tags.first(where: { $0.ip == ip })?.name,
-                isActive: viewModel.connections.contains(where: { 
-                    $0.isAlive && $0.metadata.sourceIP == ip 
-                })
+                activeCount: activeCount
             )
         })
     }
@@ -319,7 +320,7 @@ struct ConnectionsView: View {
                 showMenu = false
             }
         } message: {
-            Text("确定要清理所有已断开的连接吗？\n这将从列表中移除 \(closedConnectionsCount) 个已断开的连接。")
+            Text("确定要清除所有已断开的连接吗？\n这将从列表中移除 \(closedConnectionsCount) 个已断开的连接。")
         }
         .alert("确认终止所有连接", isPresented: $showCloseAllConfirmation) {
             Button("取消", role: .cancel) { }
