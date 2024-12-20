@@ -38,6 +38,7 @@ Clash Dash **不会收集任何用户数据**。具体来说：
 - 完美支持 iOS 系统
 - 完全开源，代码透明
 
-## 贡献
+## 交流反馈
 
-欢迎提交 Issue 和 Pull Request！ 
+如果您在使用过程中遇到任何问题，欢迎加入 Telegram 群组进行交流：
+[Clash Dash iOS 交流群](https://t.me/Clash_Dash_iOS)
