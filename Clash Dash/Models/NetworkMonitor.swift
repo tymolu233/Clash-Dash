@@ -332,6 +332,20 @@ class NetworkMonitor: ObservableObject {
             }
         } catch {
             print("解析连接数据失败: \(error)")
+            if let decodingError = error as? DecodingError {
+                switch decodingError {
+                case .dataCorrupted(let context):
+                    print("    数据损坏: \(context)")
+                case .keyNotFound(let key, let context):
+                    print("    找不到键: \(key), 上下文: \(context)")
+                case .typeMismatch(let type, let context):
+                    print("    类型不匹配: \(type), 上下文: \(context)")
+                case .valueNotFound(let type, let context):
+                    print("    值未找到: \(type), 上下文: \(context)")
+                @unknown default:
+                    print("    未知解码错误")
+                }
+            }
         }
     }
     
@@ -405,11 +419,10 @@ struct ConnectionsData: Codable {
         uploadTotal = try container.decode(Int.self, forKey: .uploadTotal)
         memory = try container.decodeIfPresent(Int.self, forKey: .memory)
         
-        do {
-            connections = try container.decode([Connection].self, forKey: .connections)
-        } catch {
-            let rawConnections = try container.decode([PremiumConnection].self, forKey: .connections)
-            connections = rawConnections.map { premiumConn in
+        if let connectionsArray = try? container.decode([Connection].self, forKey: .connections) {
+            connections = connectionsArray
+        } else if let premiumConnections = try? container.decode([PremiumConnection].self, forKey: .connections) {
+            connections = premiumConnections.map { premiumConn in
                 Connection(
                     id: premiumConn.id,
                     metadata: ConnectionMetadata(
@@ -446,6 +459,8 @@ struct ConnectionsData: Codable {
                     rulePayload: premiumConn.rulePayload
                 )
             }
+        } else {
+            connections = []
         }
     }
 }

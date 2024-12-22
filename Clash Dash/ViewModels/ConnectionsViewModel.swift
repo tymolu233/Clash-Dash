@@ -438,6 +438,20 @@ class ConnectionsViewModel: ObservableObject {
             }
         } catch {
             log("❌ 解码错误：\(error)")
+            if let decodingError = error as? DecodingError {
+                switch decodingError {
+                case .dataCorrupted(let context):
+                    log("    数据损坏: \(context)")
+                case .keyNotFound(let key, let context):
+                    log("    找不到键: \(key), 上下文: \(context)")
+                case .typeMismatch(let type, let context):
+                    log("    类型不匹配: \(type), 上下文: \(context)")
+                case .valueNotFound(let type, let context):
+                    log("    值未找到: \(type), 上下文: \(context)")
+                @unknown default:
+                    log("    未知解码错误")
+                }
+            }
             self.updateConnectionState(.error("数据解析错误: \(error.localizedDescription)"))
         }
     }
