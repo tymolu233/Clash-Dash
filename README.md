@@ -21,6 +21,13 @@ Clash Dash 是一款原生 SwiftUI 开发的 OpenClash 管理工具。
 - 支持自定义测速地址
 - 一键测试全部节点延迟
 
+## 故障排除
+
+如果你在使用过程中遇到问题，请查看我们的 [故障排除指南](TROUBLESHOOTING.md)。常见问题包括：
+
+- OpenWRT 认证相关问题
+- OpenClash/MihomoTProxy 插件问题
+
 ## 隐私声明
 
 Clash Dash **不会收集任何用户数据**。具体来说：
