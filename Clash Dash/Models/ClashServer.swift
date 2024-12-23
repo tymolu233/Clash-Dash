@@ -23,9 +23,10 @@ struct ClashServer: Identifiable, Codable {
     var openWRTPort: String?
     
     enum ServerType: String, Codable {
-        case premium = "Premium"
-        case meta = "Meta"
         case unknown = "Unknown"
+        case meta = "Meta"
+        case premium = "Premium"
+        case singbox = "Sing-Box"
     }
     
     init(id: UUID = UUID(), 

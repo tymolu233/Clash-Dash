@@ -312,7 +312,7 @@ struct OverviewTab: View {
                     .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
                 
                 // 只在 Meta 服务器上显示内存图表
-                if server.serverType == .meta {
+                if server.serverType != .premium {
                     ChartCard(title: "内存使用", icon: "memorychip") {
                         Chart(monitor.memoryHistory) { record in
                             AreaMark(

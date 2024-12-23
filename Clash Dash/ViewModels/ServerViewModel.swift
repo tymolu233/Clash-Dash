@@ -38,6 +38,12 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
     }
 
     private func determineServerType(from response: VersionResponse) -> ClashServer.ServerType {
+        // 检查是否是 sing-box
+        if response.version.lowercased().contains("sing-box") {
+            return .singbox
+        }
+        
+        // 如果不是 sing-box，则按原有逻辑判断
         if response.premium == true {
             return .premium
         } else if response.meta == true {
@@ -592,7 +598,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         
         // 4. 获取当前启用的配置
         print("📤 获取当前启用的配置...")
-        logger.log("📤 获取当前启用的配置...")
+        logger.log("📤 获取当前启用��配置...")
         var currentRequest = URLRequest(url: listURL)
         currentRequest.httpMethod = "POST"
         currentRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -840,7 +846,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         let baseURL = "\(scheme)://\(server.url):\(server.openWRTPort ?? "80")"
         
         print("📝 开始保存配置文件: \(configName)")
-        logger.log("📝 开始保存配置文件: \(configName)")
+        logger.log("📝 ���始保存配置文件: \(configName)")
         guard let username = server.openWRTUsername,
               let password = server.openWRTPassword else {
             print("❌ 未找到认证信息")
@@ -1170,7 +1176,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             throw NetworkError.serverError((response as? HTTPURLResponse)?.statusCode ?? 500)
         }
         
-        print("✅ 配置文件删除成功")
+        print("✅ ���置文件删除成功")
         logger.log("✅ 配置文件删除成功")
     }
 } 
