@@ -282,6 +282,7 @@ struct GroupCard: View {
                         .lineLimit(1)
                     
                     if currentNode.delay > 0 {
+                        let _ = print("显示节点 \(currentNode.name) 的延迟: \(currentNode.delay)ms")
                         Text("\(currentNode.delay) ms")
                             .font(.caption2)
                             .padding(.horizontal, 4)
@@ -520,7 +521,7 @@ struct ProxyProviderCard: View {
                 
                 Spacer()
                 
-                // 操作按钮
+                // 操作��钮
                 HStack(spacing: 12) {
                     Button {
                         Task {
@@ -632,7 +633,7 @@ struct ProxyProviderCard: View {
         .padding()
         .cardShadow()
         .onTapGesture {
-            // 添加触觉反馈
+            // 添加���觉反馈
             impactFeedback.impactOccurred()
             
             // print("Opening node selector for provider: \(provider.name)")
@@ -984,10 +985,6 @@ struct ProxyNodeCard: View {
         VStack(alignment: .leading, spacing: 8) {
             // 节点名称和选中状态
             HStack {
-                Circle()
-                    .fill(getStatusColor(for: nodeName))
-                    .frame(width: 8, height: 8)
-                
                 Text(nodeName)
                     .font(.system(.subheadline, design: .rounded))
                     .bold()
@@ -1002,7 +999,7 @@ struct ProxyNodeCard: View {
                 }
             }
             
-            // 节点类型延迟
+            // 节点类型和延迟
             HStack {
                 Text(node?.type ?? "Special")
                     .font(.caption2)
@@ -1028,6 +1025,8 @@ struct ProxyNodeCard: View {
                         .scaleEffect(0.8)
                         .transition(.opacity)
                 } else if let node = node, node.delay > 0 {
+                    let _ = print("DEBUG: 尝试显示延迟 - 节点:\(node.name), 延迟:\(node.delay)ms")
+                    
                     Text("\(node.delay) ms")
                         .font(.caption)
                         .padding(.horizontal, 6)
@@ -1037,6 +1036,8 @@ struct ProxyNodeCard: View {
                         .clipShape(Capsule())
                         .transition(.opacity)
                 } else {
+                    let _ = print("DEBUG: 节点可能超时或延迟为0 - 名称:\(nodeName)")
+                    
                     Text("超时")
                         .font(.caption)
                         .padding(.horizontal, 6)
@@ -1057,17 +1058,6 @@ struct ProxyNodeCard: View {
         .overlay {
             RoundedRectangle(cornerRadius: 12)
                 .stroke(isSelected ? .blue : .clear, lineWidth: 2)
-        }
-    }
-    
-    private func getStatusColor(for nodeName: String) -> Color {
-        switch nodeName {
-        case "DIRECT":
-            return .green
-        case "REJECT":
-            return .red
-        default:
-            return .blue
         }
     }
     

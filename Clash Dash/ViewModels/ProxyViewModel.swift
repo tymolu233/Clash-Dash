@@ -1,15 +1,25 @@
 import Foundation
 
-struct ProxyNode: Identifiable {
+struct ProxyNode: Identifiable, Hashable {
     let id: String
     let name: String
     let type: String
     let alive: Bool
     let delay: Int
     let history: [ProxyHistory]
+    
+    // 实现 Hashable
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+    
+    // 实现 Equatable
+    static func == (lhs: ProxyNode, rhs: ProxyNode) -> Bool {
+        return lhs.id == rhs.id
+    }
 }
 
-struct ProxyHistory: Codable {
+struct ProxyHistory: Codable, Hashable {
     let time: String
     let delay: Int
 }
@@ -123,139 +133,66 @@ class ProxyViewModel: ObservableObject {
     
     @MainActor
     func fetchProxies() async {
-        currentTask?.cancel()
-        
-        currentTask = Task {
-            do {
-                // 1. 获取 providers 数据
-                guard let providersRequest = makeRequest(path: "providers/proxies") else { return }
-                let (providersData, _) = try await URLSession.shared.data(for: providersRequest)
+        do {
+            // 1. 获取 proxies 数据
+            guard let proxiesRequest = makeRequest(path: "proxies") else { return }
+            let (proxiesData, _) = try await URLSession.shared.data(for: proxiesRequest)
+            
+            // 2. 获取 providers 数据
+            guard let providersRequest = makeRequest(path: "providers/proxies") else { return }
+            let (providersData, _) = try await URLSession.shared.data(for: providersRequest)
+            
+            var allNodes: [ProxyNode] = []
+            
+            // 3. 处理 proxies 数据
+            if let proxiesResponse = try? JSONDecoder().decode(ProxyResponse.self, from: proxiesData) {
+                let proxyNodes = proxiesResponse.proxies.map { name, proxy in
+                    ProxyNode(
+                        id: proxy.id ?? UUID().uuidString,
+                        name: name,
+                        type: proxy.type,
+                        alive: proxy.alive ?? true,
+                        delay: proxy.history.last?.delay ?? 0,
+                        history: proxy.history
+                    )
+                }
+                allNodes.append(contentsOf: proxyNodes)
                 
-                // 解析 providers 有实际的代理节点
-                if let providersResponse = try? JSONDecoder().decode(ProxyProvidersResponse.self, from: providersData) {
-                    // 更新 providers - 只包含 HTTP 类型或有订阅信息的 provider
-                    self.providers = providersResponse.providers.compactMap { name, provider in
-                        // 只有当 vehicleType 为 HTTP 或有 subscriptionInfo 时才包含
-                        guard provider.vehicleType == "HTTP" || provider.subscriptionInfo != nil else {
-                            return nil
-                        }
-                        
-                        return Provider(
-                            name: name,
-                            type: provider.type,
-                            vehicleType: provider.vehicleType,
-                            updatedAt: provider.updatedAt,
-                            subscriptionInfo: provider.subscriptionInfo
+                // 更新组数据
+                self.groups = proxiesResponse.proxies.compactMap { name, proxy in
+                    guard proxy.all != nil else { return nil }
+                    return ProxyGroup(
+                        name: name,
+                        type: proxy.type,
+                        now: proxy.now ?? "",
+                        all: proxy.all ?? []
+                    )
+                }
+            }
+            
+            // 4. 处理 providers 数据
+            if let providersResponse = try? JSONDecoder().decode(ProxyProvidersResponse.self, from: providersData) {
+                let providerNodes = providersResponse.providers.flatMap { _, provider in
+                    provider.proxies.map { proxy in
+                        ProxyNode(
+                            id: proxy.id ?? UUID().uuidString,
+                            name: proxy.name,
+                            type: proxy.type,
+                            alive: proxy.alive ?? true,
+                            delay: proxy.history.last?.delay ?? 0,
+                            history: proxy.history
                         )
                     }
-                    
-                    // 更新 providerNodes - 同样只包含符合条件的 provider
-                    self.providerNodes = Dictionary(uniqueKeysWithValues: providersResponse.providers.compactMap { name, provider -> (String, [ProxyNode])? in
-                        // 只有当 vehicleType 为 HTTP 或有 subscriptionInfo 时才包含
-                        guard provider.vehicleType == "HTTP" || provider.subscriptionInfo != nil else {
-                            return nil
-                        }
-                        
-                        let nodes = provider.proxies.map { proxy in
-                            ProxyNode(
-                                id: proxy.id ?? UUID().uuidString,
-                                name: proxy.name,
-                                type: proxy.type,
-                                alive: proxy.alive,
-                                delay: proxy.history.last?.delay ?? 0,
-                                history: proxy.history
-                            )
-                        }
-                        return (name, nodes)
-                    })
-                    
-                    // 收集所有 provider 中的节点
-                    var allProviderNodes: [ProxyNode] = []
-                    for (_, provider) in providersResponse.providers {
-                        let nodes = provider.proxies.map { proxy in
-                            ProxyNode(
-                                id: proxy.id ?? UUID().uuidString,
-                                name: proxy.name,
-                                type: proxy.type,
-                                alive: proxy.alive,
-                                delay: proxy.history.last?.delay ?? 0,
-                                history: proxy.history
-                            )
-                        }
-                        allProviderNodes.append(contentsOf: nodes)
-                    }
-                    
-                    // 4. 获取代理组数据
-                    guard let proxiesRequest = makeRequest(path: "proxies") else { return }
-                    let (proxiesData, _) = try await URLSession.shared.data(for: proxiesRequest)
-                    
-                    if let proxiesResponse = try? JSONDecoder().decode(ProxyResponse.self, from: proxiesData) {
-                        // 5. 更新组数据
-                        self.groups = proxiesResponse.proxies.compactMap { name, proxy in
-                            guard proxy.all != nil else { return nil }
-                            return ProxyGroup(
-                                name: name,
-                                type: proxy.type,
-                                now: proxy.now ?? "",
-                                all: proxy.all ?? []
-                            )
-                        }
-                        
-                        // 6. 合并所有数据
-                        var allNodes: [ProxyNode] = []
-                        
-                        // 添加特殊节点
-                        let specialNodes = ["DIRECT", "REJECT"].map { name in
-                            // 尝试从现有节点中找到对应的特殊节点
-                            if let existingNode = self.nodes.first(where: { $0.name == name }) {
-                                return existingNode
-                            }
-                            // 如果是新建的节点，才使用默认值
-                            return ProxyNode(
-                                id: UUID().uuidString,
-                                name: name,
-                                type: "Special",
-                                alive: true,
-                                delay: 0,
-                                history: []
-                            )
-                        }
-                        allNodes.append(contentsOf: specialNodes)
-                        
-                        // 添加代理组节点
-                        let groupNodes = proxiesResponse.proxies.compactMap { name, proxy -> ProxyNode? in
-                            guard proxy.type == "Selector" || proxy.type == "URLTest" else { return nil }
-                            return ProxyNode(
-                                id: proxy.id ?? UUID().uuidString,
-                                name: name,
-                                type: proxy.type,
-                                alive: proxy.alive,
-                                delay: proxy.history.last?.delay ?? 0,
-                                history: proxy.history
-                            )
-                        }
-                        allNodes.append(contentsOf: groupNodes)
-                        
-                        // 添加所有 provider 中的实际代理节点
-                        allNodes.append(contentsOf: allProviderNodes)
-                        
-                        // 更新节点列表
-                        self.nodes = allNodes
-                        
-                        // 对 DIRECT 节点进行延迟测试
-                        if let directNode = self.nodes.first(where: { $0.name == "DIRECT" }) {
-                            // print("Testing DIRECT node delay")
-                            await testNodeDelay(nodeName: "DIRECT")
-                        }
-                        
-                        self.lastUpdated = Date()
-                        objectWillChange.send()
-                        
-                    }
                 }
-            } catch {
-                handleNetworkError(error)
+                allNodes.append(contentsOf: providerNodes)
             }
+            
+            // 5. 更新节点数据
+            self.nodes = allNodes
+            objectWillChange.send()
+            
+        } catch {
+            print("获取代理错误: \(error)")
         }
     }
     
@@ -350,7 +287,7 @@ class ProxyViewModel: ObservableObject {
                 return
             }
             
-            // 检查是否需要自动断开旧连接
+            // 检查是否需要自动断开���连接
             if UserDefaults.standard.bool(forKey: "autoDisconnectOldProxy") {
                 // 获取当前活跃的连接
                 guard var connectionsRequest = makeRequest(path: "connections") else { return }
@@ -442,40 +379,19 @@ class ProxyViewModel: ObservableObject {
     
     // 辅助法：更新节点延迟
     private func updateNodeDelay(nodeName: String, delay: Int) {
-        // 更新 providerNodes 中的节点
-        for (providerName, providerNodes) in self.providerNodes {
-            self.providerNodes[providerName] = providerNodes.map { node in
-                if node.name == nodeName {
-                    return ProxyNode(
-                        id: node.id,
-                        name: node.name,
-                        type: node.type,
-                        alive: true,  // 如果有延迟数据，明节点是活的
-                        delay: delay,
-                        history: node.history
-                    )
-                }
-                return node
-            }
+        if let index = nodes.firstIndex(where: { $0.name == nodeName }) {
+            let updatedNode = ProxyNode(
+                id: nodes[index].id,
+                name: nodeName,
+                type: nodes[index].type,
+                alive: true,
+                delay: delay,
+                history: nodes[index].history
+            )
+            nodes[index] = updatedNode
+            print("DEBUG: 更新节点延迟 - 名称:\(nodeName), 新延迟:\(delay)")
+            objectWillChange.send()
         }
-        
-        // 更新 nodes 中的节点
-        self.nodes = self.nodes.map { node in
-            if node.name == nodeName {
-                return ProxyNode(
-                    id: node.id,
-                    name: node.name,
-                    type: node.type,
-                    alive: true,  // 如果有延迟数据，说明节点是活跃的
-                    delay: delay,
-                    history: node.history
-                )
-            }
-            return node
-        }
-        
-        // 触发视图更新
-        objectWillChange.send()
     }
     
     @MainActor
@@ -539,7 +455,7 @@ class ProxyViewModel: ObservableObject {
             if server.useSSL,
                let httpsResponse = response as? HTTPURLResponse,
                httpsResponse.statusCode == 400 {
-                print("SSL 连接失败，服务器可能不支持 HTTPS")
+                print("SSL 连接失败，服务器可能��支持 HTTPS")
                 testingGroups.remove(groupName)
                 objectWillChange.send()
                 return
@@ -640,7 +556,7 @@ class ProxyViewModel: ObservableObject {
             // 等待一小段时间确保服务器处理完成
             try? await Task.sleep(nanoseconds: 500_000_000) // 0.5秒
             
-            // 在主线程上刷新数据
+            // 在主线程刷新数据
             await MainActor.run {
                 Task {
                     await self.fetchProxies()
@@ -816,14 +732,107 @@ struct ProxyResponse: Codable {
     let proxies: [String: ProxyDetail]
 }
 
+// 修改 ProxyDetail 结构体，使其更灵活
 struct ProxyDetail: Codable {
     let name: String
     let type: String
-    let alive: Bool
     let now: String?
     let all: [String]?
     let history: [ProxyHistory]
+    
+    // 添加可选字段
+    let alive: Bool?
+    let hidden: Bool?
+    let icon: String?
+    let tfo: Bool?
+    let udp: Bool?
+    let xudp: Bool?
+    let extra: [String: AnyCodable]?
     let id: String?
+    
+    private enum CodingKeys: String, CodingKey {
+        case name, type, now, all, history
+        case alive, hidden, icon, tfo, udp, xudp, extra, id
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        
+        // 必需字段
+        name = try container.decode(String.self, forKey: .name)
+        type = try container.decode(String.self, forKey: .type)
+        
+        // 可选字段
+        now = try container.decodeIfPresent(String.self, forKey: .now)
+        all = try container.decodeIfPresent([String].self, forKey: .all)
+        
+        // 处理 history 字段
+        if let historyArray = try? container.decode([ProxyHistory].self, forKey: .history) {
+            history = historyArray
+        } else {
+            history = []
+        }
+        
+        // 其他可选字段
+        alive = try container.decodeIfPresent(Bool.self, forKey: .alive)
+        hidden = try container.decodeIfPresent(Bool.self, forKey: .hidden)
+        icon = try container.decodeIfPresent(String.self, forKey: .icon)
+        tfo = try container.decodeIfPresent(Bool.self, forKey: .tfo)
+        udp = try container.decodeIfPresent(Bool.self, forKey: .udp)
+        xudp = try container.decodeIfPresent(Bool.self, forKey: .xudp)
+        extra = try container.decodeIfPresent([String: AnyCodable].self, forKey: .extra)
+        id = try container.decodeIfPresent(String.self, forKey: .id)
+    }
+}
+
+// 添加 AnyCodable 类型来处理任意类型的值
+struct AnyCodable: Codable {
+    let value: Any
+    
+    init(_ value: Any) {
+        self.value = value
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        
+        if let bool = try? container.decode(Bool.self) {
+            value = bool
+        } else if let int = try? container.decode(Int.self) {
+            value = int
+        } else if let double = try? container.decode(Double.self) {
+            value = double
+        } else if let string = try? container.decode(String.self) {
+            value = string
+        } else if let array = try? container.decode([AnyCodable].self) {
+            value = array.map { $0.value }
+        } else if let dictionary = try? container.decode([String: AnyCodable].self) {
+            value = dictionary.mapValues { $0.value }
+        } else {
+            value = NSNull()
+        }
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        
+        switch value {
+        case let bool as Bool:
+            try container.encode(bool)
+        case let int as Int:
+            try container.encode(int)
+        case let double as Double:
+            try container.encode(double)
+        case let string as String:
+            try container.encode(string)
+        case let array as [Any]:
+            try container.encode(array.map { AnyCodable($0) })
+        case let dictionary as [String: Any]:
+            try container.encode(dictionary.mapValues { AnyCodable($0) })
+        default:
+            try container.encodeNil()
+        }
+    }
 }
 
 // 添加 ProviderResponse 结构体
