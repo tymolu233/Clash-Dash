@@ -1,4 +1,8 @@
 import Foundation
+import SwiftUI
+
+// 在类的开头添加 LogManager
+private let logger = LogManager.shared
 
 // 将 VersionResponse 移到类外面
 struct VersionResponse: Codable {
@@ -90,24 +94,39 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         didReceive challenge: URLAuthenticationChallenge,
         completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
     ) {
-        // print("🔐 收到证书验证请求")
-        // print("认证方法: \(challenge.protectionSpace.authenticationMethod)")
-        // print("主机: \(challenge.protectionSpace.host)")
-        // print("端口: \(challenge.protectionSpace.port)")
-        // print("协议: \(challenge.protectionSpace.protocol ?? "unknown")")
+        let messages = [
+            "🔐 收到证书验证请求",
+            "认证方法: \(challenge.protectionSpace.authenticationMethod)",
+            "主机: \(challenge.protectionSpace.host)",
+            "端口: \(challenge.protectionSpace.port)",
+            "协议: \(challenge.protectionSpace.protocol.map { $0 } ?? "unknown")"
+        ]
         
-        // 始终接受所有证书
+        messages.forEach { message in
+            print(message)
+            Task { @MainActor in
+                logger.log(message)
+            }
+        }
+        
         if challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust {
-            // print("✅ 无条件接受服务器证书")
+            let acceptMessage = "✅ 无条件接受服务器证书"
+            print(acceptMessage)
+            logger.log(acceptMessage)
+            
             if let serverTrust = challenge.protectionSpace.serverTrust {
                 let credential = URLCredential(trust: serverTrust)
                 completionHandler(.useCredential, credential)
             } else {
-                // print("⚠️ 无法获取服务器证书")
+                let errorMessage = "⚠️ 无法获取服务器证书"
+                print(errorMessage)
+                logger.log(errorMessage)
                 completionHandler(.performDefaultHandling, nil)
             }
         } else {
-            // print("❌ 默认处理证书验证")
+            let defaultMessage = "❌ 默认处理证书验证"
+            print(defaultMessage)
+            logger.log(defaultMessage)
             completionHandler(.performDefaultHandling, nil)
         }
     }
@@ -277,10 +296,12 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         let scheme = server.useSSL ? "https" : "http"
         let baseURL = "\(scheme)://\(server.url):\(server.openWRTPort ?? "80")"
         print("🔍 开始验证 OpenWRT 服务器: \(baseURL)")
+        logger.log("🔍 开始验证 OpenWRT 服务器: \(baseURL)")
         
         // 1. 使用 JSON-RPC 登录
         guard let loginURL = URL(string: "\(baseURL)/cgi-bin/luci/rpc/auth") else {
             print("❌ 登录 URL 无效")
+            logger.log("❌ 登录 URL 无效")
             throw NetworkError.invalidURL
         }
         
@@ -305,16 +326,19 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             loginRequest.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
             
             print("📤 发送 JSON-RPC 登录请求")
+            logger.log("📤 发送 JSON-RPC 登录请求")
             let (loginData, loginResponse) = try await session.data(for: loginRequest)
             
             guard let httpResponse = loginResponse as? HTTPURLResponse else {
                 print("❌ 无效的响应类型")
+                logger.log("❌ 无效的响应类型")
                 throw NetworkError.invalidResponse
             }
             
             print("📥 登录响应状态码: \(httpResponse.statusCode)")
             if let responseStr = String(data: loginData, encoding: .utf8) {
                 print("📥 JSON-RPC 登录响应: \(responseStr)")
+                logger.log("📥 JSON-RPC 登录响应: \(responseStr)")
             }
             
             switch httpResponse.statusCode {
@@ -322,27 +346,32 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                 // 解析 JSON-RPC 响应
                 let authResponse = try JSONDecoder().decode(OpenWRTAuthResponse.self, from: loginData)
                 print("📥 解析后的 JSON-RPC 响应: id=\(authResponse.id), result=\(authResponse.result ?? "nil"), error=\(authResponse.error ?? "nil")")
+                logger.log("📥 解析后的 JSON-RPC 响应: id=\(authResponse.id), result=\(authResponse.result ?? "nil"), error=\(authResponse.error ?? "nil")")
                 
                 guard let token = authResponse.result, !token.isEmpty else {
                     if authResponse.result == nil && authResponse.error == nil {
                         print("❌ 认证响应异常: result 和 error 都为 nil")
                         if let responseStr = String(data: loginData, encoding: .utf8) {
                             print("📥 原始响应内容: \(responseStr)")
+                            logger.log("📥 原始响应内容: \(responseStr)")
                             throw NetworkError.unauthorized(message: "认证失败: \(responseStr)") 
                         } else {
+                            logger.log("❌ 认证响应异常: result 和 error 都为 nil")
                             throw NetworkError.unauthorized(message: "认证失败: 响应内容为空")
                         }
                     }
                     if let error = authResponse.error {
                         print("❌ JSON-RPC 错误: \(error)")
+                        logger.log("❌ JSON-RPC 错误: \(error)")
                         throw NetworkError.unauthorized(message: "认证失败: \(error)")
                     }
                     print("❌ 无效的响应结果")
+                    logger.log("❌ 无效的响应结果")
                     throw NetworkError.invalidResponse
                 }
                 
                 print("🔑 获取到认证令牌: \(token)")
-                
+                logger.log("🔑 获取到认证令牌: \(token)")
                 // 2. 使用认证令牌获取 OpenClash 状态
                 let timestamp = Int(Date().timeIntervalSince1970 * 1000)
                 guard let statusURL = URL(string: "\(baseURL)/cgi-bin/luci/admin/services/openclash/status?\(timestamp)") else {
@@ -351,6 +380,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                 }
                 
                 print("📤 发送状态请求: \(statusURL)")
+                logger.log("📤 发送状态请求: \(statusURL)")
                 var statusRequest = URLRequest(url: statusURL)
                 statusRequest.setValue("sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
                 
@@ -361,16 +391,20 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                     throw NetworkError.invalidResponse
                 }
                 
-                print("📥 状态响应状态码: \(statusHttpResponse.statusCode)")
+                let message = "📥 状态响应状态码: \(statusHttpResponse.statusCode)"
+                print(message)
+                logger.log(message)
+                
                 if let responseStr = String(data: statusData, encoding: .utf8) {
                     print("📥 OpenClash 状态响应: \(responseStr)")
+                    logger.log("📥 OpenClash 状态响应: \(responseStr)")
                 }
                 
                 
                 switch statusHttpResponse.statusCode {
                 case 200:
                     print("✅ 获取状态成功，开始解析")
-                    print("📥 原始响应内容：")
+                    print("📥 原始响应容：")
                     if let jsonString = String(data: statusData, encoding: .utf8) {
                         print("""
                         {
@@ -410,6 +444,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                 
             case 404:
                 print("❌ OpenWRT 缺少必要的依赖")
+                logger.log("❌ OpenWRT 缺少必要的依赖")
                 throw NetworkError.missingDependencies("""
                     OpenWRT 路由器缺少必要的依赖
                     
@@ -496,18 +531,23 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
     func fetchOpenClashConfigs(_ server: ClashServer) async throws -> [OpenClashConfig] {
         let scheme = server.useSSL ? "https" : "http"
         let baseURL = "\(scheme)://\(server.url):\(server.openWRTPort ?? "80")"
-        print("🔍 开始获取配置列表: \(baseURL)")
+        let message = "🔍 开始获取配置列表: \(baseURL)"
+        print(message)
+        logger.log(message)
         
         // 1. 获取或重用 token
         guard let username = server.openWRTUsername,
               let password = server.openWRTPassword else {
             print("❌ 未找到认证信息")
+            logger.log("❌ 未找到认证信息")
             throw NetworkError.unauthorized(message: "未设置 OpenWRT 用户名或密码")
         }
         
-        print("🔑 获取认证令牌...")
+        print("🔑 获取认证令牌...") 
+        logger.log("🔑 获取认证令牌...")
         let token = try await getAuthToken(server, username: username, password: password)
         print("✅ 获取令牌成功: \(token)")
+        logger.log("✅ 获取令牌成功: \(token)")
         
         // 创建 session
         let session = makeURLSession(for: server)
@@ -552,6 +592,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         
         // 4. 获取当前启用的配置
         print("📤 获取当前启用的配置...")
+        logger.log("📤 获取当前启用的配置...")
         var currentRequest = URLRequest(url: listURL)
         currentRequest.httpMethod = "POST"
         currentRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -566,16 +607,18 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         
         if let httpResponse = currentResponse as? HTTPURLResponse {
             print("📥 当前配置响应状态码: \(httpResponse.statusCode)")
+            logger.log("📥 当前配置响应状态码: \(httpResponse.statusCode)")
         }
         
         if let responseStr = String(data: currentData, encoding: .utf8) {
             print("📥 当前配置响应: \(responseStr)")
+            logger.log("📥 当前配置响应: \(responseStr)")
         }
         
         let currentResult = try JSONDecoder().decode(ListResponse.self, from: currentData)
         let currentConfig = currentResult.result.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).components(separatedBy: "/").last ?? ""
         print("📝 当前用的配置: \(currentConfig)")
-        
+        logger.log("📝 当前用的配置: \(currentConfig)")
         // 5. 解析文件列表
         var configs: [OpenClashConfig] = []
         let dateFormatter = DateFormatter()
@@ -603,6 +646,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             
             // 检查配置文件语法
             print("🔍 检查配置文件语法: \(fileName)")
+            logger.log("🔍 检查配置文件语法: \(fileName)")
             var checkRequest = URLRequest(url: listURL)
             checkRequest.httpMethod = "POST"
             checkRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -622,9 +666,10 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             let check: OpenClashConfig.ConfigCheck = checkResult.result != "false\n" && !checkResult.result.isEmpty ? .normal : .abnormal
             
             print("📝 配置语法检查结果: \(check)")
-            
+            logger.log("📝 配置语法检查结果: \(check)") 
             // 获取订阅信息
             print("获取订阅信息: \(fileName)")
+            logger.log("获取订阅信息: \(fileName)")
             let subFileName = fileName.replacingOccurrences(of: ".yaml", with: "").replacingOccurrences(of: ".yml", with: "")
             let timestamp = Int(Date().timeIntervalSince1970 * 1000)
             guard let subURL = URL(string: "\(baseURL)/cgi-bin/luci/admin/services/openclash/sub_info_get?\(timestamp)&filename=\(subFileName)") else {
@@ -649,9 +694,11 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             
             configs.append(config)
             print("✅ 成功添加配置: \(fileName)")
+            logger.log("✅ 成功添加配置: \(fileName)")
         }
         
         print("✅ 完成配置列表获取，共 \(configs.count) 个配置")
+        logger.log("✅ 完成配置列表获取，共 \(configs.count) 个配置")
         return configs
     }
     
@@ -659,7 +706,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         let scheme = server.useSSL ? "https" : "http"
         let baseURL = "\(scheme)://\(server.url):\(server.openWRTPort ?? "80")"
         print("🔄 开始切换配置: \(configName)")
-        
+        logger.log("🔄 开始切换配置: \(configName)")
         // 获取认证 token
         guard let username = server.openWRTUsername,
               let password = server.openWRTPassword else {
@@ -793,16 +840,19 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         let baseURL = "\(scheme)://\(server.url):\(server.openWRTPort ?? "80")"
         
         print("📝 开始保存配置文件: \(configName)")
-        
+        logger.log("📝 开始保存配置文件: \(configName)")
         guard let username = server.openWRTUsername,
               let password = server.openWRTPassword else {
             print("❌ 未找到认证信息")
+            logger.log("❌ 未找到认证信息")
             throw NetworkError.unauthorized(message: "未找到认证信息")
         }
         
         print("🔑 获取认证令牌...")
+        logger.log("🔑 获取认证令牌...")
         let token = try await getAuthToken(server, username: username, password: password)
         print("✅ 获取令牌成功: \(token)")
+        logger.log("✅ 获取令牌成功: \(token)")
         
         // 构建请求
         guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
@@ -833,6 +883,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         
         if let httpResponse = response as? HTTPURLResponse {
             print("📥 写入响应状态码: \(httpResponse.statusCode)")
+            logger.log("📥 写入响应状态码: \(httpResponse.statusCode)")
         }
         
         if let responseStr = String(data: data, encoding: .utf8) {
@@ -842,11 +893,13 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         guard let httpResponse = response as? HTTPURLResponse,
               httpResponse.statusCode == 200 else {
             print("❌ 写入失败")
+            logger.log("❌ 写入失败")
             throw NetworkError.serverError((response as? HTTPURLResponse)?.statusCode ?? 500)
         }
         
         // 验证文件是否成功写入
         print("🔍 验证文件写入...")
+        logger.log("🔍 验证文件写入...")
         let verifyCommand: [String: Any] = [
             "method": "exec",
             "params": ["ls -l --full-time \(filePath)"]
@@ -868,6 +921,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         
         if fileInfo.isEmpty {
             print("❌ 文件验证失败：未找到文件")
+            logger.log("❌ 文件验证失败：未找到文件")
             throw NetworkError.invalidResponse
         }
         
@@ -881,14 +935,17 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             if let fileDate = dateFormatter.date(from: dateString) {
                 let timeDiff = Date().timeIntervalSince(fileDate)
                 print("⏱ 文件修改时间差: \(timeDiff)秒")
+                logger.log("⏱ 文件修改时间差: \(timeDiff)秒")
                 if timeDiff < 0 || timeDiff > 5 {
                     print("❌ 文件时间验证失败")
+                    logger.log("❌ 文件时间验证失败")
                     throw NetworkError.invalidResponse
                 }
             }
         }
         
         print("✅ 配置文件保存成功")
+        logger.log("✅ 配置文件保存成功")
     }
     
     func restartOpenClash(_ server: ClashServer) async throws -> AsyncThrowingStream<String, Error> {
@@ -896,7 +953,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         let baseURL = "\(scheme)://\(server.url):\(server.openWRTPort ?? "80")"
         
         print("🔄 开始重启 OpenClash")
-        
+
         guard let username = server.openWRTUsername,
               let password = server.openWRTPassword else {
             print("❌ 未找到认证信息")
@@ -930,6 +987,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         }
         
         print("✅ 重启命令已发送")
+        logger.log("✅ 重启命令已发送")
         
         // 返回一个异步流来监控启动日志和服务状态
         return AsyncThrowingStream { continuation in
@@ -1062,16 +1120,20 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         let baseURL = "\(scheme)://\(server.url):\(server.openWRTPort ?? "80")"
         
         print("🗑 开始删除配置文件: \(configName)")
+        logger.log("🗑 开始删除配置文件: \(configName)")
         
         guard let username = server.openWRTUsername,
               let password = server.openWRTPassword else {
             print("❌ 未找到认证信息")
+            logger.log("❌ 未找到认证信息")
             throw NetworkError.unauthorized(message: "未设置 OpenWRT 用户名或密码")
         }
         
         print("🔑 获取认证令牌...")
+        logger.log("🔑 获取认证令牌...")
         let token = try await getAuthToken(server, username: username, password: password)
         print("✅ 获取令牌成功: \(token)")
+        logger.log("✅ 获取令牌成功: \(token)")
         
         guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
             print("❌ 无效的 URL")
@@ -1104,9 +1166,11 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         guard let httpResponse = response as? HTTPURLResponse,
               httpResponse.statusCode == 200 else {
             print("❌ 删除失败")
+            logger.log("❌ 删除失败")
             throw NetworkError.serverError((response as? HTTPURLResponse)?.statusCode ?? 500)
         }
         
         print("✅ 配置文件删除成功")
+        logger.log("✅ 配置文件删除成功")
     }
 } 

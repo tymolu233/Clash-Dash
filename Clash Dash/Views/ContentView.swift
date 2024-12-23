@@ -156,6 +156,13 @@ struct ContentView: View {
                             )
                             
                             SettingsLinkRow(
+                                title: "运行日志",
+                                icon: "doc.text.fill",
+                                iconColor: .orange,
+                                destination: LogsView()
+                            )
+                            
+                            SettingsLinkRow(
                                 title: "如何使用",
                                 icon: "questionmark.circle.fill",
                                 iconColor: .blue,
@@ -250,7 +257,7 @@ struct ContentView: View {
     }
     
     private func showManagementView(for server: ClashServer) {
-        // 显示管理页面的逻辑
+        // 显示管理页��的逻辑
     }
     
     private func showSwitchConfigView(for server: ClashServer) {
