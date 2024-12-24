@@ -282,7 +282,7 @@ struct GroupCard: View {
                         .lineLimit(1)
                     
                     if currentNode.delay > 0 {
-                        let _ = print("显示节点 \(currentNode.name) 的延迟: \(currentNode.delay)ms")
+                        // let _ = print("显示节点 \(currentNode.name) 的延迟: \(currentNode.delay)ms")
                         Text("\(currentNode.delay) ms")
                             .font(.caption2)
                             .padding(.horizontal, 4)
@@ -445,7 +445,7 @@ struct ProxyProviderCard: View {
     
     private var relativeUpdateTime: String {
         guard let updatedAt = provider.updatedAt else { 
-            print("Provider \(provider.name) updatedAt is nil")
+            // print("Provider \(provider.name) updatedAt is nil")
             return "从未更新" 
         }
         
@@ -455,7 +455,7 @@ struct ProxyProviderCard: View {
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         
         guard let date = formatter.date(from: updatedAt) else {
-            print("Failed to parse date: \(updatedAt)")
+            // print("Failed to parse date: \(updatedAt)")
             return "未知"
         }
         
@@ -528,7 +528,7 @@ struct ProxyProviderCard: View {
                             // 添加触觉反馈
                             impactFeedback.impactOccurred()
                             
-                            print("Updating provider: \(provider.name)")
+                            // print("Updating provider: \(provider.name)")
                             updateStatus = .updating
                             
                             do {
@@ -541,7 +541,7 @@ struct ProxyProviderCard: View {
                                 try await Task.sleep(nanoseconds: 1_000_000_000)
                                 updateStatus = .none
                             } catch {
-                                print("Provider update failed: \(error)")
+                                // print("Provider update failed: \(error)")
                                 updateStatus = .failure
                                 // 失败时的触觉反馈
                                 let errorFeedback = UINotificationFeedbackGenerator()
@@ -741,7 +741,7 @@ struct ProviderNodeSelector: View {
                         impactFeedback.impactOccurred()
                         
                         Task {
-                            print("Testing all nodes in provider: \(provider.name)")
+                            // print("Testing all nodes in provider: \(provider.name)")
                             isTestingAll = true
                             
                             do {
@@ -759,7 +759,7 @@ struct ProviderNodeSelector: View {
                                     errorFeedback.notificationOccurred(.error)
                                 }
                             } catch {
-                                print("Provider test error: \(error)")
+                                // print("Provider test error: \(error)")
                                 // 添加失败的触觉反馈
                                 let errorFeedback = UINotificationFeedbackGenerator()
                                 errorFeedback.notificationOccurred(.error)
@@ -1025,7 +1025,7 @@ struct ProxyNodeCard: View {
                         .scaleEffect(0.8)
                         .transition(.opacity)
                 } else if let node = node, node.delay > 0 {
-                    let _ = print("DEBUG: 尝试显示延迟 - 节点:\(node.name), 延迟:\(node.delay)ms")
+                    // let _ = print("DEBUG: 尝试显示延迟 - 节点:\(node.name), 延迟:\(node.delay)ms")
                     
                     Text("\(node.delay) ms")
                         .font(.caption)
@@ -1036,7 +1036,7 @@ struct ProxyNodeCard: View {
                         .clipShape(Capsule())
                         .transition(.opacity)
                 } else {
-                    let _ = print("DEBUG: 节点可能超时或延迟为0 - 名称:\(nodeName)")
+                    // let _ = print("DEBUG: 节点可能超时或延迟为0 - 名称:\(nodeName)")
                     
                     Text("超时")
                         .font(.caption)
