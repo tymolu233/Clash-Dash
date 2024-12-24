@@ -403,7 +403,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                 
                 if let responseStr = String(data: statusData, encoding: .utf8) {
                     print("📥 OpenClash 状态响应: \(responseStr)")
-                    logger.log("📥 OpenClash 状态响应: \(responseStr)")
+                    // logger.log("📥 OpenClash 状态响应: \(responseStr)")
                 }
                 
                 
@@ -531,6 +531,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                     let status = try JSONDecoder().decode(OpenWRTStatus.self, from: jsonData)
                     print("✅ 使用 exec 命令成功获取状态")
                     logger.log("✅ 使用 exec 命令成功获取状态")
+                    logger.log("status: \(status)")
                     return status
                 default:
                     print("❌ 状态请求失败: \(statusHttpResponse.statusCode)")
