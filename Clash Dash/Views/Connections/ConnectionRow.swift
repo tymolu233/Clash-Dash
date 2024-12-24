@@ -34,7 +34,7 @@ struct ConnectionRow: View {
         }
     }
     
-    // 添加格式化字节的辅助方法
+    // 添加���式化字节的辅助方法
     private func formatBytes(_ bytes: Int) -> String {
         let units = ["B", "K", "M", "G"]
         var size = Double(bytes)
@@ -161,7 +161,7 @@ struct ConnectionRow: View {
                 Image(systemName: "globe.americas.fill")
                     .foregroundColor(.accentColor)
                     .frame(width: 16, height: 16)
-                Text("\(connection.metadata.host.isEmpty ? connection.metadata.destinationIP : connection.metadata.host):\(connection.metadata.destinationPort)")
+                Text("\(connection.metadata.host.isEmpty ? (connection.metadata.destinationIP ?? "") : connection.metadata.host):\(connection.metadata.destinationPort)")
                     .foregroundColor(.primary)
             }
             .font(.system(size: 16, weight: .medium))

@@ -78,8 +78,7 @@ struct ClashConnection: Identifiable, Codable, Equatable {
     }
     
     var formattedChains: String {
-        let chainElements = chains.reversed()
-        return "\(rule) → \(chainElements.joined(separator: " → "))"
+        return chains.reversed().joined(separator: " → ")
     }
     
     // 预览数据
@@ -130,15 +129,15 @@ struct ConnectionMetadata: Codable, Equatable {
     let network: String
     let type: String
     let sourceIP: String
-    let destinationIP: String
     let sourcePort: String
     let destinationPort: String
     let host: String
     let dnsMode: String
-    let processPath: String
-    let specialProxy: String
     
-    // 可选字段
+    // 可选字段 - 修改为可选
+    let destinationIP: String?  // 改为可选
+    let processPath: String?    // 改为可选
+    let specialProxy: String?   // 改为可选
     let sourceGeoIP: String?
     let destinationGeoIP: [String]?
     let sourceIPASN: String?
@@ -153,6 +152,75 @@ struct ConnectionMetadata: Codable, Equatable {
     let remoteDestination: String?
     let dscp: Int?
     let sniffHost: String?
+    
+    // 添加解码器初始化方法
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        
+        // 解码必需字段
+        network = try container.decode(String.self, forKey: .network)
+        type = try container.decode(String.self, forKey: .type)
+        sourceIP = try container.decode(String.self, forKey: .sourceIP)
+        sourcePort = try container.decode(String.self, forKey: .sourcePort)
+        destinationPort = try container.decode(String.self, forKey: .destinationPort)
+        host = try container.decode(String.self, forKey: .host)
+        dnsMode = try container.decode(String.self, forKey: .dnsMode)
+        
+        // 解码可选字段
+        destinationIP = try container.decodeIfPresent(String.self, forKey: .destinationIP)
+        processPath = try container.decodeIfPresent(String.self, forKey: .processPath)
+        specialProxy = try container.decodeIfPresent(String.self, forKey: .specialProxy)
+        
+        // 其他可选字段保持不变
+        sourceGeoIP = try container.decodeIfPresent(String.self, forKey: .sourceGeoIP)
+        destinationGeoIP = try container.decodeIfPresent([String].self, forKey: .destinationGeoIP)
+        sourceIPASN = try container.decodeIfPresent(String.self, forKey: .sourceIPASN)
+        destinationIPASN = try container.decodeIfPresent(String.self, forKey: .destinationIPASN)
+        inboundIP = try container.decodeIfPresent(String.self, forKey: .inboundIP)
+        inboundPort = try container.decodeIfPresent(String.self, forKey: .inboundPort)
+        inboundName = try container.decodeIfPresent(String.self, forKey: .inboundName)
+        inboundUser = try container.decodeIfPresent(String.self, forKey: .inboundUser)
+        uid = try container.decodeIfPresent(Int.self, forKey: .uid)
+        process = try container.decodeIfPresent(String.self, forKey: .process)
+        specialRules = try container.decodeIfPresent(String.self, forKey: .specialRules)
+        remoteDestination = try container.decodeIfPresent(String.self, forKey: .remoteDestination)
+        dscp = try container.decodeIfPresent(Int.self, forKey: .dscp)
+        sniffHost = try container.decodeIfPresent(String.self, forKey: .sniffHost)
+    }
+    
+    // 添加标准初始化方法
+    init(network: String, type: String, sourceIP: String, destinationIP: String?, sourcePort: String,
+         destinationPort: String, host: String, dnsMode: String, processPath: String?, specialProxy: String?,
+         sourceGeoIP: String? = nil, destinationGeoIP: [String]? = nil, sourceIPASN: String? = nil,
+         destinationIPASN: String? = nil, inboundIP: String? = nil, inboundPort: String? = nil,
+         inboundName: String? = nil, inboundUser: String? = nil, uid: Int? = nil, process: String? = nil,
+         specialRules: String? = nil, remoteDestination: String? = nil, dscp: Int? = nil,
+         sniffHost: String? = nil) {
+        self.network = network
+        self.type = type
+        self.sourceIP = sourceIP
+        self.destinationIP = destinationIP
+        self.sourcePort = sourcePort
+        self.destinationPort = destinationPort
+        self.host = host
+        self.dnsMode = dnsMode
+        self.processPath = processPath
+        self.specialProxy = specialProxy
+        self.sourceGeoIP = sourceGeoIP
+        self.destinationGeoIP = destinationGeoIP
+        self.sourceIPASN = sourceIPASN
+        self.destinationIPASN = destinationIPASN
+        self.inboundIP = inboundIP
+        self.inboundPort = inboundPort
+        self.inboundName = inboundName
+        self.inboundUser = inboundUser
+        self.uid = uid
+        self.process = process
+        self.specialRules = specialRules
+        self.remoteDestination = remoteDestination
+        self.dscp = dscp
+        self.sniffHost = sniffHost
+    }
 }
 
 // API 响应模型
