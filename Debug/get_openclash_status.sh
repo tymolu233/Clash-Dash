@@ -139,6 +139,73 @@ Pragma: no-cache"
         
         log "receive" "状态响应状态码: $status_code"
         log "receive" "OpenClash 状态响应: $status_body"
+
+        # 3. 获取系统状态概览
+        overview_url="$base_url/cgi-bin/luci/admin/status/overview"
+        log "send" "发送系统状态概览请求: $overview_url"
+
+        overview_headers="Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+Accept-Language: en-US,en;q=0.9
+Cache-Control: no-cache
+Connection: keep-alive
+Cookie: sysauth_http=$token
+DNT: 1
+Pragma: no-cache
+Upgrade-Insecure-Requests: 1"
+
+        print_request "GET" "$overview_url" "$overview_headers"
+
+        overview_response=$(curl -s --max-redirs 0 -w "\n%{http_code}" \
+            -H "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8" \
+            -H "Accept-Language: en-US,en;q=0.9" \
+            -H "Cache-Control: no-cache" \
+            -H "Connection: keep-alive" \
+            -H "Cookie: sysauth_http=$token" \
+            -H "DNT: 1" \
+            -H "Pragma: no-cache" \
+            -H "Upgrade-Insecure-Requests: 1" \
+            --insecure \
+            "$overview_url")
+
+        overview_body=$(echo "$overview_response" | head -n 1)
+        overview_code=$(echo "$overview_response" | tail -n 1)
+
+        log "receive" "系统状态概览响应状态码: $overview_code"
+        log "receive" "系统状态概览响应: $overview_body"
+
+        # 4. 获取订阅信息
+        read -p "请输入订阅配置名称: （随便输入，例如 example.yaml）" filename
+        timestamp=$(date +%s%3N)
+        sub_info_url="$base_url/cgi-bin/luci/admin/services/openclash/sub_info_get?$timestamp&filename=$filename"
+        log "send" "发送订阅信息请求: $sub_info_url"
+
+        sub_info_headers="Accept: */*
+Accept-Language: en-US,en;q=0.9,zh-CN;q=0.8,zh-TW;q=0.7,zh;q=0.6
+Cache-Control: no-cache
+Connection: keep-alive
+Cookie: sysauth_http=$token
+DNT: 1
+Pragma: no-cache
+Content-Type: application/x-www-form-urlencoded; charset=utf-8"
+
+        print_request "GET" "$sub_info_url" "$sub_info_headers"
+
+        sub_info_response=$(curl -s --max-redirs 0 -w "\n%{http_code}" \
+            -H "Accept: */*" \
+            -H "Accept-Language: en-US,en;q=0.9,zh-CN;q=0.8,zh-TW;q=0.7,zh;q=0.6" \
+            -H "Cache-Control: no-cache" \
+            -H "Connection: keep-alive" \
+            -H "Cookie: sysauth_http=$token" \
+            -H "DNT: 1" \
+            -H "Pragma: no-cache" \
+            -H "Content-Type: application/x-www-form-urlencoded; charset=utf-8" \
+            "$sub_info_url")
+
+        sub_info_body=$(echo "$sub_info_response" | head -n 1)
+        sub_info_code=$(echo "$sub_info_response" | tail -n 1)
+
+        log "receive" "订阅信息响应状态码: $sub_info_code"
+        log "receive" "订阅信息响应: $sub_info_body"
         
         case $status_code in
             200)
