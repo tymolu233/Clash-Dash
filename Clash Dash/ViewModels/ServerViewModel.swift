@@ -224,7 +224,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                 updateServerStatus(server, status: .error, message: "网络错误")
             }
         } catch {
-            print("❌ 未知错误: \(error)")
+            print("❌ 未知错���: \(error)")
             updateServerStatus(server, status: .error, message: "未知错误")
         }
     }
@@ -301,7 +301,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
     func validateOpenWRTServer(_ server: ClashServer, username: String, password: String) async throws -> OpenWRTStatus {
         let scheme = server.useSSL ? "https" : "http"
         let baseURL = "\(scheme)://\(server.url):\(server.openWRTPort ?? "80")"
-        print("🔍 开始验证 OpenWRT 服务器: \(baseURL)")
+        print("🔍 开始验证 OpenWRT ��务器: \(baseURL)")
         logger.log("🔍 开始验证 OpenWRT 服务器: \(baseURL)")
         
         // 1. 使用 JSON-RPC 登录
@@ -435,14 +435,103 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                             case .valueNotFound(let type, let context):
                                 print("值为空: 期望 \(type) 在路径: \(context.codingPath)")
                             default:
-                                print("其他解码错误: \(decodingError)")
+                                print("其他解码错��: \(decodingError)")
                             }
                         }
                         throw NetworkError.invalidResponse
                     }
                 case 403:
-                    print("🔒 认证令牌已过期")
-                    throw NetworkError.unauthorized(message: "认证令牌已过期")
+                    print("🔒 使用 OpenClash API 获取状态失败，尝试使用 exec 命令获取")
+                    logger.log("🔒 使用 OpenClash API 获取状态失败，尝试使用 exec 命令获取")
+                    
+                    // 构建 exec 命令获取状态
+                    let statusCommand = """
+                    echo "clash: $( pidof clash > /dev/null && echo "true" || echo "false" )"; \
+                    echo "watchdog: $( ps | grep openclash_watchdog.sh | grep -v grep > /dev/null && echo "true" || echo "false" )"; \
+                    echo "daip: $( ip address show $(uci -q get network.lan.ifname || uci -q get network.lan.device) | grep -w 'inet' | grep -Eo 'inet [0-9\\.]+' | awk '{print $2}' )"; \
+                    echo "dase: $( uci -q get openclash.config.dashboard_password )"; \
+                    echo "db_forward_ssl: $( uci -q get openclash.config.dashboard_forward_ssl )"; \
+                    echo "restricted_mode: $( uci -q get openclash.config.restricted_mode )"; \
+                    echo "web: $( pidof clash > /dev/null && echo "true" || echo "false" )"; \
+                    echo "cn_port: $( uci -q get openclash.config.cn_port )"; \
+                    echo "core_type: $( uci -q get openclash.config.core_type || echo "Meta" )"
+                    """
+                    
+                    guard let execURL = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
+                        throw NetworkError.invalidURL
+                    }
+                    
+                    var execRequest = URLRequest(url: execURL)
+                    execRequest.httpMethod = "POST"
+                    execRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                    execRequest.setValue("sysauth=\(token)", forHTTPHeaderField: "Cookie")
+                    
+                    let execBody: [String: Any] = [
+                        "method": "exec",
+                        "params": [statusCommand]
+                    ]
+                    execRequest.httpBody = try JSONSerialization.data(withJSONObject: execBody)
+                    
+                    let (execData, execResponse) = try await session.data(for: execRequest)
+                    
+                    guard let execHttpResponse = execResponse as? HTTPURLResponse,
+                          execHttpResponse.statusCode == 200 else {
+                        throw NetworkError.serverError((execResponse as? HTTPURLResponse)?.statusCode ?? 500)
+                    }
+                    
+                    // 解析 exec 命令返回的结果
+                    struct ExecResponse: Codable {
+                        let result: String
+                        let error: String?
+                    }
+                    
+                    let execResult = try JSONDecoder().decode(ExecResponse.self, from: execData)
+                    
+                    // 将命令输出转换为字典
+                    var statusDict: [String: Any] = [:]
+                    let lines = execResult.result.components(separatedBy: "\n")
+                    for line in lines {
+                        let parts = line.components(separatedBy: ": ")
+                        if parts.count == 2 {
+                            let key = parts[0].trimmingCharacters(in: .whitespaces)
+                            let value = parts[1].trimmingCharacters(in: .whitespaces)
+                            // 修改这里的逻辑，使用 if-else 来处理不同类型
+                            if value == "true" || value == "false" {
+                                statusDict[key] = value == "true"
+                            } else {
+                                statusDict[key] = value
+                            }
+                        }
+                    }
+                    
+                    // 检查必要字段是否存在
+                    guard let daip = statusDict["daip"] as? String,
+                          let dase = statusDict["dase"] as? String,
+                          let cnPort = statusDict["cn_port"] as? String else {
+                        print("❌ 缺少必要的状态信息")
+                        logger.log("❌ 缺少必要的状态信息")
+                        logger.log("statusDict: \(statusDict)")
+                        throw NetworkError.invalidResponse
+                    }
+                    
+                    // 转换为 JSON 数据
+                    let jsonData = try JSONSerialization.data(withJSONObject: [
+                        "web": statusDict["web"] as? Bool ?? false,
+                        "clash": statusDict["clash"] as? Bool ?? false,
+                        "daip": daip,
+                        "cn_port": cnPort,
+                        "dase": dase,
+                        "core_type": statusDict["core_type"] as? String ?? "Meta",
+                        "db_forward_ssl": statusDict["db_forward_ssl"] as? String,
+                        "restricted_mode": statusDict["restricted_mode"] as? String,
+                        "watchdog": statusDict["watchdog"] as? Bool ?? false
+                    ])
+                    
+                    // 解析为 OpenWRTStatus
+                    let status = try JSONDecoder().decode(OpenWRTStatus.self, from: jsonData)
+                    print("✅ 使用 exec 命令成功获取状态")
+                    logger.log("✅ 使用 exec 命令成功获取状态")
+                    return status
                 default:
                     print("❌ 状态请求失败: \(statusHttpResponse.statusCode)")
                     throw NetworkError.serverError(statusHttpResponse.statusCode)
@@ -598,7 +687,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         
         // 4. 获取当前启用的配置
         print("📤 获取当前启用的配置...")
-        logger.log("📤 获取当前启用��配置...")
+        logger.log("📤 获取当前启用的配置...")
         var currentRequest = URLRequest(url: listURL)
         currentRequest.httpMethod = "POST"
         currentRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -846,7 +935,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         let baseURL = "\(scheme)://\(server.url):\(server.openWRTPort ?? "80")"
         
         print("📝 开始保存配置文件: \(configName)")
-        logger.log("📝 ���始保存配置文件: \(configName)")
+        logger.log("📝 开始保存配置文件: \(configName)")
         guard let username = server.openWRTUsername,
               let password = server.openWRTPassword else {
             print("❌ 未找到认证信息")
@@ -1130,7 +1219,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         
         guard let username = server.openWRTUsername,
               let password = server.openWRTPassword else {
-            print("❌ 未找到认证信息")
+            print("❌ ��找到认证信息")
             logger.log("❌ 未找到认证信息")
             throw NetworkError.unauthorized(message: "未设置 OpenWRT 用户名或密码")
         }
@@ -1176,7 +1265,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             throw NetworkError.serverError((response as? HTTPURLResponse)?.statusCode ?? 500)
         }
         
-        print("✅ ���置文件删除成功")
+        print("✅ 配置文件删除成功")
         logger.log("✅ 配置文件删除成功")
     }
 } 
