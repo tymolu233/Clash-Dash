@@ -341,11 +341,34 @@ class ConnectionsViewModel: ObservableObject {
                     }
                 }
                 
-                // 如果连接数组为空，清空现有连接
+                // 如果连接数组为空，不要清空现有连接，只更新活跃状态
                 if response.connections.isEmpty {
-                    self.connections = []
+                    // 将所有现有连接标记为非活跃
+                    for (id, _) in self.connectionHistory {
+                        if let connection = self.connectionHistory[id], connection.isAlive {
+                            let closedConnection = ClashConnection(
+                                id: connection.id,
+                                metadata: connection.metadata,
+                                upload: connection.upload,
+                                download: connection.download,
+                                start: connection.start,
+                                chains: connection.chains,
+                                rule: connection.rule,
+                                rulePayload: connection.rulePayload,
+                                downloadSpeed: 0,
+                                uploadSpeed: 0,
+                                isAlive: false
+                            )
+                            self.connectionHistory[id] = closedConnection
+                        }
+                    }
+                    
+                    // 更新显示的连接列表
+                    self.connections = Array(self.connectionHistory.values)
+                        .sorted { $0.start > $1.start }
+                    
+                    // 清空活跃连接记录
                     self.previousConnections = [:]
-                    self.connectionHistory = [:]
                     return
                 }
                 
