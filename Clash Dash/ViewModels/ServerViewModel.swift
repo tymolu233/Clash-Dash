@@ -1,7 +1,7 @@
 import Foundation
 import SwiftUI
 
-// 在类的开头添加 LogManager
+// 添加 LogManager
 private let logger = LogManager.shared
 
 // 将 VersionResponse 移到类外面

@@ -114,7 +114,7 @@ struct ContentView: View {
                                                     settingsViewModel.mode = "rule"
                                                 }
                                             } label: {
-                                                Label("规则模式", systemImage: settingsViewModel.mode == "rule" ? "checkmark" : "")
+                                                Label("规则模式", systemImage: settingsViewModel.mode == "rule" ? "checkmark" : "circle")
                                             }
                                             
                                             Button {
@@ -123,7 +123,7 @@ struct ContentView: View {
                                                     settingsViewModel.mode = "direct"
                                                 }
                                             } label: {
-                                                Label("直连模式", systemImage: settingsViewModel.mode == "direct" ? "checkmark" : "")
+                                                Label("直连模式", systemImage: settingsViewModel.mode == "direct" ? "checkmark" : "circle")
                                             }
                                             
                                             Button {
@@ -132,13 +132,15 @@ struct ContentView: View {
                                                     settingsViewModel.mode = "global"
                                                 }
                                             } label: {
-                                                Label("全局模式", systemImage: settingsViewModel.mode == "global" ? "checkmark" : "")
+                                                Label("全局模式", systemImage: settingsViewModel.mode == "global" ? "checkmark" : "circle")
                                             }
                                         } label: {
                                             Label("切换模式", systemImage: "arrow.triangle.2.circlepath")
                                         }
                                         .onAppear {
-                                            settingsViewModel.fetchConfig(server: server)
+                                            settingsViewModel.getCurrentMode(server: server) { currentMode in
+                                                settingsViewModel.mode = currentMode
+                                            }
                                         }
                                         
                                         // OpenWRT 特有功能组
@@ -184,7 +186,7 @@ struct ContentView: View {
                         // 设置卡片
                         VStack(spacing: 16) {
                             SettingsLinkRow(
-                                title: "��局配置",
+                                title: "全局配置",
                                 icon: "gearshape.fill",
                                 iconColor: .gray,
                                 destination: GlobalSettingsView()

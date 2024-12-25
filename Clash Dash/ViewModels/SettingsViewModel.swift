@@ -1,4 +1,6 @@
 import Foundation
+// 在类的开头添加 LogManager
+private let logger = LogManager.shared
 
 class SettingsViewModel: ObservableObject {
     @Published var config: ClashConfig?
@@ -92,13 +94,15 @@ class SettingsViewModel: ObservableObject {
         URLSession.shared.dataTask(with: request) { [weak self] _, response, error in
             if let httpResponse = response as? HTTPURLResponse,
                (200...299).contains(httpResponse.statusCode) {
-                print("设置更新成功：\(path) = \(value)")
+                print("代理模式更新成功：\(path) = \(value)")
+                logger.log("代理模式更新成功：\(path) = \(value)")
                 DispatchQueue.main.async {
                     completion?()
                 }
             } else if let error = error {
-                print("设置更新失败：\(path) = \(value)")
+                print("代理模式更新失败：\(path) = \(value)")
                 print("错误：\(error.localizedDescription)")
+                logger.log("代理模式更新失败：\(path) = \(value)")
             }
         }.resume()
     }
