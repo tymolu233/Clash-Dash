@@ -609,7 +609,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             case 200:
                 return try JSONDecoder().decode(ClashConfig.self, from: data)
             case 401:
-                throw NetworkError.unauthorized(message: "��证失败: 服务器返回 401 未授权")
+                throw NetworkError.unauthorized(message: "认证失败: 服务器返回 401 未授权")
             default:
                 throw NetworkError.serverError(httpResponse.statusCode)
             }
@@ -887,7 +887,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             if let error = authResponse.error {
                 throw NetworkError.unauthorized(message: "认证失败: \(error)")
             }
-            throw NetworkError.unauthorized(message: "认证失败: 服务器没有返回有效的认��令牌")
+            throw NetworkError.unauthorized(message: "认证失败: 服务器没有返回有效的认证令牌")
         }
         
         return token

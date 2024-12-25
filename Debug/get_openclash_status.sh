@@ -115,7 +115,7 @@ case $status_code in
         log "send" "发送状态请求: $status_url"
         
         # 构建状态请求头
-        status_headers="Cookie: sysauth_http=$token
+        status_headers="Cookie: sysauth_http=$token; sysauth=$token
 Accept: */*
 Connection: keep-alive
 User-Agent: curl
@@ -126,7 +126,7 @@ Pragma: no-cache"
         print_request "GET" "$status_url" "$status_headers"
         
         status_response=$(curl -s --max-redirs 0 -w "\n%{http_code}" \
-            -H "Cookie: sysauth_http=$token" \
+            -H "Cookie: sysauth_http=$token; sysauth=$token" \
             -H "Accept: */*" \
             -H "Connection: keep-alive" \
             -H "User-Agent: curl" \
@@ -160,7 +160,7 @@ Upgrade-Insecure-Requests: 1"
             -H "Accept-Language: en-US,en;q=0.9" \
             -H "Cache-Control: no-cache" \
             -H "Connection: keep-alive" \
-            -H "Cookie: sysauth_http=$token" \
+            -H "Cookie: sysauth_http=$token; sysauth=$token" \
             -H "DNT: 1" \
             -H "Pragma: no-cache" \
             -H "Upgrade-Insecure-Requests: 1" \
@@ -195,7 +195,7 @@ Content-Type: application/x-www-form-urlencoded; charset=utf-8"
             -H "Accept-Language: en-US,en;q=0.9,zh-CN;q=0.8,zh-TW;q=0.7,zh;q=0.6" \
             -H "Cache-Control: no-cache" \
             -H "Connection: keep-alive" \
-            -H "Cookie: sysauth_http=$token" \
+            -H "Cookie: sysauth_http=$token; sysauth=$token" \
             -H "DNT: 1" \
             -H "Pragma: no-cache" \
             -H "Content-Type: application/x-www-form-urlencoded; charset=utf-8" \
