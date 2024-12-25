@@ -200,7 +200,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             case 404:
                 updateServerStatus(server, status: .error, message: "API 路径不存在")
             case 500...599:
-                updateServerStatus(server, status: .error, message: "服务器错误: \(httpResponse.statusCode)")
+                updateServerStatus(server, status: .error, message: "服务���错误: \(httpResponse.statusCode)")
             default:
                 updateServerStatus(server, status: .error, message: "未知响应: \(httpResponse.statusCode)")
             }
@@ -224,7 +224,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                 updateServerStatus(server, status: .error, message: "网络错误")
             }
         } catch {
-            print("❌ 未知错���: \(error)")
+            print("❌ 未知错误: \(error)")
             updateServerStatus(server, status: .error, message: "未知错误")
         }
     }
@@ -301,7 +301,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
     func validateOpenWRTServer(_ server: ClashServer, username: String, password: String) async throws -> OpenWRTStatus {
         let scheme = server.useSSL ? "https" : "http"
         let baseURL = "\(scheme)://\(server.url):\(server.openWRTPort ?? "80")"
-        print("🔍 开始验证 OpenWRT ��务器: \(baseURL)")
+        print("🔍 开始验证 OpenWRT 服务器: \(baseURL)")
         logger.log("🔍 开始验证 OpenWRT 服务器: \(baseURL)")
         
         // 1. 使用 JSON-RPC 登录
@@ -435,7 +435,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                             case .valueNotFound(let type, let context):
                                 print("值为空: 期望 \(type) 在路径: \(context.codingPath)")
                             default:
-                                print("其他解码错��: \(decodingError)")
+                                print("其他解码错误: \(decodingError)")
                             }
                         }
                         throw NetworkError.invalidResponse
@@ -448,10 +448,18 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                     let statusCommand = """
                     echo "clash: $( pidof clash > /dev/null && echo "true" || echo "false" )"; \
                     echo "watchdog: $( ps | grep openclash_watchdog.sh | grep -v grep > /dev/null && echo "true" || echo "false" )"; \
-                    echo "daip: $( ip address show $(uci -q get network.lan.ifname || uci -q get network.lan.device) | grep -w 'inet' | grep -Eo 'inet [0-9\\.]+' | awk '{print $2}' )"; \
+                    echo "daip: $( daip=$( uci -q get network.lan.ipaddr |awk -F '/' '{print $1}' 2>/dev/null ); \
+                        if [ -z "$daip" ]; then \
+                            daip=$( ip address show $(uci -q -p /tmp/state get network.lan.ifname || uci -q -p /tmp/state get network.lan.device) | grep -w 'inet' | grep -Eo 'inet [0-9\\.]+' | awk '{print $2}' ); \
+                        fi; \
+                        if [ -z "$daip" ]; then \
+                            daip=$( ip addr show | grep -w 'inet' | grep 'global' | grep 'brd' | grep -Eo 'inet [0-9\\.]+' | awk '{print $2}' | head -n 1 ); \
+                        fi; \
+                        echo "$daip" )"; \
                     echo "dase: $( uci -q get openclash.config.dashboard_password )"; \
+                    echo "db_foward_port: $( uci -q get openclash.config.dashboard_forward_port )"; \
+                    echo "db_foward_domain: $( uci -q get openclash.config.dashboard_forward_domain )"; \
                     echo "db_forward_ssl: $( uci -q get openclash.config.dashboard_forward_ssl )"; \
-                    echo "restricted_mode: $( uci -q get openclash.config.restricted_mode )"; \
                     echo "web: $( pidof clash > /dev/null && echo "true" || echo "false" )"; \
                     echo "cn_port: $( uci -q get openclash.config.cn_port )"; \
                     echo "core_type: $( uci -q get openclash.config.core_type || echo "Meta" )"
@@ -708,7 +716,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         
         if let responseStr = String(data: currentData, encoding: .utf8) {
             print("📥 当前配置响应: \(responseStr)")
-            logger.log("📥 当前配置响应: \(responseStr)")
+            logger.log("���� 当前配置响应: \(responseStr)")
         }
         
         let currentResult = try JSONDecoder().decode(ListResponse.self, from: currentData)
@@ -742,7 +750,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             
             // 检查配置文件语法
             print("🔍 检查配置文件语法: \(fileName)")
-            logger.log("🔍 检查配置文件语法: \(fileName)")
+            logger.log("🔍 检查配��文件语法: \(fileName)")
             var checkRequest = URLRequest(url: listURL)
             checkRequest.httpMethod = "POST"
             checkRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -879,7 +887,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             if let error = authResponse.error {
                 throw NetworkError.unauthorized(message: "认证失败: \(error)")
             }
-            throw NetworkError.unauthorized(message: "认证失败: 服务器未返回有效的认证令牌")
+            throw NetworkError.unauthorized(message: "认证失败: 服务器��返回有效的认证令牌")
         }
         
         return token
@@ -1033,7 +1041,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                 print("⏱ 文件修改时间差: \(timeDiff)秒")
                 logger.log("⏱ 文件修改时间差: \(timeDiff)秒")
                 if timeDiff < 0 || timeDiff > 5 {
-                    print("❌ 文件时间验证失败")
+                    print("❌ 文件时间验证��败")
                     logger.log("❌ 文件时间验证失败")
                     throw NetworkError.invalidResponse
                 }
@@ -1220,7 +1228,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         
         guard let username = server.openWRTUsername,
               let password = server.openWRTPassword else {
-            print("❌ ��找到认证信息")
+            print("❌ 未找到认证信息")
             logger.log("❌ 未找到认证信息")
             throw NetworkError.unauthorized(message: "未设置 OpenWRT 用户名或密码")
         }

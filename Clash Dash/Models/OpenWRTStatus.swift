@@ -1,24 +1,22 @@
 struct OpenWRTStatus: Codable {
-    let web: Bool
     let clash: Bool
+    let web: Bool
     let daip: String
-    let cnPort: String
     let dase: String
+    let cnPort: String
     let coreType: String
-    
-    let dbForwardSSL: String?
-    let restrictedMode: String?
-    let watchdog: Bool?
+    let dbForwardPort: String?
+    let dbForwardDomain: String?
+    let dbForwardSsl: String?
+    let watchdog: Bool
     
     enum CodingKeys: String, CodingKey {
-        case web
-        case clash
-        case daip
-        case dbForwardSSL = "db_forward_ssl"
-        case restrictedMode = "restricted_mode"
+        case clash, web, daip, dase
         case cnPort = "cn_port"
-        case dase
-        case watchdog
         case coreType = "core_type"
+        case dbForwardPort = "db_foward_port"
+        case dbForwardDomain = "db_foward_domain"
+        case dbForwardSsl = "db_forward_ssl"
+        case watchdog
     }
 } 
