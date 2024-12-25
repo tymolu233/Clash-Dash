@@ -521,7 +521,7 @@ struct ProxyProviderCard: View {
                 
                 Spacer()
                 
-                // 操作��钮
+                // 操作按钮
                 HStack(spacing: 12) {
                     Button {
                         Task {
@@ -633,7 +633,7 @@ struct ProxyProviderCard: View {
         .padding()
         .cardShadow()
         .onTapGesture {
-            // 添加���觉反馈
+            // 添加触觉反馈
             impactFeedback.impactOccurred()
             
             // print("Opening node selector for provider: \(provider.name)")
@@ -881,7 +881,7 @@ struct ProxySelectorSheet: View {
                     
                     // 节点网格 - 使用排序后的节点列表
                     LazyVGrid(columns: columns, spacing: 12) {
-                        ForEach(viewModel.getSortedNodes(group.all, in: group), id: \.self) { nodeName in
+                        ForEach(viewModel.getSortedNodes(group.all, in: group, useCache: true), id: \.self) { nodeName in
                             let node = viewModel.nodes.first { $0.name == nodeName }
                             ProxyNodeCard(
                                 nodeName: nodeName,
@@ -918,6 +918,15 @@ struct ProxySelectorSheet: View {
                     }
                     .padding()
                 }
+            }
+            .onAppear {
+                // 在显示时保存当前节点顺序
+                let sortedNodes = viewModel.getSortedNodes(group.all, in: group)
+                viewModel.saveNodeOrder(for: group.name, nodes: sortedNodes)
+            }
+            .onDisappear {
+                // 在关闭时清除保存的顺序
+                viewModel.clearSavedNodeOrder(for: group.name)
             }
             .navigationTitle(group.name)
             .navigationBarTitleDisplayMode(.inline)

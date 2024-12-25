@@ -93,6 +93,7 @@ class ProxyViewModel: ObservableObject {
     @Published var lastUpdated = Date()
     @Published var lastDelayTestTime = Date()
     @Published var testingGroups: Set<String> = []
+    @Published private var savedNodeOrder: [String: [String]] = [:] // 用于存储每个组的节点顺序
     
     private let server: ClashServer
     private var currentTask: Task<Void, Never>?
@@ -287,7 +288,7 @@ class ProxyViewModel: ObservableObject {
                 return
             }
             
-            // 检查是否需要自动断开���连接
+            // 检查是否需要���动断开连接
             if UserDefaults.standard.bool(forKey: "autoDisconnectOldProxy") {
                 // 获取当前活跃的连接
                 guard var connectionsRequest = makeRequest(path: "connections") else { return }
@@ -389,7 +390,7 @@ class ProxyViewModel: ObservableObject {
                 history: nodes[index].history
             )
             nodes[index] = updatedNode
-            print("DEBUG: 更新节点延迟 - 名称:\(nodeName), 新延迟:\(delay)")
+            // print("DEBUG: 更新节点延迟 - 名称:\(nodeName), 新延迟:\(delay)")
             objectWillChange.send()
         }
     }
@@ -455,7 +456,7 @@ class ProxyViewModel: ObservableObject {
             if server.useSSL,
                let httpsResponse = response as? HTTPURLResponse,
                httpsResponse.statusCode == 400 {
-                print("SSL 连接失败，服务器可能��支持 HTTPS")
+                print("SSL 连接失败，服务器可能不支持 HTTPS")
                 testingGroups.remove(groupName)
                 objectWillChange.send()
                 return
@@ -483,7 +484,7 @@ class ProxyViewModel: ObservableObject {
                 self.lastDelayTestTime = Date()
                 objectWillChange.send()
             } else {
-                print("解析响应数据失败")
+                print("解析响应数据��败")
             }
         } catch {
             print("测速过程出错: \(error)")
@@ -656,47 +657,46 @@ class ProxyViewModel: ObservableObject {
             }
         }
         
-        // 如果找不到 GLOBAL 组，用字母顺序
+        // 如果找不到 GLOBAL 组，用字��顺序
         return groups.sorted { $0.name < $1.name }
     }
     
     // 修改节点排序方法
-    func getSortedNodes(_ nodes: [String], in group: ProxyGroup) -> [String] {
-        let specialNodes = ["DIRECT", "REJECT", "Proxy"]  // 添加 "Proxy" 到特殊节点列表
+    func getSortedNodes(_ nodes: [String], in group: ProxyGroup, useCache: Bool = false) -> [String] {
+        // 如果使用缓存且存在已保存的顺序，直接返回
+        if useCache, let savedOrder = savedNodeOrder[group.name] {
+            return savedOrder
+        }
+        
+        let specialNodes = ["DIRECT", "REJECT", "Proxy"]
         let hideUnavailable = UserDefaults.standard.bool(forKey: "hideUnavailableProxies")
         
-        // 首先过滤掉不可用的节点（如果需要）
         var filteredNodes = nodes
         if hideUnavailable {
             filteredNodes = nodes.filter { nodeName in
-                // 特殊节点始终显示
                 if specialNodes.contains(nodeName) {
                     return true
                 }
-                // 其他节点只显示迟大于 0 的
                 let delay = self.nodes.first(where: { $0.name == nodeName })?.delay ?? 0
                 return delay > 0
             }
         }
         
-        // 获取当前的排序设置
         let sortOrder = UserDefaults.standard.string(forKey: "proxyGroupSortOrder") ?? "default"
         
         return filteredNodes.sorted { node1, node2 in
-            // 特殊节点的优先级排序
             let specialOrder = ["DIRECT", "REJECT", "Proxy"]
             if let index1 = specialOrder.firstIndex(of: node1),
                let index2 = specialOrder.firstIndex(of: node2) {
                 return index1 < index2
             }
             if let index1 = specialOrder.firstIndex(of: node1) {
-                return true  // 特殊节点排在前面
+                return true
             }
             if let index2 = specialOrder.firstIndex(of: node2) {
-                return false // 特殊节点排在前面
+                return false
             }
             
-            // 对于非特殊节点，按照选定的排序方式排序
             switch sortOrder {
             case "latencyAsc":
                 let delay1 = getEffectiveDelay(node1)
@@ -724,6 +724,16 @@ class ProxyViewModel: ObservableObject {
     private func getEffectiveDelay(_ nodeName: String) -> Int {
         let delay = self.nodes.first(where: { $0.name == nodeName })?.delay ?? Int.max
         return delay == 0 ? Int.max : delay
+    }
+    
+    // 添加方法来保存节点顺序
+    func saveNodeOrder(for groupName: String, nodes: [String]) {
+        savedNodeOrder[groupName] = nodes
+    }
+    
+    // 添加方法来清除保存的节点顺序
+    func clearSavedNodeOrder(for groupName: String) {
+        savedNodeOrder.removeValue(forKey: groupName)
     }
 }
 
