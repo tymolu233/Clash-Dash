@@ -9,6 +9,8 @@ struct ContentView: View {
     @State private var showQuickLaunchDestination = false
     @State private var showingAddOpenWRTSheet = false
     @StateObject private var settingsViewModel = SettingsViewModel()
+    @State private var showingModeChangeSuccess = false
+    @State private var lastChangedMode = ""
     
     // 添加触觉反馈生成器
     private let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
@@ -112,6 +114,7 @@ struct ContentView: View {
                                                 impactFeedback.impactOccurred()
                                                 settingsViewModel.updateConfig("mode", value: "rule", server: server) { 
                                                     settingsViewModel.mode = "rule"
+                                                    showModeChangeSuccess(mode: "rule")
                                                 }
                                             } label: {
                                                 Label("规则模式", systemImage: settingsViewModel.mode == "rule" ? "checkmark" : "circle")
@@ -121,6 +124,7 @@ struct ContentView: View {
                                                 impactFeedback.impactOccurred()
                                                 settingsViewModel.updateConfig("mode", value: "direct", server: server) { 
                                                     settingsViewModel.mode = "direct"
+                                                    showModeChangeSuccess(mode: "direct")
                                                 }
                                             } label: {
                                                 Label("直连模式", systemImage: settingsViewModel.mode == "direct" ? "checkmark" : "circle")
@@ -130,12 +134,13 @@ struct ContentView: View {
                                                 impactFeedback.impactOccurred()
                                                 settingsViewModel.updateConfig("mode", value: "global", server: server) { 
                                                     settingsViewModel.mode = "global"
+                                                    showModeChangeSuccess(mode: "global")
                                                 }
                                             } label: {
                                                 Label("全局模式", systemImage: settingsViewModel.mode == "global" ? "checkmark" : "circle")
                                             }
                                         } label: {
-                                            Label("切换模式", systemImage: "arrow.triangle.2.circlepath")
+                                            Label(getModeText(settingsViewModel.mode), systemImage: getModeIcon(settingsViewModel.mode))
                                         }
                                         .onAppear {
                                             settingsViewModel.getCurrentMode(server: server) { currentMode in
@@ -178,7 +183,6 @@ struct ContentView: View {
                             }
                             .buttonStyle(PlainButtonStyle())
                             .onTapGesture {
-                                // 添加触觉反馈
                                 impactFeedback.impactOccurred()
                             }
                         }
@@ -284,6 +288,25 @@ struct ContentView: View {
                     Text(viewModel.errorMessage ?? "")
                 }
             }
+            .overlay(alignment: .bottom) {
+                if showingModeChangeSuccess {
+                    HStack {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                            .font(.title3)
+                        Text("已切换至\(getModeText(lastChangedMode))")
+                            .foregroundColor(.primary)
+                            .font(.subheadline)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(Color(.systemBackground))
+                    .cornerRadius(25)
+                    .shadow(radius: 10, x: 0, y: 5)
+                    .padding(.bottom, 30)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
         }
         .onAppear {
             if let quickLaunchServer = viewModel.servers.first(where: { $0.isQuickLaunch }) {
@@ -359,6 +382,37 @@ struct ContentView: View {
         if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
            let rootViewController = windowScene.windows.first?.rootViewController {
             rootViewController.present(sheet, animated: true)
+        }
+    }
+    
+    private func getModeText(_ mode: String) -> String {
+        switch mode {
+        case "rule": return "规则模式"
+        case "direct": return "直连模式"
+        case "global": return "全局模式"
+        default: return "切换模式"
+        }
+    }
+    
+    private func getModeIcon(_ mode: String) -> String {
+        switch mode {
+        case "rule": return "list.bullet"
+        case "direct": return "arrow.up.right"
+        case "global": return "globe"
+        default: return "shuffle"
+        }
+    }
+    
+    private func showModeChangeSuccess(mode: String) {
+        lastChangedMode = mode
+        withAnimation {
+            showingModeChangeSuccess = true
+        }
+        // 1秒后隐藏提示
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            withAnimation {
+                showingModeChangeSuccess = false
+            }
         }
     }
 }
