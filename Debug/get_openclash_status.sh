@@ -183,7 +183,7 @@ Upgrade-Insecure-Requests: 1"
 Accept-Language: en-US,en;q=0.9,zh-CN;q=0.8,zh-TW;q=0.7,zh;q=0.6
 Cache-Control: no-cache
 Connection: keep-alive
-Cookie: sysauth_http=$token
+Cookie: sysauth_http=$token; sysauth=$token
 DNT: 1
 Pragma: no-cache
 Content-Type: application/x-www-form-urlencoded; charset=utf-8"
