@@ -146,10 +146,12 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
     
     @MainActor
     private func checkServerStatus(_ server: ClashServer) async {
-        guard let request = makeRequest(for: server, path: "/version") else {
+        guard var request = makeRequest(for: server, path: "/version") else {
             updateServerStatus(server, status: .error, message: "无效的请求")
             return
         }
+
+        request.timeoutInterval = 2 // 设置请求超时时间为2秒
         
         do {
             let session = makeURLSession(for: server)
