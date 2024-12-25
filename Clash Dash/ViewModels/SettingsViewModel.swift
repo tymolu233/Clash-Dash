@@ -205,4 +205,19 @@ class SettingsViewModel: ObservableObject {
         updateConfig(configKey, value: port, server: server)
         return true
     }
+    
+    func getCurrentMode(server: ClashServer, completion: @escaping (String) -> Void) {
+        guard let request = makeRequest(path: "configs", server: server) else { return }
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            guard let data = data,
+                  let config = try? JSONDecoder().decode(ClashConfig.self, from: data) else {
+                return
+            }
+            
+            DispatchQueue.main.async {
+                completion(config.mode)
+            }
+        }.resume()
+    }
 } 

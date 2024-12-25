@@ -8,6 +8,8 @@ struct ContentView: View {
     @State private var selectedQuickLaunchServer: ClashServer?
     @State private var showQuickLaunchDestination = false
     @State private var showingAddOpenWRTSheet = false
+    @State private var showModePickerSheet = false
+    @StateObject private var settingsViewModel = SettingsViewModel()
     
     // 添加触觉反馈生成器
     private let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
@@ -104,6 +106,14 @@ struct ContentView: View {
                                         } label: {
                                             Label(server.isQuickLaunch ? "取消快速启动" : "设为快速启动", 
                                                   systemImage: server.isQuickLaunch ? "bolt.slash.circle" : "bolt.circle")
+                                        }
+                                        
+                                        Button {
+                                            impactFeedback.impactOccurred()
+                                            selectedQuickLaunchServer = server
+                                            showModePickerSheet = true
+                                        } label: {
+                                            Label("切换模式", systemImage: "arrow.triangle.2.circlepath")
                                         }
                                         
                                         // OpenWRT 特有功能组
@@ -235,6 +245,30 @@ struct ContentView: View {
             .sheet(isPresented: $showingAddOpenWRTSheet) {
                 OpenWRTServerView(viewModel: viewModel)
             }
+            .sheet(isPresented: $showModePickerSheet) {
+                if let server = selectedQuickLaunchServer {
+                    NavigationView {
+                        Form {
+                            Picker("运行模式", selection: $settingsViewModel.mode) {
+                                Text("规则模式").tag("rule")
+                                Text("直连模式").tag("direct")
+                                Text("全局模式").tag("global")
+                            }
+                            .onChange(of: settingsViewModel.mode) { newValue in
+                                settingsViewModel.updateConfig("mode", value: newValue, server: server)
+                            }
+                        }
+                        .navigationTitle("切换模式")
+                        .navigationBarItems(trailing: Button("完成") {
+                            showModePickerSheet = false
+                        })
+                        .onAppear {
+                            settingsViewModel.fetchConfig(server: server)
+                        }
+                    }
+                    .presentationDetents([.height(200)])
+                }
+            }
             .refreshable {
                 await viewModel.checkAllServersStatus()
             }
@@ -257,7 +291,7 @@ struct ContentView: View {
     }
     
     private func showManagementView(for server: ClashServer) {
-        // 显示管理页��的逻辑
+        // 显示管理页的逻辑
     }
     
     private func showSwitchConfigView(for server: ClashServer) {
