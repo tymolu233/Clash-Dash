@@ -82,7 +82,7 @@ class SettingsViewModel: ObservableObject {
         self.tempTproxyPort = self.tproxyPort
     }
     
-    func updateConfig(_ path: String, value: Any, server: ClashServer) {
+    func updateConfig(_ path: String, value: Any, server: ClashServer, completion: (() -> Void)? = nil) {
         guard var request = makeRequest(path: "configs", server: server) else { return }
         
         request.httpMethod = "PATCH"
@@ -93,6 +93,9 @@ class SettingsViewModel: ObservableObject {
             if let httpResponse = response as? HTTPURLResponse,
                (200...299).contains(httpResponse.statusCode) {
                 print("设置更新成功：\(path) = \(value)")
+                DispatchQueue.main.async {
+                    completion?()
+                }
             } else if let error = error {
                 print("设置更新失败：\(path) = \(value)")
                 print("错误：\(error.localizedDescription)")

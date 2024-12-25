@@ -110,21 +110,27 @@ struct ContentView: View {
                                         Menu {
                                             Button {
                                                 impactFeedback.impactOccurred()
-                                                settingsViewModel.updateConfig("mode", value: "rule", server: server)
+                                                settingsViewModel.updateConfig("mode", value: "rule", server: server) { 
+                                                    settingsViewModel.mode = "rule"
+                                                }
                                             } label: {
                                                 Label("规则模式", systemImage: settingsViewModel.mode == "rule" ? "checkmark" : "")
                                             }
                                             
                                             Button {
                                                 impactFeedback.impactOccurred()
-                                                settingsViewModel.updateConfig("mode", value: "direct", server: server)
+                                                settingsViewModel.updateConfig("mode", value: "direct", server: server) { 
+                                                    settingsViewModel.mode = "direct"
+                                                }
                                             } label: {
                                                 Label("直连模式", systemImage: settingsViewModel.mode == "direct" ? "checkmark" : "")
                                             }
                                             
                                             Button {
                                                 impactFeedback.impactOccurred()
-                                                settingsViewModel.updateConfig("mode", value: "global", server: server)
+                                                settingsViewModel.updateConfig("mode", value: "global", server: server) { 
+                                                    settingsViewModel.mode = "global"
+                                                }
                                             } label: {
                                                 Label("全局模式", systemImage: settingsViewModel.mode == "global" ? "checkmark" : "")
                                             }
