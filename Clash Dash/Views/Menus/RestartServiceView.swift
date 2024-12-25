@@ -127,7 +127,7 @@ struct RestartServiceView: View {
                 }
                 
                 var logRequest = URLRequest(url: logURL)
-                logRequest.setValue("sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
+                logRequest.setValue("sysauth_http=\(token); sysauth=\(token)", forHTTPHeaderField: "Cookie")
                 
                 let (logData, _) = try await URLSession.shared.data(for: logRequest)
                 let logResponse = try JSONDecoder().decode(StartLogResponse.self, from: logData)

@@ -69,7 +69,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("sysauth=\(token)", forHTTPHeaderField: "Cookie")
+        request.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
         
         let command: [String: Any] = [
             "method": "exec",
@@ -230,7 +230,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
             var request = URLRequest(url: url)
             request.httpMethod = "POST"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.setValue("sysauth=\(token)", forHTTPHeaderField: "Cookie")
+            request.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
             
             // 首先获取当前订阅数量
             let countCommand: [String: Any] = [
@@ -506,7 +506,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
                 var request = URLRequest(url: url)
                 request.httpMethod = "POST"
                 request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                request.setValue("sysauth=\(token)", forHTTPHeaderField: "Cookie")
+                request.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
                 
                 let command: [String: Any] = [
                     "method": "exec",
@@ -570,7 +570,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
             var request = URLRequest(url: url)
             request.httpMethod = "POST"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.setValue("sysauth=\(token)", forHTTPHeaderField: "Cookie")
+            request.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
             
             let command: [String: Any] = [
                 "method": "exec",
@@ -626,7 +626,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("sysauth=\(token)", forHTTPHeaderField: "Cookie")
+        request.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
         
         let command: [String: Any] = [
             "method": "exec",
@@ -727,7 +727,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
             var request = URLRequest(url: url)
             request.httpMethod = "POST"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.setValue("sysauth=\(token)", forHTTPHeaderField: "Cookie")
+            request.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
             
             let command: [String: Any] = [
                 "method": "exec",
@@ -780,7 +780,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
             var request = URLRequest(url: url)
             request.httpMethod = "POST"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.setValue("sysauth=\(token)", forHTTPHeaderField: "Cookie")
+            request.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
             
             // 删除命令
             let commands = [
@@ -840,7 +840,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("sysauth=\(token)", forHTTPHeaderField: "Cookie")
+        request.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
         
         let command: [String: Any] = [
             "method": "exec",

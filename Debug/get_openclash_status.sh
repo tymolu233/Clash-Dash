@@ -148,7 +148,7 @@ Pragma: no-cache"
 Accept-Language: en-US,en;q=0.9
 Cache-Control: no-cache
 Connection: keep-alive
-Cookie: sysauth_http=$token
+Cookie: sysauth_http=$token; sysauth=$token
 DNT: 1
 Pragma: no-cache
 Upgrade-Insecure-Requests: 1"

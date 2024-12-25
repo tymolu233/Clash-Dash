@@ -330,7 +330,7 @@ struct OpenClashRulesView: View {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("sysauth=\(token)", forHTTPHeaderField: "Cookie")
+        request.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
         
         let command: [String: Any] = [
             "method": "exec",
