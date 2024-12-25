@@ -200,7 +200,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             case 404:
                 updateServerStatus(server, status: .error, message: "API 路径不存在")
             case 500...599:
-                updateServerStatus(server, status: .error, message: "服务���错误: \(httpResponse.statusCode)")
+                updateServerStatus(server, status: .error, message: "服务器错误: \(httpResponse.statusCode)")
             default:
                 updateServerStatus(server, status: .error, message: "未知响应: \(httpResponse.statusCode)")
             }
@@ -224,7 +224,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                 updateServerStatus(server, status: .error, message: "网络错误")
             }
         } catch {
-            print("❌ 未知错误: \(error)")
+            print("❌ 未知错��: \(error)")
             updateServerStatus(server, status: .error, message: "未知错误")
         }
     }
@@ -376,7 +376,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                     throw NetworkError.invalidResponse
                 }
                 
-                print("🔑 获取到认证令牌: \(token)")
+                print("🔑 获取���认证令牌: \(token)")
                 logger.log("🔑 获取到认证令牌: \(token)")
                 // 2. 使用认证令牌获取 OpenClash 状态
                 let timestamp = Int(Date().timeIntervalSince1970 * 1000)
@@ -388,7 +388,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                 print("📤 发送状态请求: \(statusURL)")
                 logger.log("📤 发送状态请求: \(statusURL)")
                 var statusRequest = URLRequest(url: statusURL)
-                statusRequest.setValue("sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
+                statusRequest.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
                 
                 let (statusData, statusResponse) = try await session.data(for: statusRequest)
                 
@@ -472,7 +472,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                     var execRequest = URLRequest(url: execURL)
                     execRequest.httpMethod = "POST"
                     execRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                    execRequest.setValue("sysauth=\(token)", forHTTPHeaderField: "Cookie")
+                    execRequest.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
                     
                     let execBody: [String: Any] = [
                         "method": "exec",
@@ -609,7 +609,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             case 200:
                 return try JSONDecoder().decode(ClashConfig.self, from: data)
             case 401:
-                throw NetworkError.unauthorized(message: "认证失败: 服务器返回 401 未授权")
+                throw NetworkError.unauthorized(message: "��证失败: 服务器返回 401 未授权")
             default:
                 throw NetworkError.serverError(httpResponse.statusCode)
             }
@@ -716,7 +716,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         
         if let responseStr = String(data: currentData, encoding: .utf8) {
             print("📥 当前配置响应: \(responseStr)")
-            logger.log("���� 当前配置响应: \(responseStr)")
+            logger.log("📥 当前配置响应: \(responseStr)")
         }
         
         let currentResult = try JSONDecoder().decode(ListResponse.self, from: currentData)
@@ -750,7 +750,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             
             // 检查配置文件语法
             print("🔍 检查配置文件语法: \(fileName)")
-            logger.log("🔍 检查配��文件语法: \(fileName)")
+            logger.log("🔍 检查配置文件语法: \(fileName)")
             var checkRequest = URLRequest(url: listURL)
             checkRequest.httpMethod = "POST"
             checkRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -781,7 +781,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             }
             
             var subRequest = URLRequest(url: subURL)
-            subRequest.setValue("sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
+            subRequest.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
             
             let (subData, _) = try await session.data(for: subRequest)
             let subscription = try? JSONDecoder().decode(OpenClashConfig.SubscriptionInfo.self, from: subData)
@@ -828,7 +828,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         var request = URLRequest(url: switchURL)
         request.httpMethod = "POST"
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
-        request.setValue("sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
+        request.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
         request.httpBody = "config_name=\(configName)".data(using: .utf8)
         
         let session = makeURLSession(for: server)
@@ -887,7 +887,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             if let error = authResponse.error {
                 throw NetworkError.unauthorized(message: "认证失败: \(error)")
             }
-            throw NetworkError.unauthorized(message: "认证失败: 服务器��返回有效的认证令牌")
+            throw NetworkError.unauthorized(message: "认证失败: 服务器没有返回有效的认��令牌")
         }
         
         return token
@@ -913,7 +913,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("sysauth=\(token)", forHTTPHeaderField: "Cookie")
+        request.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
         
         let command: [String: Any] = [
             "method": "exec",
@@ -974,7 +974,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         var request = URLRequest(url: url)
         request.httpMethod = "POST" 
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("sysauth=\(token)", forHTTPHeaderField: "Cookie")
+        request.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
         
         let command: [String: Any] = [
             "method": "exec",
@@ -1041,7 +1041,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                 print("⏱ 文件修改时间差: \(timeDiff)秒")
                 logger.log("⏱ 文件修改时间差: \(timeDiff)秒")
                 if timeDiff < 0 || timeDiff > 5 {
-                    print("❌ 文件时间验证��败")
+                    print("❌ 文件时间验证失败")
                     logger.log("❌ 文件时间验证失败")
                     throw NetworkError.invalidResponse
                 }
@@ -1075,7 +1075,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         var restartRequest = URLRequest(url: restartURL)
         restartRequest.httpMethod = "POST"
         restartRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        restartRequest.setValue("sysauth=\(token)", forHTTPHeaderField: "Cookie")
+        restartRequest.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
         
         let restartCommand: [String: Any] = [
             "method": "exec",
@@ -1110,7 +1110,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                         }
                         
                         var logRequest = URLRequest(url: logURL)
-                        logRequest.setValue("sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
+                        logRequest.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
                         
                         let (logData, _) = try await session.data(for: logRequest)
                         let logResponse = try JSONDecoder().decode(StartLogResponse.self, from: logData)
@@ -1141,7 +1141,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                         var statusRequest = URLRequest(url: restartURL)
                         statusRequest.httpMethod = "POST"
                         statusRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                        statusRequest.setValue("sysauth=\(token)", forHTTPHeaderField: "Cookie")
+                        statusRequest.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
                         
                         let statusCommand: [String: Any] = [
                             "method": "exec",
@@ -1200,7 +1200,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("sysauth=\(token)", forHTTPHeaderField: "Cookie")
+        request.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
         
         let command: [String: Any] = [
             "method": "exec",
@@ -1256,7 +1256,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("sysauth=\(token)", forHTTPHeaderField: "Cookie")
+        request.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
         
         let command: [String: Any] = [
             "method": "exec",
