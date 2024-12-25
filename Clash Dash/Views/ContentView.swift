@@ -8,7 +8,6 @@ struct ContentView: View {
     @State private var selectedQuickLaunchServer: ClashServer?
     @State private var showQuickLaunchDestination = false
     @State private var showingAddOpenWRTSheet = false
-    @State private var showModePickerSheet = false
     @StateObject private var settingsViewModel = SettingsViewModel()
     
     // 添加触觉反馈生成器
@@ -108,12 +107,32 @@ struct ContentView: View {
                                                   systemImage: server.isQuickLaunch ? "bolt.slash.circle" : "bolt.circle")
                                         }
                                         
-                                        Button {
-                                            impactFeedback.impactOccurred()
-                                            selectedQuickLaunchServer = server
-                                            showModePickerSheet = true
+                                        Menu {
+                                            Button {
+                                                impactFeedback.impactOccurred()
+                                                settingsViewModel.updateConfig("mode", value: "rule", server: server)
+                                            } label: {
+                                                Label("规则模式", systemImage: settingsViewModel.mode == "rule" ? "checkmark" : "")
+                                            }
+                                            
+                                            Button {
+                                                impactFeedback.impactOccurred()
+                                                settingsViewModel.updateConfig("mode", value: "direct", server: server)
+                                            } label: {
+                                                Label("直连模式", systemImage: settingsViewModel.mode == "direct" ? "checkmark" : "")
+                                            }
+                                            
+                                            Button {
+                                                impactFeedback.impactOccurred()
+                                                settingsViewModel.updateConfig("mode", value: "global", server: server)
+                                            } label: {
+                                                Label("全局模式", systemImage: settingsViewModel.mode == "global" ? "checkmark" : "")
+                                            }
                                         } label: {
                                             Label("切换模式", systemImage: "arrow.triangle.2.circlepath")
+                                        }
+                                        .onAppear {
+                                            settingsViewModel.fetchConfig(server: server)
                                         }
                                         
                                         // OpenWRT 特有功能组
@@ -159,7 +178,7 @@ struct ContentView: View {
                         // 设置卡片
                         VStack(spacing: 16) {
                             SettingsLinkRow(
-                                title: "全局配置",
+                                title: "��局配置",
                                 icon: "gearshape.fill",
                                 iconColor: .gray,
                                 destination: GlobalSettingsView()
@@ -244,30 +263,6 @@ struct ContentView: View {
             }
             .sheet(isPresented: $showingAddOpenWRTSheet) {
                 OpenWRTServerView(viewModel: viewModel)
-            }
-            .sheet(isPresented: $showModePickerSheet) {
-                if let server = selectedQuickLaunchServer {
-                    NavigationView {
-                        Form {
-                            Picker("运行模式", selection: $settingsViewModel.mode) {
-                                Text("规则模式").tag("rule")
-                                Text("直连模式").tag("direct")
-                                Text("全局模式").tag("global")
-                            }
-                            .onChange(of: settingsViewModel.mode) { newValue in
-                                settingsViewModel.updateConfig("mode", value: newValue, server: server)
-                            }
-                        }
-                        .navigationTitle("切换模式")
-                        .navigationBarItems(trailing: Button("完成") {
-                            showModePickerSheet = false
-                        })
-                        .onAppear {
-                            settingsViewModel.fetchConfig(server: server)
-                        }
-                    }
-                    .presentationDetents([.height(200)])
-                }
             }
             .refreshable {
                 await viewModel.checkAllServersStatus()
