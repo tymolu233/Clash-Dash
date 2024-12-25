@@ -94,15 +94,15 @@ class SettingsViewModel: ObservableObject {
         URLSession.shared.dataTask(with: request) { [weak self] _, response, error in
             if let httpResponse = response as? HTTPURLResponse,
                (200...299).contains(httpResponse.statusCode) {
-                print("代理模式更新成功：\(path) = \(value)")
-                logger.log("代理模式更新成功：\(path) = \(value)")
+                print("设置切换成功：\(path) = \(value)")
+                logger.log("设置切换成功：\(path) = \(value)")
                 DispatchQueue.main.async {
                     completion?()
                 }
             } else if let error = error {
-                print("代理模式更新失败：\(path) = \(value)")
+                print("设置切换失败：\(path) = \(value)")
                 print("错误：\(error.localizedDescription)")
-                logger.log("代理模式更新失败：\(path) = \(value)")
+                logger.log("设置切换失败：\(path) = \(value)")
             }
         }.resume()
     }

@@ -408,8 +408,8 @@ struct ContentView: View {
         withAnimation {
             showingModeChangeSuccess = true
         }
-        // 1秒后隐藏提示
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+        // 2 秒后隐藏提示
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
             withAnimation {
                 showingModeChangeSuccess = false
             }
