@@ -336,11 +336,10 @@ class ProxyViewModel: ObservableObject {
             if server.useSSL,
                let httpsResponse = response as? HTTPURLResponse,
                httpsResponse.statusCode == 400 {
-                // print("SSL 连接失败，服务器可能不支持 HTTPS")
                 return
             }
             
-            // 检查是否需要动断开连接
+            // 检查是否需要断开旧连接
             if UserDefaults.standard.bool(forKey: "autoDisconnectOldProxy") {
                 // 获取当前活跃的连接
                 guard var connectionsRequest = makeRequest(path: "connections") else { return }
@@ -366,14 +365,37 @@ class ProxyViewModel: ObservableObject {
                 }
             }
             
-            if proxyName != "REJECT" {
-                await testNodeDelay(nodeName: proxyName)
+            // 获取实际需要测试的节点
+            let nodeToTest = await getActualNode(proxyName)
+            
+            // 如果不是 REJECT 且不是 DIRECT，则测试延迟
+            if nodeToTest != "REJECT" && nodeToTest != "DIRECT" {
+                await testNodeDelay(nodeName: nodeToTest)
             }
+            
             await fetchProxies()
             
         } catch {
             handleNetworkError(error)
         }
+    }
+    
+    // 添加获取实际节点的方法
+    private func getActualNode(_ nodeName: String, visitedGroups: Set<String> = []) async -> String {
+        // 防止循环依赖
+        if visitedGroups.contains(nodeName) {
+            return nodeName
+        }
+        
+        // 如果是代理组，递归获取当前选中的节点
+        if let group = groups.first(where: { $0.name == nodeName }) {
+            var visited = visitedGroups
+            visited.insert(nodeName)
+            return await getActualNode(group.now, visitedGroups: visited)
+        }
+        
+        // 如果是实际节点或特殊节点，直接返回
+        return nodeName
     }
     
     // 修改 testNodeDelay 方法以支持 DIRECT 节点
@@ -569,7 +591,7 @@ class ProxyViewModel: ObservableObject {
                (200...299).contains(httpResponse.statusCode) {
                 // print("代理提供者 \(providerName) 更新成功")
                 
-                // 等待一小段时间确保服���器处理完成
+                // 等待一小段时间确保服务器处理完成
                 try? await Task.sleep(nanoseconds: 500_000_000) // 0.5秒
                 
                 // 在主线程上更新
@@ -670,7 +692,7 @@ class ProxyViewModel: ObservableObject {
                     // 更新节点延迟
                     updateNodeDelay(nodeName: proxyName, delay: delayResponse.delay)
                     testingNodes.remove(proxyName)
-                    self.lastDelayTestTime = Date()  // 触发视图更新
+                    self.lastDelayTestTime = Date()  // ��发视图更新
                     objectWillChange.send()
                     
                     // 刷新数据
