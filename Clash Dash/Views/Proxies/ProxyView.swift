@@ -66,12 +66,15 @@ struct ProxyView: View {
                     )
                     
                     // 代理提供者部分
-                    if !viewModel.providers.isEmpty {
+                    if !viewModel.providers.filter({ $0.subscriptionInfo != nil }).isEmpty {
                         ProxyProvidersSection(
                             providers: viewModel.providers,
                             nodes: viewModel.providerNodes,
                             viewModel: viewModel
                         )
+                    } else {
+                        let _ = print("❌ 没有包含订阅信息的代理提供者")
+                        EmptyView()
                     }
                 }
             }
@@ -401,15 +404,25 @@ struct ProxyProvidersSection: View {
     let nodes: [String: [ProxyNode]]
     @ObservedObject var viewModel: ProxyViewModel
     
+    // 添加计算属性来过滤提供者
+    private var subscriptionProviders: [Provider] {
+        providers.filter { $0.subscriptionInfo != nil }
+    }
+    
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("代理提供者")
-                .font(.title2.bold())
-            
-            ForEach(providers.sorted(by: { $0.name < $1.name })) { provider in
-                ProxyProviderCard(provider: provider, 
-                            nodes: nodes[provider.name] ?? [], 
-                            viewModel: viewModel)
+        if !subscriptionProviders.isEmpty {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("代理提供者")
+                    .font(.title2.bold())
+                
+                ForEach(subscriptionProviders.sorted(by: { $0.name < $1.name })) { provider in
+                    let _ = print("📦 显示订阅提供者: \(provider.name)")
+                    ProxyProviderCard(
+                        provider: provider, 
+                        nodes: nodes[provider.name] ?? [], 
+                        viewModel: viewModel
+                    )
+                }
             }
         }
     }

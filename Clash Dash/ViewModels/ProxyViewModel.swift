@@ -134,19 +134,29 @@ class ProxyViewModel: ObservableObject {
     
     @MainActor
     func fetchProxies() async {
+        print("开始获取代理数据...")
         do {
             // 1. 获取 proxies 数据
-            guard let proxiesRequest = makeRequest(path: "proxies") else { return }
+            guard let proxiesRequest = makeRequest(path: "proxies") else { 
+                print("❌ 创建 proxies 请求失败")
+                return 
+            }
+            print("📡 发送 proxies 请求...")
             let (proxiesData, _) = try await URLSession.shared.data(for: proxiesRequest)
             
             // 2. 获取 providers 数据
-            guard let providersRequest = makeRequest(path: "providers/proxies") else { return }
+            guard let providersRequest = makeRequest(path: "providers/proxies") else { 
+                print("❌ 创建 providers 请求失败")
+                return 
+            }
+            print("📡 发送 providers 请求...")
             let (providersData, _) = try await URLSession.shared.data(for: providersRequest)
             
             var allNodes: [ProxyNode] = []
             
             // 3. 处理 proxies 数据
             if let proxiesResponse = try? JSONDecoder().decode(ProxyResponse.self, from: proxiesData) {
+                print("✅ 成功解析 proxies 数据")
                 let proxyNodes = proxiesResponse.proxies.map { name, proxy in
                     ProxyNode(
                         id: proxy.id ?? UUID().uuidString,
@@ -169,10 +179,44 @@ class ProxyViewModel: ObservableObject {
                         all: proxy.all ?? []
                     )
                 }
+                print("📊 代理组数量: \(self.groups.count)")
+            } else {
+                print("❌ 解析 proxies 数据失败")
             }
             
             // 4. 处理 providers 数据
             if let providersResponse = try? JSONDecoder().decode(ProxyProvidersResponse.self, from: providersData) {
+                // print("✅ 成功解析 providers 数据")
+                // print("📦 代理提供者数量: \(providersResponse.providers.count)")
+                
+                // 更新 providers 属性
+                self.providers = providersResponse.providers.map { name, provider in
+                    Provider(
+                        name: name,
+                        type: provider.type,
+                        vehicleType: provider.vehicleType,
+                        updatedAt: provider.updatedAt,
+                        subscriptionInfo: provider.subscriptionInfo
+                    )
+                }
+                // print("📦 更新后的提供者数量: \(self.providers.count)")
+                
+                // 更新 providerNodes
+                for (providerName, provider) in providersResponse.providers {
+                    let nodes = provider.proxies.map { proxy in
+                        ProxyNode(
+                            id: proxy.id ?? UUID().uuidString,
+                            name: proxy.name,
+                            type: proxy.type,
+                            alive: proxy.alive ?? true,
+                            delay: proxy.history.last?.delay ?? 0,
+                            history: proxy.history
+                        )
+                    }
+                    self.providerNodes[providerName] = nodes
+                    // print("📦 提供者 \(providerName) 的节点数量: \(nodes.count)")
+                }
+                
                 let providerNodes = providersResponse.providers.flatMap { _, provider in
                     provider.proxies.map { proxy in
                         ProxyNode(
@@ -186,14 +230,22 @@ class ProxyViewModel: ObservableObject {
                     }
                 }
                 allNodes.append(contentsOf: providerNodes)
+            } else {
+                print("❌ 解析 providers 数据失败")
+                // 尝试打印原始数据以进行调试
+                if let jsonString = String(data: providersData, encoding: .utf8) {
+                    print("📝 原始 providers 数据:")
+                    print(jsonString)
+                }
             }
             
             // 5. 更新节点数据
             self.nodes = allNodes
+            print("📊 总节点数量: \(allNodes.count)")
             objectWillChange.send()
             
         } catch {
-            print("获取代理错误: \(error)")
+            print("❌ 获取代理错误: \(error)")
         }
     }
     
@@ -288,7 +340,7 @@ class ProxyViewModel: ObservableObject {
                 return
             }
             
-            // 检查是否需要���动断开连接
+            // 检查是否需要动断开连接
             if UserDefaults.standard.bool(forKey: "autoDisconnectOldProxy") {
                 // 获取当前活跃的连接
                 guard var connectionsRequest = makeRequest(path: "connections") else { return }
@@ -484,7 +536,7 @@ class ProxyViewModel: ObservableObject {
                 self.lastDelayTestTime = Date()
                 objectWillChange.send()
             } else {
-                print("解析响应数据��败")
+                print("解析响应数据失败")
             }
         } catch {
             print("测速过程出错: \(error)")
@@ -517,7 +569,7 @@ class ProxyViewModel: ObservableObject {
                (200...299).contains(httpResponse.statusCode) {
                 // print("代理提供者 \(providerName) 更新成功")
                 
-                // 等待一小段时间确保服务器处理完成
+                // 等待一小段时间确保服���器处理完成
                 try? await Task.sleep(nanoseconds: 500_000_000) // 0.5秒
                 
                 // 在主线程上更新
@@ -657,7 +709,7 @@ class ProxyViewModel: ObservableObject {
             }
         }
         
-        // 如果找不到 GLOBAL 组，用字��顺序
+        // 如果找不到 GLOBAL 组，用字顺序
         return groups.sorted { $0.name < $1.name }
     }
     
