@@ -5,6 +5,7 @@ struct GlobalSettingsView: View {
     @AppStorage("autoDisconnectOldProxy") private var autoDisconnectOldProxy = false
     @AppStorage("hideUnavailableProxies") private var hideUnavailableProxies = false
     @AppStorage("proxyGroupSortOrder") private var proxyGroupSortOrder = ProxyGroupSortOrder.default
+    @AppStorage("proxyViewStyle") private var proxyViewStyle = ProxyViewStyle.detailed
     @AppStorage("speedTestURL") private var speedTestURL = "https://www.gstatic.com/generate_204"
     @AppStorage("speedTestTimeout") private var speedTestTimeout = 5000
     @State private var showClearCacheAlert = false
@@ -100,6 +101,17 @@ struct GlobalSettingsView: View {
                 }
             } header: {
                 SectionHeader(title: "缓存管理", systemImage: "internaldrive")
+            }
+
+            Section {
+                Picker("代理视图样式", selection: $proxyViewStyle) {
+                    ForEach(ProxyViewStyle.allCases) { style in
+                        Text(style.description)
+                            .tag(style)
+                    }
+                }
+            } header: {
+                SectionHeader(title: "外观", systemImage: "paintbrush")
             }
         }
         .navigationTitle("全局配置")
@@ -237,6 +249,21 @@ struct SettingsInfoRow: View {
                 .foregroundColor(.secondary)
         }
         .padding(.vertical, 4)
+    }
+}
+
+// 添加代理视图样式枚举
+enum ProxyViewStyle: String, CaseIterable, Identifiable {
+    case detailed = "detailed"
+    case compact = "compact"
+    
+    var id: String { self.rawValue }
+    
+    var description: String {
+        switch self {
+        case .detailed: return "详细"
+        case .compact: return "简洁"
+        }
     }
 }
 

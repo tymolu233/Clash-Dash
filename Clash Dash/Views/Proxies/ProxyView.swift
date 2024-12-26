@@ -196,6 +196,7 @@ struct ProxyView: View {
     @State private var isRefreshing = false
     @State private var showProviderSheet = false
     @Namespace private var animation
+    @AppStorage("proxyViewStyle") private var proxyViewStyle = ProxyViewStyle.detailed
     
     // 添加触觉反馈生成器
     private let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
@@ -209,36 +210,58 @@ struct ProxyView: View {
         ScrollView {
             VStack(spacing: 20) {
                 if viewModel.groups.isEmpty {
-                    if #available(iOS 17.0, *) {
-                        ContentUnavailableView {
-                            Label("加载中", systemImage: "network")
-                        }
-                        .frame(maxHeight: .infinity)
-                    } else {
-                        LoadingView()
-                    }
+                    LoadingView()
                 } else {
-                    // 代理组概览卡片 - 显示所有节点
-                    ProxyGroupsOverview(
-                        groups: viewModel.getSortedGroups(),
-                        viewModel: viewModel
-                    )
-                    
-                    // 代理提供者部分 - 只显示有订阅信息的提供者
-                    let subscriptionProviders = viewModel.providers.filter { $0.subscriptionInfo != nil }
-                    if !subscriptionProviders.isEmpty {
-                        ProxyProvidersSection(
-                            providers: subscriptionProviders, // 只传入有订阅信息的提供者
-                            nodes: viewModel.providerNodes,
-                            viewModel: viewModel
-                        )
+                    // 根据视图样式显示不同的卡片
+                    if proxyViewStyle == .detailed {
+                        VStack(spacing: 20) {
+                            ProxyGroupsOverview(groups: viewModel.getSortedGroups(), viewModel: viewModel)
+                            
+                            // 代理提供者部分 - 只显示有订阅信息的提供者
+                            let subscriptionProviders = viewModel.providers.filter { $0.subscriptionInfo != nil }
+                            if !subscriptionProviders.isEmpty {
+                                ProxyProvidersSection(
+                                    providers: subscriptionProviders,
+                                    nodes: viewModel.providerNodes,
+                                    viewModel: viewModel
+                                )
+                            }
+                        }
+                        .padding(.horizontal)
                     } else {
-                        let _ = print("❌ 没有包含订阅信息的代理提供者")
-                        EmptyView()
+                        LazyVStack(spacing: 20) {
+                            // 代理组列表
+                            LazyVStack(spacing: 12) {
+                                ForEach(viewModel.getSortedGroups(), id: \.name) { group in
+                                    CompactGroupCard(group: group, viewModel: viewModel)
+                                }
+                            }
+                            
+                            // 代理提供者部分 - 只显示有订阅信息的提供者
+                            let subscriptionProviders = viewModel.providers.filter { $0.subscriptionInfo != nil }
+                            if !subscriptionProviders.isEmpty {
+                                VStack(alignment: .leading, spacing: 12) {
+                                    Text("代理提供者")
+                                        .font(.headline)
+                                        .padding(.horizontal)
+                                    
+                                    LazyVStack(spacing: 12) {
+                                        ForEach(subscriptionProviders, id: \.name) { provider in
+                                            CompactProviderCard(
+                                                provider: provider,
+                                                nodes: viewModel.providerNodes[provider.name] ?? [],
+                                                viewModel: viewModel
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.horizontal)
                     }
                 }
             }
-            .padding()
+            .padding(.vertical)
         }
         .background(Color(.systemGroupedBackground))
         .refreshable {
@@ -624,7 +647,7 @@ struct GroupCard: View {
             var visited = visitedGroups
             visited.insert(nodeName)
             
-            // 递归获取当前选中节点的实际节点和延迟
+            // 递归获���当前选中节点的实际节点和延迟
             return getActualNodeAndDelay(nodeName: group.now, visitedGroups: visited)
         }
         
@@ -947,7 +970,7 @@ struct ProviderNodeSelector: View {
     @State private var isTestingAll = false
     @State private var testingNodes = Set<String>()
     
-    // 添加触觉反馈生成器
+    // 添加触觉反馈生��器
     private let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
     
     private let columns = [GridItem(.flexible()), GridItem(.flexible())]
@@ -1227,7 +1250,7 @@ struct ProxySelectorSheet: View {
                                     Task {
                                         // 先切换节点
                                         await viewModel.selectProxy(groupName: group.name, proxyName: nodeName)
-                                        // 如果不是 REJECT，则测试延迟
+                                        // 如果���是 REJECT，则测试延迟
                                         if nodeName != "REJECT" {
                                             await viewModel.testNodeDelay(nodeName: nodeName)
                                         }
