@@ -230,6 +230,28 @@ struct GroupCard: View {
         group.all.count
     }
     
+    // 添加获取代理链的方法
+    private func getProxyChain(nodeName: String, visitedGroups: Set<String> = []) -> [String] {
+        // 防止循环依赖
+        if visitedGroups.contains(nodeName) {
+            return [nodeName]
+        }
+        
+        // 如果是代理组
+        if let group = viewModel.groups.first(where: { $0.name == nodeName }) {
+            var visited = visitedGroups
+            visited.insert(nodeName)
+            
+            // 递归获取代理链
+            var chain = [nodeName]
+            chain.append(contentsOf: getProxyChain(nodeName: group.now, visitedGroups: visited))
+            return chain
+        }
+        
+        // 如果是实际节点或特殊节点
+        return [nodeName]
+    }
+    
     var body: some View {
         VStack(spacing: 8) {
             // 标题行
@@ -256,7 +278,7 @@ struct GroupCard: View {
                 
                 Spacer()
                 
-                // 节点数量标���
+                // 节点数量标签
                 Text("\(totalNodes) 个节点")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
@@ -279,20 +301,24 @@ struct GroupCard: View {
                     DelayTestingView()
                         .foregroundStyle(.blue)
                         .scaleEffect(0.7)
-                } else if let currentNode = viewModel.nodes.first(where: { $0.name == group.now }) {
-                    Text(currentNode.name)
+                } else {
+                    // 获取实际节点的延迟
+                    let (finalNode, finalDelay) = getActualNodeAndDelay(nodeName: group.now)
+                    
+                    // 显示直接选中的节点名称
+                    Text(group.now)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                     
-                    if currentNode.delay > 0 {
-                        // let _ = print("显示节点 \(currentNode.name) 的延迟: \(currentNode.delay)ms")
-                        Text("\(currentNode.delay) ms")
+                    // 显示实际节点的延迟
+                    if finalDelay > 0 {
+                        Text("\(finalDelay) ms")
                             .font(.caption2)
                             .padding(.horizontal, 4)
                             .padding(.vertical, 1)
-                            .background(DelayColor.color(for: currentNode.delay).opacity(0.1))
-                            .foregroundStyle(DelayColor.color(for: currentNode.delay))
+                            .background(DelayColor.color(for: finalDelay).opacity(0.1))
+                            .foregroundStyle(DelayColor.color(for: finalDelay))
                             .clipShape(Capsule())
                     }
                 }
@@ -349,7 +375,7 @@ struct GroupCard: View {
             let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
             impactFeedback.impactOccurred()
             
-            // 是显示选择器
+            // 显示选择器
             showingProxySelector = true
         }
         .sheet(isPresented: $showingProxySelector) {
@@ -396,6 +422,31 @@ struct GroupCard: View {
             }
             return "antenna.radiowaves.left.and.right"
         }
+    }
+    
+    // 添加递归获取实际节点和延迟的方法
+    private func getActualNodeAndDelay(nodeName: String, visitedGroups: Set<String> = []) -> (String, Int) {
+        // 防止循环依赖
+        if visitedGroups.contains(nodeName) {
+            return (nodeName, 0)
+        }
+        
+        // 如果是代理组
+        if let group = viewModel.groups.first(where: { $0.name == nodeName }) {
+            var visited = visitedGroups
+            visited.insert(nodeName)
+            
+            // 递归获取当前选中节点的实际节点和延迟
+            return getActualNodeAndDelay(nodeName: group.now, visitedGroups: visited)
+        }
+        
+        // 如果是实际节点
+        if let node = viewModel.nodes.first(where: { $0.name == nodeName }) {
+            return (node.name, node.delay)
+        }
+        
+        // 如果是特殊节点 (DIRECT/REJECT)
+        return (nodeName, 0)
     }
 }
 
@@ -672,7 +723,7 @@ struct ProxyProviderCard: View {
     }
 }
 
-// 添加节点选择器 Sheet
+// 添加节点选择 Sheet
 struct ProviderNodeSelector: View {
     let provider: Provider
     let nodes: [ProxyNode]
@@ -1145,18 +1196,30 @@ struct ProxyNodeCard: View {
         }
     }
     
-    // 获取节点延迟的辅助方法
-    private func getNodeDelay(nodeName: String) -> Int {
-        // 如果是代理组，返回当前选中节点的延迟
+    // 获取节点延��的辅助方法
+    private func getNodeDelay(nodeName: String, visitedGroups: Set<String> = []) -> Int {
+        // 防止循环依赖
+        if visitedGroups.contains(nodeName) {
+            return 0
+        }
+        
+        // 如果是代理组，递归获取当前选中节点的延迟
         if let group = viewModel.groups.first(where: { $0.name == nodeName }) {
+            var visited = visitedGroups
+            visited.insert(nodeName)
+            
             // 获取当前选中的节点
             let currentNodeName = group.now
-            // 递归获取实际节点的延迟
-            return getNodeDelay(nodeName: currentNodeName)
+            // 递归获取实际节点的延迟，传递已访问的组列表
+            return getNodeDelay(nodeName: currentNodeName, visitedGroups: visited)
         }
         
         // 如果是实际节点，返回节点延迟
-        return node?.delay ?? 0
+        if let actualNode = viewModel.nodes.first(where: { $0.name == nodeName }) {
+            return actualNode.delay
+        }
+        
+        return 0
     }
     
     private func getDelayColor(_ delay: Int) -> Color {
@@ -1164,7 +1227,7 @@ struct ProxyNodeCard: View {
     }
 }
 
-// 更新 DelayColor 构体，增加颜色饱和度
+// 更新 DelayColor 构造，增加颜色饱和度
 struct DelayColor {
     // 延迟范围常量
     static let lowRange = 0...150
