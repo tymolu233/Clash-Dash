@@ -59,16 +59,17 @@ struct ProxyView: View {
                         LoadingView()
                     }
                 } else {
-                    // 代理组概览卡片
+                    // 代理组概览卡片 - 显示所有节点
                     ProxyGroupsOverview(
                         groups: viewModel.getSortedGroups(),
                         viewModel: viewModel
                     )
                     
-                    // 代理提供者部分
-                    if !viewModel.providers.filter({ $0.subscriptionInfo != nil }).isEmpty {
+                    // 代理提供者部分 - 只显示有订阅信息的提供者
+                    let subscriptionProviders = viewModel.providers.filter { $0.subscriptionInfo != nil }
+                    if !subscriptionProviders.isEmpty {
                         ProxyProvidersSection(
-                            providers: viewModel.providers,
+                            providers: subscriptionProviders, // 只传入有订阅信息的提供者
                             nodes: viewModel.providerNodes,
                             viewModel: viewModel
                         )
@@ -255,7 +256,7 @@ struct GroupCard: View {
                 
                 Spacer()
                 
-                // 节点数量标签
+                // 节点数量标���
                 Text("\(totalNodes) 个节点")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
@@ -348,7 +349,7 @@ struct GroupCard: View {
             let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
             impactFeedback.impactOccurred()
             
-            // 总是显示选择器
+            // 是显示选择器
             showingProxySelector = true
         }
         .sheet(isPresented: $showingProxySelector) {
@@ -400,29 +401,22 @@ struct GroupCard: View {
 
 // 代理提供者部分
 struct ProxyProvidersSection: View {
-    let providers: [Provider]
+    let providers: [Provider] // 这里已经是过滤后的提供者
     let nodes: [String: [ProxyNode]]
     @ObservedObject var viewModel: ProxyViewModel
     
-    // 添加计算属性来过滤提供者
-    private var subscriptionProviders: [Provider] {
-        providers.filter { $0.subscriptionInfo != nil }
-    }
-    
     var body: some View {
-        if !subscriptionProviders.isEmpty {
-            VStack(alignment: .leading, spacing: 16) {
-                Text("代理提供者")
-                    .font(.title2.bold())
-                
-                ForEach(subscriptionProviders.sorted(by: { $0.name < $1.name })) { provider in
-                    let _ = print("📦 显示订阅提供者: \(provider.name)")
-                    ProxyProviderCard(
-                        provider: provider, 
-                        nodes: nodes[provider.name] ?? [], 
-                        viewModel: viewModel
-                    )
-                }
+        VStack(alignment: .leading, spacing: 16) {
+            Text("代理提供者")
+                .font(.title2.bold())
+            
+            ForEach(providers.sorted(by: { $0.name < $1.name })) { provider in
+                let _ = print("📦 显示订阅提供者: \(provider.name)")
+                ProxyProviderCard(
+                    provider: provider, 
+                    nodes: nodes[provider.name] ?? [], 
+                    viewModel: viewModel
+                )
             }
         }
     }
@@ -614,7 +608,7 @@ struct ProxyProviderCard: View {
             // 流量信息
             if let (used, total, percentage) = trafficInfo {
                 VStack(alignment: .leading, spacing: 8) {
-                    // 流量进度条
+                    // 流量度条
                     GeometryReader { geometry in
                         ZStack(alignment: .leading) {
                             RoundedRectangle(cornerRadius: 2)
@@ -701,7 +695,8 @@ struct ProviderNodeSelector: View {
                             nodeName: node.name,
                             node: node,
                             isSelected: false,
-                            isTesting: testingNodes.contains(node.name) || isTestingAll
+                            isTesting: testingNodes.contains(node.name) || isTestingAll,
+                            viewModel: viewModel
                         )
                         .onTapGesture {
                             // 添加触觉反馈
@@ -872,6 +867,60 @@ struct ProxySelectorSheet: View {
     @State private var showURLTestAlert = false
     @AppStorage("proxyGroupSortOrder") private var proxyGroupSortOrder = ProxyGroupSortOrder.default
     
+    // 添加计算属性来获取可用节点
+    private var availableNodes: [String] {
+        // 获取所有代理组名称
+        let groupNames = Set(viewModel.groups.map { $0.name })
+        
+        // 过滤节点列表，保留实际节点和特殊节点
+        return group.all.filter { nodeName in
+            // 保留特殊节点
+            if ["DIRECT", "REJECT"].contains(nodeName) {
+                return true
+            }
+            
+            // 如果是代理组，检查是否有实际节点
+            if groupNames.contains(nodeName),
+               let proxyGroup = viewModel.groups.first(where: { $0.name == nodeName }) {
+                // 递归检查代理组是否包含实际节点
+                return hasActualNodes(in: proxyGroup, visitedGroups: [])
+            }
+            
+            // 其他情况认为是实际节点
+            return true
+        }
+    }
+    
+    // 递归检查代理组是否包含实际节点
+    private func hasActualNodes(in group: ProxyGroup, visitedGroups: Set<String>) -> Bool {
+        var visited = visitedGroups
+        visited.insert(group.name)
+        
+        for nodeName in group.all {
+            // 如果是特殊节点，返回 true
+            if ["DIRECT", "REJECT"].contains(nodeName) {
+                return true
+            }
+            
+            // 如果是已访问过的代理组，跳过以避免循环
+            if visited.contains(nodeName) {
+                continue
+            }
+            
+            // 如果是代理组，递归检查
+            if let subGroup = viewModel.groups.first(where: { $0.name == nodeName }) {
+                if hasActualNodes(in: subGroup, visitedGroups: visited) {
+                    return true
+                }
+            } else {
+                // 不是代理组，认为是实际节点
+                return true
+            }
+        }
+        
+        return false
+    }
+    
     private let columns = [
         GridItem(.flexible()),
         GridItem(.flexible())
@@ -886,21 +935,22 @@ struct ProxySelectorSheet: View {
                         Text("节点列表")
                             .font(.headline)
                         Spacer()
-                        Text("\(group.all.count) 个节点")
+                        Text("\(availableNodes.count) 个节点")
                             .foregroundStyle(.secondary)
                     }
                     .padding(.horizontal)
                     .padding(.top)
                     
-                    // 节点网格 - 使用排序后的节点列表
+                    // 节点网格
                     LazyVGrid(columns: columns, spacing: 12) {
-                        ForEach(viewModel.getSortedNodes(group.all, in: group, useCache: true), id: \.self) { nodeName in
+                        ForEach(availableNodes, id: \.self) { nodeName in
                             let node = viewModel.nodes.first { $0.name == nodeName }
                             ProxyNodeCard(
                                 nodeName: nodeName,
                                 node: node,
                                 isSelected: group.now == nodeName,
-                                isTesting: node.map { viewModel.testingNodes.contains($0.id) } ?? false
+                                isTesting: node.map { viewModel.testingNodes.contains($0.id) } ?? false,
+                                viewModel: viewModel
                             )
                             .onTapGesture {
                                 // 添加触觉反馈
@@ -1002,6 +1052,7 @@ struct ProxyNodeCard: View {
     let node: ProxyNode?
     let isSelected: Bool
     let isTesting: Bool
+    @ObservedObject var viewModel: ProxyViewModel  // 添加 viewModel
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -1023,13 +1074,24 @@ struct ProxyNodeCard: View {
             
             // 节点类型和延迟
             HStack {
-                Text(node?.type ?? "Special")
-                    .font(.caption2)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(.blue.opacity(0.1))
-                    .foregroundStyle(.blue)
-                    .clipShape(Capsule())
+                // 如果是代理组，显示 "代理组"，否则显示节点类型
+                if let group = viewModel.groups.first(where: { $0.name == nodeName }) {
+                    Text("代理组")
+                        .font(.caption2)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(.blue.opacity(0.1))
+                        .foregroundStyle(.blue)
+                        .clipShape(Capsule())
+                } else {
+                    Text(node?.type ?? "Special")
+                        .font(.caption2)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(.blue.opacity(0.1))
+                        .foregroundStyle(.blue)
+                        .clipShape(Capsule())
+                }
                 
                 Spacer()
                 
@@ -1046,28 +1108,28 @@ struct ProxyNodeCard: View {
                         .foregroundStyle(.blue)
                         .scaleEffect(0.8)
                         .transition(.opacity)
-                } else if let node = node, node.delay > 0 {
-                    // let _ = print("DEBUG: 尝试显示延迟 - 节点:\(node.name), 延迟:\(node.delay)ms")
-                    
-                    Text("\(node.delay) ms")
-                        .font(.caption)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(getDelayColor(node.delay).opacity(0.1))
-                        .foregroundStyle(getDelayColor(node.delay))
-                        .clipShape(Capsule())
-                        .transition(.opacity)
                 } else {
-                    // let _ = print("DEBUG: 节点可能超时或延迟为0 - 名称:\(nodeName)")
-                    
-                    Text("超时")
-                        .font(.caption)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(.secondary.opacity(0.1))
-                        .foregroundStyle(.secondary)
-                        .clipShape(Capsule())
-                        .transition(.opacity)
+                    // 获取延迟
+                    let delay = getNodeDelay(nodeName: nodeName)
+                    if delay > 0 {
+                        Text("\(delay) ms")
+                            .font(.caption)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(getDelayColor(delay).opacity(0.1))
+                            .foregroundStyle(getDelayColor(delay))
+                            .clipShape(Capsule())
+                            .transition(.opacity)
+                    } else {
+                        Text("超时")
+                            .font(.caption)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(.secondary.opacity(0.1))
+                            .foregroundStyle(.secondary)
+                            .clipShape(Capsule())
+                            .transition(.opacity)
+                    }
                 }
             }
         }
@@ -1081,6 +1143,20 @@ struct ProxyNodeCard: View {
             RoundedRectangle(cornerRadius: 12)
                 .stroke(isSelected ? .blue : .clear, lineWidth: 2)
         }
+    }
+    
+    // 获取节点延迟的辅助方法
+    private func getNodeDelay(nodeName: String) -> Int {
+        // 如果是代理组，返回当前选中节点的延迟
+        if let group = viewModel.groups.first(where: { $0.name == nodeName }) {
+            // 获取当前选中的节点
+            let currentNodeName = group.now
+            // 递归获取实际节点的延迟
+            return getNodeDelay(nodeName: currentNodeName)
+        }
+        
+        // 如果是实际节点，返回节点延迟
+        return node?.delay ?? 0
     }
     
     private func getDelayColor(_ delay: Int) -> Color {
