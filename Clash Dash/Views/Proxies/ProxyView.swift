@@ -30,6 +30,165 @@ struct LoadingView: View {
     }
 }
 
+// 首先添加一个图片缓存管理器
+class ImageCache {
+    static let shared = ImageCache()
+    private let memoryCache = NSCache<NSString, UIImage>()
+    private let fileManager = FileManager.default
+    private var diskCacheCount: Int = 0
+    
+    private var cacheDirectory: URL? {
+        fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first?.appendingPathComponent("ImageCache")
+    }
+    
+    private init() {
+        memoryCache.countLimit = 100
+        
+        // 创建缓存目录
+        if let cacheDir = cacheDirectory {
+            try? fileManager.createDirectory(at: cacheDir, withIntermediateDirectories: true)
+        }
+        
+        // 读取磁盘缓存数量
+        updateDiskCacheCount()
+    }
+    
+    var count: Int {
+        return diskCacheCount
+    }
+    
+    private func updateDiskCacheCount() {
+        guard let cacheDir = cacheDirectory else { return }
+        diskCacheCount = (try? fileManager.contentsOfDirectory(at: cacheDir, includingPropertiesForKeys: nil))?.count ?? 0
+    }
+    
+    func set(_ image: UIImage, for url: String) {
+        let key = url as NSString
+        memoryCache.setObject(image, forKey: key)
+        
+        // 保存到磁盘
+        guard let data = image.pngData(),
+              let cacheDir = cacheDirectory else { return }
+        
+        let fileURL = cacheDir.appendingPathComponent(key.hash.description)
+        try? data.write(to: fileURL)
+        
+        // 更新缓存计数
+        updateDiskCacheCount()
+    }
+    
+    func get(_ url: String) -> UIImage? {
+        let key = url as NSString
+        
+        // 先从内存缓存中查找
+        if let cachedImage = memoryCache.object(forKey: key) {
+            return cachedImage
+        }
+        
+        // 从磁盘加载
+        guard let cacheDir = cacheDirectory else { return nil }
+        let fileURL = cacheDir.appendingPathComponent(key.hash.description)
+        
+        if let data = try? Data(contentsOf: fileURL),
+           let image = UIImage(data: data) {
+            // 加载成功后保存到内存缓存
+            memoryCache.setObject(image, forKey: key)
+            return image
+        }
+        
+        return nil
+    }
+    
+    func removeAll() {
+        // 清除内存缓存
+        memoryCache.removeAllObjects()
+        
+        // 清除磁盘缓存
+        guard let cacheDir = cacheDirectory else { return }
+        try? fileManager.removeItem(at: cacheDir)
+        try? fileManager.createDirectory(at: cacheDir, withIntermediateDirectories: true)
+        
+        // 更新缓存计数
+        diskCacheCount = 0
+    }
+}
+
+
+// 添加 AsyncImagePhase 枚举
+enum AsyncImagePhase {
+    case empty
+    case success(Image)
+    case failure(Error)
+}
+
+// 创建一个自定义的缓存图片视图
+struct CachedAsyncImage: View {
+    let url: String
+    @State private var phase: AsyncImagePhase = .empty
+    
+    var body: some View {
+        Group {
+            switch phase {
+            case .empty:
+                // 开始加载时检查缓存
+                Color.clear
+                    .onAppear {
+                        loadImage()
+                    }
+            case .success(let image):
+                image
+                    .resizable()
+                    .scaledToFit()
+            case .failure:
+                EmptyView()
+            @unknown default:
+                EmptyView()
+            }
+        }
+    }
+    
+    private func loadImage() {
+        // 首先检查缓存
+        if let cachedImage = ImageCache.shared.get(url) {
+            self.phase = .success(Image(uiImage: cachedImage))
+            return
+        }
+        
+        // 如果缓存中没有，则下载图片
+        guard let imageURL = URL(string: url) else {
+            self.phase = .failure(URLError(.badURL))
+            return
+        }
+        
+        URLSession.shared.dataTask(with: imageURL) { data, response, error in
+            if let error = error {
+                DispatchQueue.main.async {
+                    self.phase = .failure(error)
+                }
+                return
+            }
+            
+            guard let data = data,
+                  let downloadedImage = UIImage(data: data) else {
+                DispatchQueue.main.async {
+                    self.phase = .failure(URLError(.cannotDecodeContentData))
+                }
+                return
+            }
+            
+            // 保存到缓存
+            ImageCache.shared.set(downloadedImage, for: url)
+            
+            // 在主线程更新 UI
+            DispatchQueue.main.async {
+                self.phase = .success(Image(uiImage: downloadedImage))
+            }
+        }.resume()
+    }
+}
+
+
+
 struct ProxyView: View {
     let server: ClashServer
     @StateObject private var viewModel: ProxyViewModel
@@ -256,7 +415,13 @@ struct GroupCard: View {
             // 标题行
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 2) {
-                    HStack {
+                    HStack(spacing: 4) {
+                        // 使用新的缓存图片组件
+                        if let iconUrl = group.icon {
+                            CachedAsyncImage(url: iconUrl)
+                                .frame(width: 16, height: 16)
+                        }
+                        
                         Text(group.name)
                             .font(.system(.headline, design: .rounded))
                             .fontWeight(.semibold)
@@ -270,9 +435,9 @@ struct GroupCard: View {
                         }
                     }
                     
-                    Text(group.type)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+                    // Text(group.type)
+                    //     .font(.caption2)
+                    //     .foregroundStyle(.secondary)
                 }
                 
                 Spacer()
@@ -339,7 +504,7 @@ struct GroupCard: View {
             )
             .padding(.horizontal, 2)
             
-            // // 延迟统计数据
+            // // 延迟统��数据
             // HStack {
             //     HStack(spacing: 8) {
             //         ForEach([
@@ -467,7 +632,7 @@ struct GroupCard: View {
             return getNodeDelay(nodeName: group.now, visitedGroups: visited)
         }
         
-        // 如果是实际节点（包括 DIRECT），返回节点延迟
+        // 如果是实际节点（包括 DIRECT），回节点延迟
         if let node = viewModel.nodes.first(where: { $0.name == nodeName }) {
             return node.delay
         }
@@ -618,7 +783,7 @@ struct ProxyProviderCard: View {
                             do {
                                 await viewModel.updateProxyProvider(providerName: provider.name)
                                 updateStatus = .success
-                                // 成功时的触觉反馈
+                                // 成功的触觉反馈
                                 let successFeedback = UINotificationFeedbackGenerator()
                                 successFeedback.notificationOccurred(.success)
                                 
@@ -699,7 +864,7 @@ struct ProxyProviderCard: View {
                     }
                     .frame(height: 4)
                     
-                    // 流量���情
+                    // 流量信息
                     HStack {
                         Text("\(used) / \(total)")
                             .font(.caption)
@@ -1240,7 +1405,7 @@ struct ProxyNodeCard: View {
             return getNodeDelay(nodeName: currentNodeName, visitedGroups: visited)
         }
         
-        // 如果是实际节点，返回节点延迟
+        // 如果是实际节点返回节点延迟
         if let actualNode = viewModel.nodes.first(where: { $0.name == nodeName }) {
             return actualNode.delay
         }

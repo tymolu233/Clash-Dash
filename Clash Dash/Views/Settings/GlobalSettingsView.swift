@@ -7,6 +7,8 @@ struct GlobalSettingsView: View {
     @AppStorage("proxyGroupSortOrder") private var proxyGroupSortOrder = ProxyGroupSortOrder.default
     @AppStorage("speedTestURL") private var speedTestURL = "https://www.gstatic.com/generate_204"
     @AppStorage("speedTestTimeout") private var speedTestTimeout = 5000
+    @State private var showClearCacheAlert = false
+
     
     var body: some View {
         Form {
@@ -84,9 +86,35 @@ struct GlobalSettingsView: View {
             } header: {
                 SectionHeader(title: "测速设置", systemImage: "speedometer")
             }
+
+             Section {
+                Button {
+                    showClearCacheAlert = true
+                } label: {
+                    HStack {
+                        Label("清除图标缓存", systemImage: "photo")
+                        Spacer()
+                        Text("已缓存 \(ImageCache.shared.count) 张图标")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            } header: {
+                SectionHeader(title: "缓存管理", systemImage: "internaldrive")
+            }
         }
         .navigationTitle("全局配置")
         .navigationBarTitleDisplayMode(.inline)
+        .alert("清除图标缓存", isPresented: $showClearCacheAlert) {
+            Button("取消", role: .cancel) { }
+            Button("清除", role: .destructive) {
+                ImageCache.shared.removeAll()
+                // 添加触觉反馈
+                let generator = UINotificationFeedbackGenerator()
+                generator.notificationOccurred(.success)
+            }
+        } message: {
+            Text("确定要清除所有已缓存的图标吗？")
+        }
     }
 }
 

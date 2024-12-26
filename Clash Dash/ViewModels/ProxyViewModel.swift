@@ -31,13 +31,15 @@ struct ProxyGroup: Identifiable {
     let now: String
     let all: [String]
     let alive: Bool
+    let icon: String?
     
-    init(name: String, type: String, now: String, all: [String], alive: Bool = true) {
+    init(name: String, type: String, now: String, all: [String], alive: Bool = true, icon: String? = nil) {
         self.name = name
         self.type = type
         self.now = now
         self.all = all
         self.alive = alive
+        self.icon = icon
     }
 }
 
@@ -176,7 +178,9 @@ class ProxyViewModel: ObservableObject {
                         name: name,
                         type: proxy.type,
                         now: proxy.now ?? "",
-                        all: proxy.all ?? []
+                        all: proxy.all ?? [],
+                        alive: proxy.alive ?? true,
+                        icon: proxy.icon
                     )
                 }
                 print("📊 代理组数量: \(self.groups.count)")
@@ -187,7 +191,7 @@ class ProxyViewModel: ObservableObject {
             // 4. 处理 providers 数据
             if let providersResponse = try? JSONDecoder().decode(ProxyProvidersResponse.self, from: providersData) {
                 // print("✅ 成功解析 providers 数据")
-                // print("📦 代理提供者数量: \(providersResponse.providers.count)")
+                // print("📦 代理���供者数量: \(providersResponse.providers.count)")
                 
                 // 更新 providers 属性
                 self.providers = providersResponse.providers.map { name, provider in
@@ -692,7 +696,7 @@ class ProxyViewModel: ObservableObject {
                     // 更新节点延迟
                     updateNodeDelay(nodeName: proxyName, delay: delayResponse.delay)
                     testingNodes.remove(proxyName)
-                    self.lastDelayTestTime = Date()  // ��发视图更新
+                    self.lastDelayTestTime = Date()  // 发视图更新
                     objectWillChange.send()
                     
                     // 刷新数据
@@ -823,11 +827,11 @@ struct ProxyDetail: Codable {
     let now: String?
     let all: [String]?
     let history: [ProxyHistory]
+    let icon: String?
     
     // 添加可选字段
     let alive: Bool?
     let hidden: Bool?
-    let icon: String?
     let tfo: Bool?
     let udp: Bool?
     let xudp: Bool?
