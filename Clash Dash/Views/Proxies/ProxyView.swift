@@ -207,19 +207,18 @@ struct GroupCard: View {
         var timeout = 0 // 未连接 (0ms)
         
         for nodeName in group.all {
-            if let node = viewModel.nodes.first(where: { $0.name == nodeName }) {
-                switch node.delay {
-                case 0:
-                    timeout += 1
-                case DelayColor.lowRange:
-                    green += 1
-                case DelayColor.mediumRange:
-                    yellow += 1
-                default:
-                    red += 1
-                }
-            } else {
+            // 获取节点的实际延迟
+            let delay = getNodeDelay(nodeName: nodeName)
+            
+            switch delay {
+            case 0:
                 timeout += 1
+            case DelayColor.lowRange:
+                green += 1
+            case DelayColor.mediumRange:
+                yellow += 1
+            default:
+                red += 1
             }
         }
         
@@ -448,6 +447,33 @@ struct GroupCard: View {
         // 如果是特殊节点 (DIRECT/REJECT)
         return (nodeName, 0)
     }
+    
+    // 修改递归获取节点延迟的方法
+    private func getNodeDelay(nodeName: String, visitedGroups: Set<String> = []) -> Int {
+        // 防止循环依赖
+        if visitedGroups.contains(nodeName) {
+            return 0
+        }
+        
+        // 如果是 REJECT，直接计入超时
+        if nodeName == "REJECT" {
+            return 0
+        }
+        
+        // 如果是代理组，递归获取当前选中节点的延迟
+        if let group = viewModel.groups.first(where: { $0.name == nodeName }) {
+            var visited = visitedGroups
+            visited.insert(nodeName)
+            return getNodeDelay(nodeName: group.now, visitedGroups: visited)
+        }
+        
+        // 如果是实际节点（包括 DIRECT），返回节点延迟
+        if let node = viewModel.nodes.first(where: { $0.name == nodeName }) {
+            return node.delay
+        }
+        
+        return 0
+    }
 }
 
 // 代理提供者部分
@@ -673,7 +699,7 @@ struct ProxyProviderCard: View {
                     }
                     .frame(height: 4)
                     
-                    // 流量详情
+                    // 流量���情
                     HStack {
                         Text("\(used) / \(total)")
                             .font(.caption)
@@ -1196,7 +1222,7 @@ struct ProxyNodeCard: View {
         }
     }
     
-    // 获取节点延��的辅助方法
+    // 获取节点延迟的辅助方法
     private func getNodeDelay(nodeName: String, visitedGroups: Set<String> = []) -> Int {
         // 防止循环依赖
         if visitedGroups.contains(nodeName) {
