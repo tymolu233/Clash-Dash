@@ -95,7 +95,7 @@ class ProxyViewModel: ObservableObject {
     @Published var lastUpdated = Date()
     @Published var lastDelayTestTime = Date()
     @Published var testingGroups: Set<String> = []
-    @Published private var savedNodeOrder: [String: [String]] = [:] // 用于存储每个组的节点顺序
+    @Published var savedNodeOrder: [String: [String]] = [:] // 移除 private 修饰符
     
     private let server: ClashServer
     private var currentTask: Task<Void, Never>?
@@ -191,7 +191,7 @@ class ProxyViewModel: ObservableObject {
             // 4. 处理 providers 数据
             if let providersResponse = try? JSONDecoder().decode(ProxyProvidersResponse.self, from: providersData) {
                 // print("✅ 成功解析 providers 数据")
-                // print("📦 代理���供者数量: \(providersResponse.providers.count)")
+                // print("📦 代理提供者数量: \(providersResponse.providers.count)")
                 
                 // 更新 providers 属性
                 self.providers = providersResponse.providers.map { name, provider in
@@ -373,7 +373,7 @@ class ProxyViewModel: ObservableObject {
             let nodeToTest = await getActualNode(proxyName)
             
             // 如果不是 REJECT 且不是 DIRECT，则测试延迟
-            if nodeToTest != "REJECT" && nodeToTest != "DIRECT" {
+            if nodeToTest != "REJECT"{
                 await testNodeDelay(nodeName: nodeToTest)
             }
             
@@ -545,7 +545,7 @@ class ProxyViewModel: ObservableObject {
                 // print("\n收到测速响应:")
                 for (nodeName, delay) in decodedData {
                     // print("节点: \(nodeName), 新延迟: \(delay)")
-                    // 直接更新节点延迟，不需要先 fetchProxies
+                    // 直接更新节点延迟，不��要先 fetchProxies
                     updateNodeDelay(nodeName: nodeName, delay: delay)
                 }
                 
@@ -740,62 +740,45 @@ class ProxyViewModel: ObservableObject {
     }
     
     // 修改节点排序方法
-    func getSortedNodes(_ nodes: [String], in group: ProxyGroup, useCache: Bool = false) -> [String] {
-        // 如果使用缓存且存在已保存的顺序，直接返回
-        if useCache, let savedOrder = savedNodeOrder[group.name] {
-            return savedOrder
-        }
-        
-        let specialNodes = ["DIRECT", "REJECT", "Proxy"]
-        let hideUnavailable = UserDefaults.standard.bool(forKey: "hideUnavailableProxies")
-        
-        var filteredNodes = nodes
-        if hideUnavailable {
-            filteredNodes = nodes.filter { nodeName in
-                if specialNodes.contains(nodeName) {
-                    return true
-                }
-                let delay = self.nodes.first(where: { $0.name == nodeName })?.delay ?? 0
-                return delay > 0
-            }
-        }
-        
+    func getSortedNodes(_ nodeNames: [String], in group: ProxyGroup) -> [String] {
+        // 获取排序设置
         let sortOrder = UserDefaults.standard.string(forKey: "proxyGroupSortOrder") ?? "default"
         
-        return filteredNodes.sorted { node1, node2 in
-            let specialOrder = ["DIRECT", "REJECT", "Proxy"]
-            if let index1 = specialOrder.firstIndex(of: node1),
-               let index2 = specialOrder.firstIndex(of: node2) {
-                return index1 < index2
-            }
-            if let index1 = specialOrder.firstIndex(of: node1) {
-                return true
-            }
-            if let index2 = specialOrder.firstIndex(of: node2) {
-                return false
-            }
-            
-            switch sortOrder {
-            case "latencyAsc":
-                let delay1 = getEffectiveDelay(node1)
-                let delay2 = getEffectiveDelay(node2)
+        // 特殊节点始终排在最前面（添加 PROXY）
+        let specialNodes = nodeNames.filter { ["DIRECT", "REJECT", "PROXY"].contains($0) }
+        let normalNodes = nodeNames.filter { !["DIRECT", "REJECT", "PROXY"].contains($0) }
+        
+        // 根据排序设置对普通节点进行排序
+        let sortedNormalNodes: [String]
+        switch sortOrder {
+        case "latencyAsc":
+            sortedNormalNodes = normalNodes.sorted { node1, node2 in
+                let delay1 = getNodeDelay(nodeName: node1)
+                let delay2 = getNodeDelay(nodeName: node2)
+                // 将超时节点排在最后
+                if delay1 == 0 { return false }
+                if delay2 == 0 { return true }
                 return delay1 < delay2
-                
-            case "latencyDesc":
-                let delay1 = getEffectiveDelay(node1)
-                let delay2 = getEffectiveDelay(node2)
-                return delay1 > delay2
-                
-            case "nameAsc":
-                return node1 < node2
-                
-            case "nameDesc":
-                return node1 > node2
-                
-            default:
-                return false
             }
+        case "latencyDesc":
+            sortedNormalNodes = normalNodes.sorted { node1, node2 in
+                let delay1 = getNodeDelay(nodeName: node1)
+                let delay2 = getNodeDelay(nodeName: node2)
+                // 将超时节点排在最后
+                if delay1 == 0 { return false }
+                if delay2 == 0 { return true }
+                return delay1 > delay2
+            }
+        case "nameAsc":
+            sortedNormalNodes = normalNodes.sorted { $0 < $1 }
+        case "nameDesc":
+            sortedNormalNodes = normalNodes.sorted { $0 > $1 }
+        default: // 保持原始顺序
+            sortedNormalNodes = normalNodes
         }
+        
+        // 合并特殊节点和排序后的普通节点
+        return specialNodes + sortedNormalNodes
     }
     
     // 添加辅助方法来获取有效延迟

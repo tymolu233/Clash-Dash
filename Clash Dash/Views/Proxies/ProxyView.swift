@@ -360,24 +360,36 @@ struct GroupCard: View {
     @State private var showingProxySelector = false
     
     private var delayStats: (green: Int, yellow: Int, red: Int, timeout: Int) {
-        var green = 0   // 低延迟 (0-150ms)
-        var yellow = 0  // 中等延迟 (151-300ms)
-        var red = 0     // 高延迟 (>300ms)
-        var timeout = 0 // 未连接 (0ms)
+        var green = 0
+        var yellow = 0
+        var red = 0
+        var timeout = 0
+        
+        let hideUnavailable = UserDefaults.standard.bool(forKey: "hideUnavailableProxies")
         
         for nodeName in group.all {
-            // 获取节点的实际延迟
-            let delay = getNodeDelay(nodeName: nodeName)
+            if ["DIRECT", "REJECT"].contains(nodeName) {
+                let delay = viewModel.getNodeDelay(nodeName: nodeName)
+                switch delay {
+                case 0: timeout += 1
+                case DelayColor.lowRange: green += 1
+                case DelayColor.mediumRange: yellow += 1
+                default: red += 1
+                }
+                continue
+            }
+            
+            let delay = viewModel.getNodeDelay(nodeName: nodeName)
+            
+            if hideUnavailable && delay == 0 {
+                continue
+            }
             
             switch delay {
-            case 0:
-                timeout += 1
-            case DelayColor.lowRange:
-                green += 1
-            case DelayColor.mediumRange:
-                yellow += 1
-            default:
-                red += 1
+            case 0: timeout += 1
+            case DelayColor.lowRange: green += 1
+            case DelayColor.mediumRange: yellow += 1
+            default: red += 1
             }
         }
         
@@ -385,7 +397,19 @@ struct GroupCard: View {
     }
     
     private var totalNodes: Int {
-        group.all.count
+        let hideUnavailable = UserDefaults.standard.bool(forKey: "hideUnavailableProxies")
+        
+        if hideUnavailable {
+            return group.all.filter { nodeName in
+                if ["DIRECT", "REJECT"].contains(nodeName) {
+                    return true
+                }
+                let delay = viewModel.getNodeDelay(nodeName: nodeName)
+                return delay > 0
+            }.count
+        } else {
+            return group.all.count
+        }
     }
     
     // 添加获取代理链的方法
@@ -504,7 +528,7 @@ struct GroupCard: View {
             )
             .padding(.horizontal, 2)
             
-            // // 延迟统��数据
+            // // 延迟统计数据
             // HStack {
             //     HStack(spacing: 8) {
             //         ForEach([
@@ -1111,24 +1135,22 @@ struct ProxySelectorSheet: View {
     
     // 添加计算属性来获取可用节点
     private var availableNodes: [String] {
-        // 获取所有代理组名称
-        let groupNames = Set(viewModel.groups.map { $0.name })
+        let hideUnavailable = UserDefaults.standard.bool(forKey: "hideUnavailableProxies")
         
-        // 过滤节点列表，保留实际节点和特殊节点
-        return group.all.filter { nodeName in
-            // 保留特殊节点
-            if ["DIRECT", "REJECT"].contains(nodeName) {
+        // 使用保存的节点顺序
+        let nodes = viewModel.savedNodeOrder[group.name] ?? group.all
+        
+        // 只进行隐藏过滤，不重新排序
+        return nodes.filter { nodeName in
+            if ["DIRECT", "REJECT", "PROXY"].contains(nodeName) {
                 return true
             }
             
-            // 如果是代理组，检查是否有实际节点
-            if groupNames.contains(nodeName),
-               let proxyGroup = viewModel.groups.first(where: { $0.name == nodeName }) {
-                // 递归检查代理组是否包含实际节点
-                return hasActualNodes(in: proxyGroup, visitedGroups: [])
+            if hideUnavailable {
+                let delay = viewModel.getNodeDelay(nodeName: nodeName)
+                return delay > 0
             }
             
-            // 其他情况认为是实际节点
             return true
         }
     }
@@ -1172,7 +1194,7 @@ struct ProxySelectorSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading) {
-                    // 节点统计
+                    // 节点计
                     HStack {
                         Text("节点列表")
                             .font(.headline)
@@ -1225,12 +1247,14 @@ struct ProxySelectorSheet: View {
                 }
             }
             .onAppear {
-                // 在显示时保存当前节点顺序
-                let sortedNodes = viewModel.getSortedNodes(group.all, in: group)
-                viewModel.saveNodeOrder(for: group.name, nodes: sortedNodes)
+                // 在显示时，如果还没有保存的顺序，就保存当前排序后的顺序
+                if viewModel.savedNodeOrder[group.name] == nil {
+                    let sortedNodes = viewModel.getSortedNodes(group.all, in: group)
+                    viewModel.saveNodeOrder(for: group.name, nodes: sortedNodes)
+                }
             }
             .onDisappear {
-                // 在关闭时清除保存的顺序
+                // 在关闭时清除保存的顺序，这样下次打开时会重新排序
                 viewModel.clearSavedNodeOrder(for: group.name)
             }
             .navigationTitle(group.name)
@@ -1281,7 +1305,7 @@ struct ProxySelectorSheet: View {
             .alert("自动测速选择分组", isPresented: $showURLTestAlert) {
                 Button("确定", role: .cancel) { }
             } message: {
-                Text("该分组不支持手动切换节点")
+                Text("该分组不支持动切换节点")
             }
         }
         .presentationDetents([.medium, .large])
@@ -1352,7 +1376,7 @@ struct ProxyNodeCard: View {
                         .transition(.opacity)
                 } else {
                     // 获取延迟
-                    let delay = getNodeDelay(nodeName: nodeName)
+                    let delay = viewModel.getNodeDelay(nodeName: nodeName)
                     if delay > 0 {
                         Text("\(delay) ms")
                             .font(.caption)
@@ -1571,6 +1595,34 @@ struct RoundedCorner: Shape {
             cornerRadii: CGSize(width: radius, height: radius)
         )
         return Path(path.cgPath)
+    }
+}
+
+// 添加一个扩展来共享获取节点延迟的方法
+extension ProxyViewModel {
+    func getNodeDelay(nodeName: String, visitedGroups: Set<String> = []) -> Int {
+        // 防止循环依赖
+        if visitedGroups.contains(nodeName) {
+            return 0
+        }
+        
+        // 如果是代理组，递归获取当前选中节点的延迟
+        if let group = groups.first(where: { $0.name == nodeName }) {
+            var visited = visitedGroups
+            visited.insert(nodeName)
+            
+            // 获取当前选中的节点
+            let currentNodeName = group.now
+            // 递归获取实际节点的延迟，传递已访问的组列表
+            return getNodeDelay(nodeName: currentNodeName, visitedGroups: visited)
+        }
+        
+        // 如果是实际节点，返回节点延迟
+        if let node = nodes.first(where: { $0.name == nodeName }) {
+            return node.delay
+        }
+        
+        return 0
     }
 }
 
