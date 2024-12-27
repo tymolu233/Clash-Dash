@@ -5,41 +5,6 @@ struct CompactGroupCard: View {
     @ObservedObject var viewModel: ProxyViewModel
     @State private var showProxySelector = false
     
-    // 添加延迟状态视图
-    @ViewBuilder
-    private func DelayStatusView(nodeName: String, delay: Int) -> some View {
-        HStack(spacing: 4) {
-            // 统一使用闪电图标
-            Image(systemName: "bolt.fill")
-                .font(.system(size: 12))
-                .foregroundStyle(nodeName == "REJECT" ? .red : .green)
-            
-            // 延迟数值容器
-            HStack(spacing: 1) {
-                if nodeName == "REJECT" {
-                    Text("∞")
-                        .font(.system(.subheadline, design: .rounded))
-                        .fontWeight(.medium)
-                        .foregroundStyle(.red)
-                } else {
-                    Text("\(delay)")
-                        .font(.system(.subheadline, design: .rounded))
-                        .fontWeight(.medium)
-                        .foregroundStyle(.green)
-                }
-                
-                // ms 单位
-                Text("ms")
-                    .font(.system(.caption, design: .rounded))
-                    .foregroundStyle(nodeName == "REJECT" ? .red.opacity(0.8) : .green.opacity(0.8))
-            }
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(nodeName == "REJECT" ? Color.red.opacity(0.1) : Color.green.opacity(0.1))
-        .clipShape(Capsule())
-    }
-    
     var body: some View {
         Button {
             if group.type != "URLTest" {
@@ -81,25 +46,31 @@ struct CompactGroupCard: View {
                 Spacer()
                 
                 // 右侧状态
-                HStack(alignment: .center, spacing: 8) {
-                    // 延迟信息固定宽度容器
-                    HStack(spacing: 8) {
-                        if group.now == "REJECT" {
-                            DelayStatusView(nodeName: "REJECT", delay: 0)
-                        } else {
-                            let delay = viewModel.getNodeDelay(nodeName: group.now)
-                            if delay >= 0 {
-                                DelayStatusView(nodeName: group.now, delay: delay)
-                            }
-                        }
-                    }
-                    .frame(width: 85, alignment: .trailing) // 调整宽度
+                HStack(alignment: .center, spacing: 0) {
+                    Spacer()
+                        .frame(width: 50)
                     
-                    if group.type != "URLTest" {
+                    // 竖条分隔符
+                    Rectangle()
+                        .fill(Color(.separator))
+                        .frame(width: 3, height: 30)
+                        .opacity(0.3)
+                        .padding(.trailing, 10)
+                    
+                    // 节点数量和箭头容器
+                    HStack(spacing: 10) {
+                        Text("\(group.all.count)")
+//                            .font(.system(.body, design: .rounded))
+                            .fontWeight(.medium)
+                            .font(.system(size: 16, design: .rounded))
+                            .foregroundStyle(.secondary)
+                        
                         Image(systemName: "chevron.right")
-                            .font(.system(size: 14))
+                            .font(.system(size: 16))
                             .foregroundStyle(Color(.tertiaryLabel))
+                            .fontWeight(.bold)
                     }
+                    .frame(width: 55, alignment: .trailing)
                 }
             }
             .padding(.horizontal, 16)
@@ -113,9 +84,9 @@ struct CompactGroupCard: View {
         .sheet(isPresented: $showProxySelector) {
             ProxySelectorSheet(group: group, viewModel: viewModel)
         }
-        .onAppear {
-            print("📱 CompactGroupCard 已加载, 组名: \(group.name), 是否有图标: \(group.icon != nil)")
-        }
+        // .onAppear {
+        //     print("📱 CompactGroupCard 已加载, 组名: \(group.name), 是否有图标: \(group.icon != nil)")
+        // }
     }
 }
 
@@ -125,7 +96,7 @@ struct CompactGroupCard: View {
             name: "测试组",
             type: "Selector",
             now: "测试节点",
-            all: ["节点1", "节点2"],
+            all: ["节点1", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2"],
             alive: true,
             icon: nil
         ),
