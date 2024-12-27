@@ -5,11 +5,58 @@ struct CompactGroupCard: View {
     @ObservedObject var viewModel: ProxyViewModel
     @State private var showProxySelector = false
     @State private var isExpanded = false
+    @AppStorage("hideUnavailableProxies") private var hideUnavailableProxies = false
+    @AppStorage("proxyGroupSortOrder") private var proxyGroupSortOrder = ProxyGroupSortOrder.default
     
     // 获取当前选中节点的延迟颜色
     private var currentNodeColor: Color {
         let delay = viewModel.getNodeDelay(nodeName: group.now)
         return DelayColor.color(for: delay)
+    }
+    
+    // 添加过滤和排序后的节点列表计算属性
+    private var filteredAndSortedNodes: [String] {
+        var nodes = group.all
+        
+        // 如果启用了隐藏不可用代理，过滤掉延迟为0的节点（除了 DIRECT 和 REJECT）
+        if hideUnavailableProxies {
+            nodes = nodes.filter { nodeName in
+                if nodeName == "DIRECT" || nodeName == "REJECT" {
+                    return true
+                }
+                return viewModel.getNodeDelay(nodeName: nodeName) != 0
+            }
+        }
+        
+        // 根据排序设置对节点进行排序
+        switch proxyGroupSortOrder {
+        case .latencyAsc:
+            nodes.sort { node1, node2 in
+                let delay1 = viewModel.getNodeDelay(nodeName: node1)
+                let delay2 = viewModel.getNodeDelay(nodeName: node2)
+                // 将超时节点排在最后
+                if delay1 == 0 { return false }
+                if delay2 == 0 { return true }
+                return delay1 < delay2
+            }
+        case .latencyDesc:
+            nodes.sort { node1, node2 in
+                let delay1 = viewModel.getNodeDelay(nodeName: node1)
+                let delay2 = viewModel.getNodeDelay(nodeName: node2)
+                // 将超时节点排在最后
+                if delay1 == 0 { return false }
+                if delay2 == 0 { return true }
+                return delay1 > delay2
+            }
+        case .nameAsc:
+            nodes.sort { $0 < $1 }
+        case .nameDesc:
+            nodes.sort { $0 > $1 }
+        case .default:
+            break // 保持原始顺序
+        }
+        
+        return nodes
     }
     
     var body: some View {
@@ -67,7 +114,7 @@ struct CompactGroupCard: View {
                             .opacity(0.3)
                             .padding(.trailing, 10)
                         
-                        // 节点数量和箭头容器
+                        // 节点数量和��头容器
                         HStack(spacing: 10) {
                             if isExpanded {
                                 // 展开时显示闪电图标，点击测速
@@ -113,7 +160,7 @@ struct CompactGroupCard: View {
                         .padding(.horizontal, 16)
                     
                     VStack(spacing: 0) {
-                        ForEach(group.all, id: \.self) { nodeName in
+                        ForEach(filteredAndSortedNodes, id: \.self) { nodeName in
                             ProxyNodeRow(
                                 nodeName: nodeName,
                                 isSelected: nodeName == group.now,
@@ -125,7 +172,7 @@ struct CompactGroupCard: View {
                                 }
                             }
                             
-                            if nodeName != group.all.last {
+                            if nodeName != filteredAndSortedNodes.last {
                                 Divider()
                                     .padding(.horizontal, 16)
                             }
@@ -191,7 +238,7 @@ struct ProxyNodeRow: View {
             name: "测试组",
             type: "Selector",
             now: "测试节点很长的名字测试节点很长的名字",
-            all: ["节点1", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2"],
+            all: ["节点1", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2", "节点2"],
             alive: true,
             icon: nil
         ),
