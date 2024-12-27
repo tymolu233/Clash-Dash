@@ -69,16 +69,30 @@ struct CompactGroupCard: View {
                         
                         // 节点数量和箭头容器
                         HStack(spacing: 10) {
-                            Text("\(group.all.count)")
-//                                .font(.system(.body, design: .rounded))
-                                .fontWeight(.medium)
-                                .font(.system(size: 16, design: .rounded))
-                                .foregroundStyle(.secondary)
+                            if isExpanded {
+                                // 展开时显示闪电图标，点击测速
+                                Button {
+                                    Task {
+                                        await viewModel.testGroupSpeed(groupName: group.name)
+                                    }
+                                } label: {
+                                    Image(systemName: "bolt.fill")
+                                        .font(.system(size: 16))
+                                        .foregroundStyle(viewModel.testingGroups.contains(group.name) ? .gray : .yellow)
+                                }
+                                .disabled(viewModel.testingGroups.contains(group.name))
+                            } else {
+                                Text("\(group.all.count)")
+                                    .fontWeight(.medium)
+                                    .font(.system(size: 16, design: .rounded))
+                                    .foregroundStyle(.secondary)
+                            }
                             
                             Image(systemName: "chevron.right")
                                 .font(.system(size: 16))
                                 .foregroundStyle(Color(.tertiaryLabel))
                                 .fontWeight(.bold)
+                                .rotationEffect(.degrees(isExpanded ? 90 : 0))
                         }
                         .frame(width: 55, alignment: .trailing)
                     }
