@@ -8,29 +8,12 @@ struct CompactGroupCard: View {
     @AppStorage("hideUnavailableProxies") private var hideUnavailableProxies = false
     @AppStorage("proxyGroupSortOrder") private var proxyGroupSortOrder = ProxyGroupSortOrder.default
     @State private var currentNodeOrder: [String]?
+    @State private var displayedNodes: [String] = []
     
     // 获取当前选中节点的延迟颜色
     private var currentNodeColor: Color {
         let delay = viewModel.getNodeDelay(nodeName: group.now)
         return DelayColor.color(for: delay)
-    }
-    
-    // Modify filteredAndSortedNodes to use currentNodeOrder
-    private var filteredAndSortedNodes: [String] {
-        // Use current order or get sorted nodes
-        let nodes = currentNodeOrder ?? getSortedNodes()
-        
-        // Only apply filtering
-        if hideUnavailableProxies {
-            return nodes.filter { nodeName in
-                if nodeName == "DIRECT" || nodeName == "REJECT" {
-                    return true
-                }
-                return viewModel.getNodeDelay(nodeName: nodeName) != 0
-            }
-        }
-        
-        return nodes
     }
     
     // Add separate function for sorting
@@ -65,13 +48,31 @@ struct CompactGroupCard: View {
         return nodes
     }
     
+    private func updateDisplayedNodes() {
+        var nodes = currentNodeOrder ?? getSortedNodes()
+        
+        if hideUnavailableProxies {
+            nodes = nodes.filter { nodeName in
+                if nodeName == "DIRECT" || nodeName == "REJECT" {
+                    return true
+                }
+                return viewModel.getNodeDelay(nodeName: nodeName) != 0
+            }
+        }
+        
+        displayedNodes = nodes
+    }
+    
     var body: some View {
         VStack(spacing: 0) {
             Button {
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                     isExpanded.toggle()
-                    // Reset currentNodeOrder when closing the list
-                    if !isExpanded {
+                    if isExpanded {
+                        // Update nodes when expanding
+                        updateDisplayedNodes()
+                    } else {
+                        // Reset order when closing
                         currentNodeOrder = nil
                     }
                 }
@@ -170,7 +171,7 @@ struct CompactGroupCard: View {
                         .padding(.horizontal, 16)
                     
                     VStack(spacing: 0) {
-                        ForEach(filteredAndSortedNodes, id: \.self) { nodeName in
+                        ForEach(displayedNodes, id: \.self) { nodeName in
                             ProxyNodeRow(
                                 nodeName: nodeName,
                                 isSelected: nodeName == group.now,
@@ -180,13 +181,13 @@ struct CompactGroupCard: View {
                                 Task {
                                     // Save current order before switching if not already saved
                                     if currentNodeOrder == nil {
-                                        currentNodeOrder = filteredAndSortedNodes
+                                        currentNodeOrder = displayedNodes
                                     }
                                     await viewModel.selectProxy(groupName: group.name, proxyName: nodeName)
                                 }
                             }
                             
-                            if nodeName != filteredAndSortedNodes.last {
+                            if nodeName != displayedNodes.last {
                                 Divider()
                                     .padding(.horizontal, 16)
                             }
@@ -197,9 +198,18 @@ struct CompactGroupCard: View {
                 .background(Color(.systemBackground))
             }
         }
-        .background(Color(.systemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .shadow(color: Color.black.opacity(0.03), radius: 1, x: 0, y: 1)
+        // Update nodes when hideUnavailableProxies changes
+        .onChange(of: hideUnavailableProxies) { _ in
+            if isExpanded {
+                updateDisplayedNodes()
+            }
+        }
+        // Update nodes when proxyGroupSortOrder changes
+        .onChange(of: proxyGroupSortOrder) { _ in
+            if isExpanded && currentNodeOrder == nil {
+                updateDisplayedNodes()
+            }
+        }
     }
 }
 
