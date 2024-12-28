@@ -73,16 +73,30 @@ struct CompactGroupCard: View {
         displayedNodes = nodes
     }
     
+    // 添加动画时间计算函数
+    private func getAnimationDuration() -> Double {
+        let baseTime = 0.3  // 基础动画时间
+        let nodeCount = group.all.count
+        
+        // 根据节点数量计算额外时间
+        // 每20个节点增加0.1秒，最多增加0.4秒
+        let extraTime = min(Double(nodeCount) / 20.0 * 0.1, 0.4)
+        
+        return baseTime + extraTime
+    }
+    
     var body: some View {
         VStack(spacing: 0) {
             Button {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                // 使用计算的动画时间
+                withAnimation(.spring(
+                    response: getAnimationDuration(),
+                    dampingFraction: 0.8
+                )) {
                     isExpanded.toggle()
                     if isExpanded {
-                        // Update nodes when expanding
                         updateDisplayedNodes()
                     } else {
-                        // Reset order when closing
                         currentNodeOrder = nil
                     }
                 }
@@ -138,7 +152,7 @@ struct CompactGroupCard: View {
                         // 节点数量和容器
                         HStack(spacing: 10) {
                             if isExpanded {
-                                // 展开时显示闪电图标，点击测速
+                                // 展开时显示闪电��标，点击测速
                                 Button {
                                     Task {
                                         await viewModel.testGroupSpeed(groupName: group.name)
@@ -189,7 +203,6 @@ struct CompactGroupCard: View {
                             )
                             .onTapGesture {
                                 Task {
-                                    // Save current order before switching if not already saved
                                     if currentNodeOrder == nil {
                                         currentNodeOrder = displayedNodes
                                     }
@@ -206,6 +219,9 @@ struct CompactGroupCard: View {
                     .padding(.vertical, 8)
                 }
                 .background(Color(.systemBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+                // Add bottom shadow to match the card
+                .shadow(color: Color.black.opacity(0.03), radius: 1, x: 0, y: 1)
             }
         }
         // Update nodes when hideUnavailableProxies changes
@@ -246,7 +262,7 @@ struct ProxyNodeRow: View {
             
             Spacer()
             
-            // 延���信息
+            // 延迟信息
             if delay > 0 {
                 Text("\(delay)")
                     .font(.system(.body, design: .rounded))
