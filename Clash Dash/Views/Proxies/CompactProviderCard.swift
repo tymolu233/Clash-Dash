@@ -5,11 +5,17 @@ struct CompactProviderCard: View {
     let nodes: [ProxyNode]
     @ObservedObject var viewModel: ProxyViewModel
     @State private var isExpanded = false
+    @State private var testingNodes = Set<String>()
+    
+    // 添加计算属性来获取最新的节点数据
+    private var currentNodes: [ProxyNode] {
+        viewModel.providerNodes[provider.name] ?? nodes
+    }
     
     private var usageInfo: String? {
         guard let info = provider.subscriptionInfo else { return nil }
         let used = Double(info.upload + info.download)
-        return "\(formatBytes(Int64(used)))/\(formatBytes(info.total))"
+        return "\(formatBytes(Int64(used))) / \(formatBytes(info.total))"
     }
     
     private var timeInfo: (update: String, expire: String)? {
@@ -21,7 +27,6 @@ struct CompactProviderCard: View {
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         
         let updateDate = formatter.date(from: updatedAt) ?? Date()
-        let expireDate = Date(timeIntervalSince1970: TimeInterval(info.expire))
         
         let relativeFormatter = RelativeDateTimeFormatter()
         relativeFormatter.unitsStyle = .short
@@ -123,14 +128,49 @@ struct CompactProviderCard: View {
                         .padding(.horizontal, 16)
                     
                     VStack(spacing: 0) {
-                        ForEach(nodes) { node in
+                        // 使用 currentNodes 替代 nodes
+                        ForEach(currentNodes) { node in
                             ProxyNodeRow(
                                 nodeName: node.name,
                                 isSelected: false,
-                                delay: node.delay
+                                delay: node.delay,
+                                isTesting: testingNodes.contains(node.name)
                             )
+                            .onTapGesture {
+                                Task {
+                                    print("📡 开始测试节点: \(node.name) (Provider: \(provider.name))")
+                                    testingNodes.insert(node.name)
+                                    
+                                    do {
+                                        try await withTaskCancellationHandler {
+                                            await viewModel.healthCheckProviderProxy(
+                                                providerName: provider.name,
+                                                proxyName: node.name
+                                            )
+                                            // 不需要再调用 fetchProxies，因为 healthCheckProviderProxy 已经包含了这个操作
+                                            print("✅ 节点测试完成: \(node.name), 延迟: \(node.delay)ms")
+                                            
+                                            let successFeedback = UINotificationFeedbackGenerator()
+                                            successFeedback.notificationOccurred(.success)
+                                        } onCancel: {
+                                            print("❌ 节点测试取消: \(node.name)")
+                                            testingNodes.remove(node.name)
+                                            
+                                            let errorFeedback = UINotificationFeedbackGenerator()
+                                            errorFeedback.notificationOccurred(.error)
+                                        }
+                                    } catch {
+                                        print("❌ 节点测试错误: \(node.name), 错误: \(error)")
+                                        let errorFeedback = UINotificationFeedbackGenerator()
+                                        errorFeedback.notificationOccurred(.error)
+                                    }
+                                    
+                                    testingNodes.remove(node.name)
+                                    print("🏁 节点测试流程结束: \(node.name)")
+                                }
+                            }
                             
-                            if node.id != nodes.last?.id {
+                            if node.id != currentNodes.last?.id {
                                 Divider()
                                     .padding(.horizontal, 16)
                             }
@@ -152,11 +192,11 @@ struct CompactProviderCard: View {
         let gb = mb / 1024
         
         if gb >= 1 {
-            return String(format: "%.1fGB", gb)
+            return String(format: "%.0fGB", gb)
         } else if mb >= 1 {
-            return String(format: "%.1fMB", mb)
+            return String(format: "%.0fMB", mb)
         } else if kb >= 1 {
-            return String(format: "%.1fKB", kb)
+            return String(format: "%.0fKB", kb)
         } else {
             return "\(bytes)B"
         }
@@ -177,7 +217,7 @@ struct CompactProviderCard: View {
             name: "测试提供者",
             type: "http",
             vehicleType: "http",
-            updatedAt: "2024-01-01T12:00:00.000Z",
+            updatedAt: "2023-01-01T12:00:00.000Z",
             subscriptionInfo: SubscriptionInfo(
                 upload: 1024 * 1024 * 100,    // 100MB
                 download: 1024 * 1024 * 500,  // 500MB

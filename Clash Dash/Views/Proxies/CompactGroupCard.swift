@@ -152,7 +152,7 @@ struct CompactGroupCard: View {
                         // 节点数量和容器
                         HStack(spacing: 10) {
                             if isExpanded {
-                                // 展开时显示闪电��标，点击测速
+                                // 展开时显示闪电标，点击测速
                                 Button {
                                     Task {
                                         await viewModel.testGroupSpeed(groupName: group.name)
@@ -236,49 +236,6 @@ struct CompactGroupCard: View {
                 updateDisplayedNodes()
             }
         }
-    }
-}
-
-
-// 代理节点行视图
-struct ProxyNodeRow: View {
-    let nodeName: String
-    let isSelected: Bool
-    let delay: Int
-    
-    var body: some View {
-        HStack(spacing: 12) {
-            // 选中标记（占位）
-            Image(systemName: "checkmark")
-                .foregroundColor(isSelected ? .green : .clear)
-                .font(.system(size: 14, weight: .bold))
-            
-            // 节点名称
-            Text(nodeName)
-                .font(.system(.body))
-                .foregroundStyle(isSelected ? .primary : .secondary)
-                .lineLimit(1)
-                .truncationMode(.middle)
-            
-            Spacer()
-            
-            // 延迟信息
-            if delay > 0 {
-                Text("\(delay)")
-                    .font(.system(.body, design: .rounded))
-                    .foregroundStyle(DelayColor.color(for: delay))
-                
-                Text("ms")
-                    .font(.system(.caption, design: .rounded))
-                    .foregroundStyle(DelayColor.color(for: delay).opacity(0.8))
-            } else if delay == 0 {
-                Image(systemName: "xmark")
-                    .foregroundColor(.red)
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .contentShape(Rectangle())
     }
 }
 

@@ -665,6 +665,8 @@ class ProxyViewModel: ObservableObject {
         
         guard let finalUrl = components?.url else { return }
         request.url = finalUrl
+
+        // print("\(request.url)")
         
         // 设置测试状
         await MainActor.run {
