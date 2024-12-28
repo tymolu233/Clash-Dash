@@ -194,7 +194,7 @@ class ProxyViewModel: ObservableObject {
                 // print("✅ 成功解析 providers 数据")
                 // print("📦 代理提供者数量: \(providersResponse.providers.count)")
                 
-                // 更新 providers 属性
+                // 更新 providers 属性时保持固定排序
                 self.providers = providersResponse.providers.map { name, provider in
                     Provider(
                         name: name,
@@ -203,7 +203,7 @@ class ProxyViewModel: ObservableObject {
                         updatedAt: provider.updatedAt,
                         subscriptionInfo: provider.subscriptionInfo
                     )
-                }
+                }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
                 // print("📦 更新后的提供者数量: \(self.providers.count)")
                 
                 // 更新 providerNodes
@@ -756,7 +756,7 @@ class ProxyViewModel: ObservableObject {
         // 获取排序设置
         let sortOrder = UserDefaults.standard.string(forKey: "proxyGroupSortOrder") ?? "default"
         
-        // 特殊节点始终排在最前面���添加 PROXY）
+        // 特殊节点始终排在最前面（添加 PROXY）
         let specialNodes = nodeNames.filter { ["DIRECT", "REJECT", "PROXY"].contains($0) }
         let normalNodes = nodeNames.filter { !["DIRECT", "REJECT", "PROXY"].contains($0) }
         

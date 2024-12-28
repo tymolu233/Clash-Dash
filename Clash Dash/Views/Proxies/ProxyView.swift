@@ -218,7 +218,11 @@ struct ProxyView: View {
                             ProxyGroupsOverview(groups: viewModel.getSortedGroups(), viewModel: viewModel)
                             
                             // 代理提供者部分 - 只显示有订阅信息的提供者
-                            let subscriptionProviders = viewModel.providers.filter { $0.subscriptionInfo != nil }
+                            let subscriptionProviders = viewModel.providers
+                                .filter { $0.subscriptionInfo != nil }
+                                // 添加固定排序
+                                .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+                            
                             if !subscriptionProviders.isEmpty {
                                 ProxyProvidersSection(
                                     providers: subscriptionProviders,
@@ -238,7 +242,11 @@ struct ProxyView: View {
                             }
                             
                             // 代理提供者部分 - 只显示有订阅信息的提供者
-                            let subscriptionProviders = viewModel.providers.filter { $0.subscriptionInfo != nil }
+                            let subscriptionProviders = viewModel.providers
+                                .filter { $0.subscriptionInfo != nil }
+                                // 添加固定排序
+                                .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+                            
                             if !subscriptionProviders.isEmpty {
                                 VStack(alignment: .leading, spacing: 12) {
                                     Text("代理提供者")
@@ -376,7 +384,7 @@ struct ProxyGroupsOverview: View {
     }
 }
 
-// 单个代理组卡片
+// 单��代理组卡片
 struct GroupCard: View {
     let group: ProxyGroup
     @ObservedObject var viewModel: ProxyViewModel
@@ -647,7 +655,7 @@ struct GroupCard: View {
             var visited = visitedGroups
             visited.insert(nodeName)
             
-            // 递归获���当前选中节点的实际节点和延迟
+            // 递归获取当前选中节点的实际节点和延迟
             return getActualNodeAndDelay(nodeName: group.now, visitedGroups: visited)
         }
         
@@ -970,7 +978,7 @@ struct ProviderNodeSelector: View {
     @State private var isTestingAll = false
     @State private var testingNodes = Set<String>()
     
-    // 添加触觉反馈生��器
+    // 添加触觉反馈生成器
     private let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
     
     private let columns = [GridItem(.flexible()), GridItem(.flexible())]
