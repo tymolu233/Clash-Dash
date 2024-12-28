@@ -9,6 +9,7 @@ struct CompactGroupCard: View {
     @AppStorage("proxyGroupSortOrder") private var proxyGroupSortOrder = ProxyGroupSortOrder.default
     @State private var currentNodeOrder: [String]?
     @State private var displayedNodes: [String] = []
+    @State private var showURLTestAlert = false
     
     // 获取当前选中节点的延迟颜色
     private var currentNodeColor: Color {
@@ -135,10 +136,18 @@ struct CompactGroupCard: View {
                         }
                         
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(displayInfo.name)
-                                .font(.system(.body, design: .default))
-                                .fontWeight(.semibold)
-                            
+                            HStack {
+                                Text(displayInfo.name)
+                                    .font(.system(.body, design: .default))
+                                    .fontWeight(.semibold)
+
+                                if group.type == "URLTest" {
+                                    Image(systemName: "bolt.horizontal.circle.fill")
+                                        .foregroundStyle(.blue)
+                                        .font(.caption2)
+                                }
+                            }
+
                             Text(group.now)
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
@@ -211,11 +220,15 @@ struct CompactGroupCard: View {
                                 delay: viewModel.getNodeDelay(nodeName: nodeName)
                             )
                             .onTapGesture {
-                                Task {
-                                    if currentNodeOrder == nil {
-                                        currentNodeOrder = displayedNodes
+                                if group.type == "URLTest" {
+                                    showURLTestAlert = true
+                                } else {
+                                    Task {
+                                        if currentNodeOrder == nil {
+                                            currentNodeOrder = displayedNodes
+                                        }
+                                        await viewModel.selectProxy(groupName: group.name, proxyName: nodeName)
                                     }
-                                    await viewModel.selectProxy(groupName: group.name, proxyName: nodeName)
                                 }
                             }
                             
@@ -229,7 +242,6 @@ struct CompactGroupCard: View {
                 }
                 .background(Color(.systemBackground))
                 .clipShape(RoundedRectangle(cornerRadius: 16))
-                // Add bottom shadow to match the card
                 .shadow(color: Color.black.opacity(0.03), radius: 1, x: 0, y: 1)
             }
         }
@@ -244,6 +256,11 @@ struct CompactGroupCard: View {
             if isExpanded && currentNodeOrder == nil {
                 updateDisplayedNodes()
             }
+        }
+        .alert("自动测速选择分组", isPresented: $showURLTestAlert) {
+            Button("确定", role: .cancel) { }
+        } message: {
+            Text("该分组不支持手动切换节点")
         }
     }
 }
