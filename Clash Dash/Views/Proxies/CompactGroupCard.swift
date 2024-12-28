@@ -18,11 +18,20 @@ struct CompactGroupCard: View {
     
     // Add separate function for sorting
     private func getSortedNodes() -> [String] {
-        var nodes = group.all
+        // First separate special nodes and normal nodes
+        let specialNodes = ["DIRECT", "PROXY", "REJECT"]
+        let normalNodes = group.all.filter { node in
+            !specialNodes.contains(node.uppercased())
+        }
+        let specialNodesPresent = group.all.filter { node in
+            specialNodes.contains(node.uppercased())
+        }
         
+        // Sort normal nodes according to settings
+        var sortedNormalNodes = normalNodes
         switch proxyGroupSortOrder {
         case .latencyAsc:
-            nodes.sort { node1, node2 in
+            sortedNormalNodes.sort { node1, node2 in
                 let delay1 = viewModel.getNodeDelay(nodeName: node1)
                 let delay2 = viewModel.getNodeDelay(nodeName: node2)
                 if delay1 == 0 { return false }
@@ -30,7 +39,7 @@ struct CompactGroupCard: View {
                 return delay1 < delay2
             }
         case .latencyDesc:
-            nodes.sort { node1, node2 in
+            sortedNormalNodes.sort { node1, node2 in
                 let delay1 = viewModel.getNodeDelay(nodeName: node1)
                 let delay2 = viewModel.getNodeDelay(nodeName: node2)
                 if delay1 == 0 { return false }
@@ -38,14 +47,15 @@ struct CompactGroupCard: View {
                 return delay1 > delay2
             }
         case .nameAsc:
-            nodes.sort { $0 < $1 }
+            sortedNormalNodes.sort { $0 < $1 }
         case .nameDesc:
-            nodes.sort { $0 > $1 }
+            sortedNormalNodes.sort { $0 > $1 }
         case .default:
             break
         }
         
-        return nodes
+        // Combine special nodes and sorted normal nodes
+        return specialNodesPresent + sortedNormalNodes
     }
     
     private func updateDisplayedNodes() {
@@ -236,7 +246,7 @@ struct ProxyNodeRow: View {
             
             Spacer()
             
-            // 延迟信息
+            // 延���信息
             if delay > 0 {
                 Text("\(delay)")
                     .font(.system(.body, design: .rounded))
