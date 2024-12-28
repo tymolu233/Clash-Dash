@@ -85,6 +85,20 @@ struct CompactGroupCard: View {
         return baseTime + extraTime
     }
     
+    // 添加辅助函数来处理名称
+    private var displayInfo: (icon: String, name: String) {
+        let name = group.name
+        guard let firstScalar = name.unicodeScalars.first,
+              firstScalar.properties.isEmoji else {
+            return (String(name.prefix(1)).uppercased(), name)
+        }
+        
+        // 如果第一个字符是 emoji，将其作为图标，并从名称中移除
+        let emoji = String(name.unicodeScalars.prefix(1))
+        let remainingName = name.dropFirst()
+        return (emoji, String(remainingName).trimmingCharacters(in: .whitespaces))
+    }
+    
     var body: some View {
         VStack(spacing: 0) {
             Button {
@@ -111,8 +125,7 @@ struct CompactGroupCard: View {
                                     .frame(width: 36, height: 36)
                                     .clipShape(RoundedRectangle(cornerRadius: 8))
                             } else {
-                                let firstLetter = String(group.name.prefix(1)).uppercased()
-                                Text(firstLetter)
+                                Text(displayInfo.icon)
                                     .font(.system(size: 18, weight: .medium))
                                     .frame(width: 36, height: 36)
                                     .background(currentNodeColor.opacity(0.1))
@@ -122,7 +135,7 @@ struct CompactGroupCard: View {
                         }
                         
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(group.name)
+                            Text(displayInfo.name)
                                 .font(.system(.body, design: .default))
                                 .fontWeight(.semibold)
                             
@@ -247,7 +260,7 @@ struct CompactGroupCard: View {
         ),
         viewModel: ProxyViewModel(
             server: ClashServer(
-                name: "��试服务器",
+                name: "测试服务器",
                 url: "localhost",
                 port: "9090",
                 secret: "123456"

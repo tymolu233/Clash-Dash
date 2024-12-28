@@ -37,6 +37,20 @@ struct CompactProviderCard: View {
         )
     }
     
+    // 添加辅助函数来处理名称
+    private var displayInfo: (icon: String, name: String) {
+        let name = provider.name
+        guard let firstScalar = name.unicodeScalars.first,
+              firstScalar.properties.isEmoji else {
+            return (String(name.prefix(1)).uppercased(), name)
+        }
+        
+        // 如果第一个字符是 emoji，将其作为图标，并从名称中移除
+        let emoji = String(name.unicodeScalars.prefix(1))
+        let remainingName = name.dropFirst()
+        return (emoji, String(remainingName).trimmingCharacters(in: .whitespaces))
+    }
+    
     var body: some View {
         VStack(spacing: 0) {
             Button {
@@ -48,7 +62,7 @@ struct CompactProviderCard: View {
                     // 左侧图标和名称
                     HStack(spacing: 10) {
                         // 提供者图标
-                        Text(String(provider.name.prefix(1)).uppercased())
+                        Text(displayInfo.icon)
                             .font(.system(size: 18, weight: .medium))
                             .frame(width: 36, height: 36)
                             .background(Color.blue.opacity(0.1))
@@ -56,7 +70,7 @@ struct CompactProviderCard: View {
                             .clipShape(RoundedRectangle(cornerRadius: 8))
                         
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(provider.name)
+                            Text(displayInfo.name)
                                 .font(.system(.body, design: .default))
                                 .fontWeight(.semibold)
                                 .lineLimit(1)
@@ -157,7 +171,7 @@ struct CompactProviderCard: View {
                                                 providerName: provider.name,
                                                 proxyName: node.name
                                             )
-                                            // 不需要再调用 fetchProxies，因�� healthCheckProviderProxy 已经包含了这个操作
+                                            // 不需要再调用 fetchProxies，因为 healthCheckProviderProxy 已经包含了这个操作
                                             print("✅ 节点测试完成: \(node.name), 延迟: \(node.delay)ms")
                                             
                                             let successFeedback = UINotificationFeedbackGenerator()
