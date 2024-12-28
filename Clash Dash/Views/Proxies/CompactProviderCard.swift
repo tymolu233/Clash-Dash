@@ -98,10 +98,20 @@ struct CompactProviderCard: View {
                         
                         // 节点数量和箭头
                         HStack(spacing: 10) {
-                            Text("\(nodes.count)")
-                                .fontWeight(.medium)
-                                .font(.system(size: 16, design: .rounded))
-                                .foregroundStyle(.secondary)
+                            if isExpanded {
+                                SpeedTestButton(
+                                    isTesting: viewModel.testingProviders.contains(provider.name)
+                                ) {
+                                    Task {
+                                        await viewModel.healthCheckProvider(providerName: provider.name)
+                                    }
+                                }
+                            } else {
+                                Text("\(currentNodes.count)")
+                                    .fontWeight(.medium)
+                                    .font(.system(size: 16, design: .rounded))
+                                    .foregroundStyle(.secondary)
+                            }
                             
                             Image(systemName: "chevron.right")
                                 .font(.system(size: 16))
@@ -147,7 +157,7 @@ struct CompactProviderCard: View {
                                                 providerName: provider.name,
                                                 proxyName: node.name
                                             )
-                                            // 不需要再调用 fetchProxies，因为 healthCheckProviderProxy 已经包含了这个操作
+                                            // 不需要再调用 fetchProxies，因�� healthCheckProviderProxy 已经包含了这个操作
                                             print("✅ 节点测试完成: \(node.name), 延迟: \(node.delay)ms")
                                             
                                             let successFeedback = UINotificationFeedbackGenerator()

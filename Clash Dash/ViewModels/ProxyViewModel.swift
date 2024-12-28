@@ -96,6 +96,7 @@ class ProxyViewModel: ObservableObject {
     @Published var lastDelayTestTime = Date()
     @Published var testingGroups: Set<String> = []
     @Published var savedNodeOrder: [String: [String]] = [:] // 移除 private 修饰符
+    @Published var testingProviders: Set<String> = []
     
     private let server: ClashServer
     private var currentTask: Task<Void, Never>?
@@ -545,7 +546,7 @@ class ProxyViewModel: ObservableObject {
                 // print("\n收到测速响应:")
                 for (nodeName, delay) in decodedData {
                     // print("节点: \(nodeName), 新延迟: \(delay)")
-                    // 直接更新节点延迟，不��要先 fetchProxies
+                    // 直接更新节点延迟，不需要先 fetchProxies
                     updateNodeDelay(nodeName: nodeName, delay: delay)
                 }
                 
@@ -580,6 +581,8 @@ class ProxyViewModel: ObservableObject {
         guard var request = makeRequest(path: "providers/proxies/\(encodedProviderName)") else { return }
         
         request.httpMethod = "PUT"
+
+        // print("\(request.url)")
         
         do {
             let (_, response) = try await URLSession.shared.data(for: request)
@@ -622,6 +625,10 @@ class ProxyViewModel: ObservableObject {
         let encodedProviderName = providerName.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? providerName
         guard let request = makeRequest(path: "providers/proxies/\(encodedProviderName)/healthcheck") else { return }
         
+        // 添加到测试集合
+        testingProviders.insert(providerName)
+        objectWillChange.send()
+        
         do {
             let (_, response) = try await URLSession.shared.data(for: request)
             
@@ -629,6 +636,7 @@ class ProxyViewModel: ObservableObject {
                let httpsResponse = response as? HTTPURLResponse,
                httpsResponse.statusCode == 400 {
                 print("SSL 连接失败，服务器可能不支持 HTTPS")
+                testingProviders.remove(providerName)  // 记得移除
                 return
             }
             
@@ -640,11 +648,13 @@ class ProxyViewModel: ObservableObject {
                 Task {
                     await self.fetchProxies()
                     self.lastDelayTestTime = Date()
+                    testingProviders.remove(providerName)  // 记得移除
                     objectWillChange.send()
                 }
             }
             
         } catch {
+            testingProviders.remove(providerName)  // 记得移除
             handleNetworkError(error)
         }
     }
@@ -746,7 +756,7 @@ class ProxyViewModel: ObservableObject {
         // 获取排序设置
         let sortOrder = UserDefaults.standard.string(forKey: "proxyGroupSortOrder") ?? "default"
         
-        // 特殊节点始终排在最前面（添加 PROXY）
+        // 特殊节点始终排在最前面���添加 PROXY）
         let specialNodes = nodeNames.filter { ["DIRECT", "REJECT", "PROXY"].contains($0) }
         let normalNodes = nodeNames.filter { !["DIRECT", "REJECT", "PROXY"].contains($0) }
         

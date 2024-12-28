@@ -152,17 +152,13 @@ struct CompactGroupCard: View {
                         // 节点数量和容器
                         HStack(spacing: 10) {
                             if isExpanded {
-                                // 展开时显示闪电标，点击测速
-                                Button {
+                                SpeedTestButton(
+                                    isTesting: viewModel.testingGroups.contains(group.name)
+                                ) {
                                     Task {
                                         await viewModel.testGroupSpeed(groupName: group.name)
                                     }
-                                } label: {
-                                    Image(systemName: "bolt.fill")
-                                        .font(.system(size: 16))
-                                        .foregroundStyle(viewModel.testingGroups.contains(group.name) ? .gray : .yellow)
                                 }
-                                .disabled(viewModel.testingGroups.contains(group.name))
                             } else {
                                 Text("\(group.all.count)")
                                     .fontWeight(.medium)
@@ -251,7 +247,7 @@ struct CompactGroupCard: View {
         ),
         viewModel: ProxyViewModel(
             server: ClashServer(
-                name: "测试服务器",
+                name: "��试服务器",
                 url: "localhost",
                 port: "9090",
                 secret: "123456"
