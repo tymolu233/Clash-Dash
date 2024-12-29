@@ -7,6 +7,8 @@ struct CompactProviderCard: View {
     @State private var isExpanded = false
     @State private var testingNodes = Set<String>()
     @State private var isUpdating = false
+    @State private var showingUpdateSuccess = false
+    @State private var toastMessage = ""
     
     // 添加计算属性来获取最新的节点数据
     private var currentNodes: [ProxyNode] {
@@ -154,6 +156,10 @@ struct CompactProviderCard: View {
                     Task {
                         await MainActor.run {
                             isUpdating = true
+                            // 显示更新中的 toast
+                            withAnimation {
+                                showingUpdateSuccess = false  // 确保先隐藏成功提示
+                            }
                         }
                         
                         do {
@@ -170,6 +176,17 @@ struct CompactProviderCard: View {
                                     let successFeedback = UINotificationFeedbackGenerator()
                                     successFeedback.notificationOccurred(.success)
                                     isUpdating = false
+                                    
+                                    // 显示成功提示
+                                    withAnimation {
+                                        showingUpdateSuccess = true
+                                    }
+                                    // 2 秒后隐藏提示
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                                        withAnimation {
+                                            showingUpdateSuccess = false
+                                        }
+                                    }
                                 }
                             } onCancel: {
                                 Task { @MainActor in
@@ -257,6 +274,33 @@ struct CompactProviderCard: View {
                 .background(Color(.systemBackground))
                 .clipShape(RoundedRectangle(cornerRadius: 16))
                 .shadow(color: Color.black.opacity(0.03), radius: 1, x: 0, y: 1)
+            }
+        }
+        .overlay(alignment: .bottom) {
+            if showingUpdateSuccess || isUpdating {
+                HStack {
+                    if isUpdating {
+                        ProgressView()
+                            .tint(.blue)
+                            .scaleEffect(0.8)
+                            .frame(width: 16, height: 16)
+                    } else {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                            .font(.title3)
+                    }
+                    
+                    Text(isUpdating ? "正在更新..." : "更新成功")
+                        .foregroundColor(.primary)
+                        .font(.subheadline)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(Color(.systemBackground))
+                .cornerRadius(25)
+                .shadow(radius: 10, x: 0, y: 5)
+                .padding(.bottom, 50)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
     }
