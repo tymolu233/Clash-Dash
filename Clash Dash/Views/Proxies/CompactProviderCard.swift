@@ -6,6 +6,7 @@ struct CompactProviderCard: View {
     @ObservedObject var viewModel: ProxyViewModel
     @State private var isExpanded = false
     @State private var testingNodes = Set<String>()
+    @State private var isUpdating = false
     
     // 添加计算属性来获取最新的节点数据
     private var currentNodes: [ProxyNode] {
@@ -13,14 +14,17 @@ struct CompactProviderCard: View {
     }
     
     private var usageInfo: String? {
-        guard let info = provider.subscriptionInfo else { return nil }
+        let currentProvider = viewModel.providers.first { $0.name == provider.name } ?? provider
+        guard let info = currentProvider.subscriptionInfo else { return nil }
         let used = Double(info.upload + info.download)
         return "\(formatBytes(Int64(used))) / \(formatBytes(info.total))"
     }
     
     private var timeInfo: (update: String, expire: String)? {
-        guard let updatedAt = provider.updatedAt,
-              let info = provider.subscriptionInfo,
+        let currentProvider = viewModel.providers.first { $0.name == provider.name } ?? provider
+        
+        guard let updatedAt = currentProvider.updatedAt,
+              let info = currentProvider.subscriptionInfo,
               info.expire > 0 else { return nil }
         
         let formatter = ISO8601DateFormatter()
@@ -144,6 +148,54 @@ struct CompactProviderCard: View {
                 .shadow(color: Color.black.opacity(0.03), radius: 1, x: 0, y: 1)
             }
             .buttonStyle(.plain)
+            // 添加长按菜单
+            .contextMenu {
+                Button {
+                    Task {
+                        await MainActor.run {
+                            isUpdating = true
+                        }
+                        
+                        do {
+                            try await withTaskCancellationHandler {
+                                await viewModel.updateProxyProvider(providerName: provider.name)
+                                
+                                // 等待一小段时间确保数据已更新
+                                try? await Task.sleep(nanoseconds: 500_000_000) // 0.5秒
+                                
+                                // 手动获取最新数据
+                                await viewModel.fetchProxies()
+                                
+                                await MainActor.run {
+                                    let successFeedback = UINotificationFeedbackGenerator()
+                                    successFeedback.notificationOccurred(.success)
+                                    isUpdating = false
+                                }
+                            } onCancel: {
+                                Task { @MainActor in
+                                    isUpdating = false
+                                    let errorFeedback = UINotificationFeedbackGenerator()
+                                    errorFeedback.notificationOccurred(.error)
+                                }
+                            }
+                        } catch {
+                            await MainActor.run {
+                                isUpdating = false
+                                let errorFeedback = UINotificationFeedbackGenerator()
+                                errorFeedback.notificationOccurred(.error)
+                                print("更新提供者失败: \(error)")
+                            }
+                        }
+                    }
+                } label: {
+                    if isUpdating {
+                        Label("更新中...", systemImage: "arrow.clockwise")
+                    } else {
+                        Label("更新", systemImage: "arrow.clockwise")
+                    }
+                }
+                .disabled(isUpdating)
+            }
             
             // 展开的节点列表
             if isExpanded {
