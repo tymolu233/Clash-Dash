@@ -1629,33 +1629,7 @@ struct RoundedCorner: Shape {
     }
 }
 
-// 添加一个扩展来共享获取节点延迟的方法
-extension ProxyViewModel {
-    func getNodeDelay(nodeName: String, visitedGroups: Set<String> = []) -> Int {
-        // 防止循环依赖
-        if visitedGroups.contains(nodeName) {
-            return 0
-        }
-        
-        // 如果是代理组，递归获取当前选中节点的延迟
-        if let group = groups.first(where: { $0.name == nodeName }) {
-            var visited = visitedGroups
-            visited.insert(nodeName)
-            
-            // 获取当前选中的节点
-            let currentNodeName = group.now
-            // 递归获取实际节点的延迟，传递已访问的组列表
-            return getNodeDelay(nodeName: currentNodeName, visitedGroups: visited)
-        }
-        
-        // 如果是实际节点，返回节点延迟
-        if let node = nodes.first(where: { $0.name == nodeName }) {
-            return node.delay
-        }
-        
-        return 0
-    }
-}
+
 
 #Preview {
     NavigationStack {

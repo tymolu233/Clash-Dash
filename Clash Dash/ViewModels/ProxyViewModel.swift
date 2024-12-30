@@ -757,36 +757,45 @@ class ProxyViewModel: ObservableObject {
         let sortOrder = UserDefaults.standard.string(forKey: "proxyGroupSortOrder") ?? "default"
         
         // 特殊节点始终排在最前面（添加 PROXY）
-        let specialNodes = nodeNames.filter { ["DIRECT", "REJECT", "PROXY"].contains($0) }
-        let normalNodes = nodeNames.filter { !["DIRECT", "REJECT", "PROXY"].contains($0) }
+        let specialNodes = nodeNames.filter { node in
+            ["DIRECT", "REJECT", "PROXY"].contains(node.uppercased())
+        }
+        let normalNodes = nodeNames.filter { node in
+            !["DIRECT", "REJECT", "PROXY"].contains(node.uppercased())
+        }
+        
+        // 检查是否需要隐藏不可用代理
+        let hideUnavailable = UserDefaults.standard.bool(forKey: "hideUnavailableProxies")
+        let filteredNormalNodes = hideUnavailable ? 
+            normalNodes.filter { node in
+                getNodeDelay(nodeName: node) > 0
+            } : normalNodes
         
         // 根据排序设置对普通节点进行排序
         let sortedNormalNodes: [String]
         switch sortOrder {
         case "latencyAsc":
-            sortedNormalNodes = normalNodes.sorted { node1, node2 in
+            sortedNormalNodes = filteredNormalNodes.sorted { node1, node2 in
                 let delay1 = getNodeDelay(nodeName: node1)
                 let delay2 = getNodeDelay(nodeName: node2)
-                // 将超时节点排在最后
                 if delay1 == 0 { return false }
                 if delay2 == 0 { return true }
                 return delay1 < delay2
             }
         case "latencyDesc":
-            sortedNormalNodes = normalNodes.sorted { node1, node2 in
+            sortedNormalNodes = filteredNormalNodes.sorted { node1, node2 in
                 let delay1 = getNodeDelay(nodeName: node1)
                 let delay2 = getNodeDelay(nodeName: node2)
-                // 将超时节点排在最后
                 if delay1 == 0 { return false }
                 if delay2 == 0 { return true }
                 return delay1 > delay2
             }
         case "nameAsc":
-            sortedNormalNodes = normalNodes.sorted { $0 < $1 }
+            sortedNormalNodes = filteredNormalNodes.sorted { $0.localizedStandardCompare($1) == .orderedAscending }
         case "nameDesc":
-            sortedNormalNodes = normalNodes.sorted { $0 > $1 }
-        default: // 保持原始顺序
-            sortedNormalNodes = normalNodes
+            sortedNormalNodes = filteredNormalNodes.sorted { $0.localizedStandardCompare($1) == .orderedDescending }
+        default:
+            sortedNormalNodes = filteredNormalNodes
         }
         
         // 合并特殊节点和排序后的普通节点
@@ -807,6 +816,38 @@ class ProxyViewModel: ObservableObject {
     // 添加方法来清除保存的节点顺序
     func clearSavedNodeOrder(for groupName: String) {
         savedNodeOrder.removeValue(forKey: groupName)
+    }
+    
+    // 修改 getNodeDelay 方法
+    func getNodeDelay(nodeName: String, visitedGroups: Set<String> = []) -> Int {
+        // 检查是否是特殊节点（不区分大小写）
+        let upperNodeName = nodeName.uppercased()
+        if ["REJECT"].contains(upperNodeName) {
+            return 0  // 返回 0 表示拒绝连接
+        }
+        
+        // 防止循环依赖
+        if visitedGroups.contains(nodeName) {
+            return 0
+        }
+        
+        // 如果是代理组，递归获取当前选中节点的延迟
+        if let group = groups.first(where: { $0.name == nodeName }) {
+            var visited = visitedGroups
+            visited.insert(nodeName)
+            
+            // 获取当前选中的节点
+            let currentNodeName = group.now
+            // 递归获取实际节点的延迟，传递已访问的组列表
+            return getNodeDelay(nodeName: currentNodeName, visitedGroups: visited)
+        }
+        
+        // 如果是实际节点，返回节点延迟
+        if let node = nodes.first(where: { $0.name.uppercased() == upperNodeName }) {
+            return node.delay
+        }
+        
+        return 0
     }
 }
 
