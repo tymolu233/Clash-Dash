@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import SafariServices
 
 struct ContentView: View {
     @StateObject private var viewModel = ServerViewModel()
@@ -11,6 +12,7 @@ struct ContentView: View {
     @StateObject private var settingsViewModel = SettingsViewModel()
     @State private var showingModeChangeSuccess = false
     @State private var lastChangedMode = ""
+    @State private var showingSourceCode = false
     
     // 添加触觉反馈生成器
     private let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
@@ -210,6 +212,27 @@ struct ContentView: View {
                                 destination: HelpView()
                             )
                             
+                            Button {
+                                impactFeedback.impactOccurred()
+                                showingSourceCode = true
+                            } label: {
+                                HStack {
+                                    Image(systemName: "chevron.left.forwardslash.chevron.right")
+                                        .font(.body)
+                                        .foregroundColor(.purple)
+                                        .frame(width: 32)
+                                    
+                                    Text("源码查看")
+                                        .font(.body)
+                                    
+                                    Spacer()
+                                    
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            
                             // SettingsLinkRow(
                             //     title: "给APP评分",
                             //     icon: "star.fill",
@@ -222,7 +245,7 @@ struct ContentView: View {
                         .cornerRadius(16)
                         
                         // 版本信息
-                        Text("Ver: 1.2.6")
+                        Text("Ver: 1.2.7")
                             .foregroundColor(.secondary)
                             .font(.footnote)
                             .padding(.top, 8)
@@ -275,6 +298,12 @@ struct ContentView: View {
             }
             .sheet(isPresented: $showingAddOpenWRTSheet) {
                 OpenWRTServerView(viewModel: viewModel)
+            }
+            .sheet(isPresented: $showingSourceCode) {
+                if let url = URL(string: "https://github.com/bin64/Clash-Dash") {
+                    SafariWebView(url: url)
+                        .ignoresSafeArea()
+                }
             }
             .refreshable {
                 await viewModel.checkAllServersStatus()

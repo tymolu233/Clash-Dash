@@ -384,7 +384,7 @@ struct ProxyGroupsOverview: View {
     }
 }
 
-// 单��代理组卡片
+// 单个代理组卡片
 struct GroupCard: View {
     let group: ProxyGroup
     @ObservedObject var viewModel: ProxyViewModel
