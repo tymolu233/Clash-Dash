@@ -275,41 +275,6 @@ struct ProxyView: View {
         .refreshable {
             await refreshData()
         }
-        .navigationTitle(server.displayName)
-        .navigationBarTitleDisplayMode(.large)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                HStack(spacing: 12) {
-                    Button {
-                        // 添加触觉反馈
-                        impactFeedback.impactOccurred()
-                        showProviderSheet = true
-                    } label: {
-                        Label("添加", systemImage: "square.stack.3d.up")
-                    }
-                    
-                    Button {
-                        // 添加触觉反馈
-                        impactFeedback.impactOccurred()
-                        Task { await refreshData() }
-                    } label: {
-                        Label("刷新", systemImage: "arrow.clockwise")
-                            .rotationEffect(.degrees(isRefreshing ? 360 : 0))
-                            .animation(isRefreshing ? .linear(duration: 1).repeatForever(autoreverses: false) : .default, 
-                                     value: isRefreshing)
-                    }
-                    .disabled(isRefreshing)
-                }
-            }
-        }
-        .sheet(isPresented: $showProviderSheet) {
-            ProvidersSheetView(
-                providers: viewModel.providers,
-                nodes: viewModel.providerNodes,
-                viewModel: viewModel
-            )
-            .presentationDetents([.medium, .large])
-        }
         .task {
             await viewModel.fetchProxies()
         }

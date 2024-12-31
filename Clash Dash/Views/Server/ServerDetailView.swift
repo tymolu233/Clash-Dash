@@ -68,32 +68,26 @@ struct ServerDetailView: View {
                     }
                     .tag(4)
             }
+            .navigationTitle(server.name.isEmpty ? "\(server.url):\(server.port)" : server.name)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .principal) {
-                    HStack {
-                        Text(server.name.isEmpty ? "\(server.url):\(server.port)" : server.name)
-                            .font(.headline)
-                        if server.isQuickLaunch {
+                if server.isQuickLaunch {
+                    ToolbarItem(placement: .principal) {
+                        HStack {
+                            Text(server.name.isEmpty ? "\(server.url):\(server.port)" : server.name)
+                                .font(.headline)
                             Image(systemName: "bolt.circle.fill")
                                 .foregroundColor(.yellow)
                                 .font(.subheadline)
                         }
                     }
-                }
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        HStack(spacing: 4) {
-                            Image(systemName: "chevron.left")
-                            Text("Clash Dash")
-                                .foregroundColor(.blue)
-                        }
+                } else {
+                    ToolbarItem(placement: .principal) {
+                        Text(server.name.isEmpty ? "\(server.url):\(server.port)" : server.name)
+                            .font(.headline)
                     }
                 }
             }
-            .navigationBarBackButtonHidden(true)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbarBackground(Color(.systemBackground), for: .navigationBar)
             .onAppear {
