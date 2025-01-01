@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ServerRowView: View {
     let server: ClashServer
+    @Environment(\.colorScheme) var colorScheme
     
     private var versionDisplay: String {
         guard let version = server.version else { return "" }
@@ -15,6 +16,12 @@ struct ServerRowView: View {
         case .unauthorized: return "lock.circle.fill"
         case .unknown: return "questionmark.circle.fill"
         }
+    }
+    
+    private var cardBackgroundColor: Color {
+        colorScheme == .dark ? 
+            Color(.systemGray6) : 
+            Color(.secondarySystemGroupedBackground)
     }
     
     var body: some View {
@@ -88,7 +95,7 @@ struct ServerRowView: View {
         }
         .padding()
         .frame(height: 80)
-        .background(Color(.secondarySystemGroupedBackground))
+        .background(cardBackgroundColor)
         .cornerRadius(16)
     }
 } 

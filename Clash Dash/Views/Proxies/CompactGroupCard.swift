@@ -10,6 +10,13 @@ struct CompactGroupCard: View {
     @State private var currentNodeOrder: [String]?
     @State private var displayedNodes: [String] = []
     @State private var showURLTestAlert = false
+    @Environment(\.colorScheme) var colorScheme
+    
+    private var cardBackgroundColor: Color {
+        colorScheme == .dark ? 
+            Color(.systemGray6) : 
+            Color(.systemBackground)
+    }
     
     // 获取当前选中节点的延迟颜色
     private var currentNodeColor: Color {
@@ -200,7 +207,7 @@ struct CompactGroupCard: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 14)
                 .frame(height: 64)
-                .background(Color(.systemBackground))
+                .background(cardBackgroundColor)
                 .clipShape(RoundedRectangle(cornerRadius: 16))
                 .shadow(color: Color.black.opacity(0.03), radius: 1, x: 0, y: 1)
             }
@@ -240,7 +247,7 @@ struct CompactGroupCard: View {
                     }
                     .padding(.vertical, 8)
                 }
-                .background(Color(.systemBackground))
+                .background(cardBackgroundColor)
                 .clipShape(RoundedRectangle(cornerRadius: 16))
                 .shadow(color: Color.black.opacity(0.03), radius: 1, x: 0, y: 1)
             }

@@ -9,6 +9,13 @@ struct CompactProviderCard: View {
     @State private var isUpdating = false
     @State private var showingUpdateSuccess = false
     @State private var toastMessage = ""
+    @Environment(\.colorScheme) var colorScheme
+    
+    private var cardBackgroundColor: Color {
+        colorScheme == .dark ? 
+            Color(.systemGray6) : 
+            Color(.systemBackground)
+    }
     
     // 添加计算属性来获取最新的节点数据
     private var currentNodes: [ProxyNode] {
@@ -157,7 +164,7 @@ struct CompactProviderCard: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 14)
                 .frame(height: 64)
-                .background(Color(.systemBackground))
+                .background(cardBackgroundColor)
                 .clipShape(RoundedRectangle(cornerRadius: 16))
                 .shadow(color: Color.black.opacity(0.03), radius: 1, x: 0, y: 1)
             }
@@ -283,7 +290,7 @@ struct CompactProviderCard: View {
                     }
                     .padding(.vertical, 8)
                 }
-                .background(Color(.systemBackground))
+                .background(cardBackgroundColor)
                 .clipShape(RoundedRectangle(cornerRadius: 16))
                 .shadow(color: Color.black.opacity(0.03), radius: 1, x: 0, y: 1)
             }
@@ -308,7 +315,7 @@ struct CompactProviderCard: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
-                .background(Color(.systemBackground))
+                .background(cardBackgroundColor)
                 .cornerRadius(25)
                 .shadow(radius: 10, x: 0, y: 5)
                 .padding(.bottom, 50)

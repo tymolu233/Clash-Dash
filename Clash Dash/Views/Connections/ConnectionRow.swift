@@ -6,6 +6,13 @@ struct ConnectionRow: View {
     let viewModel: ConnectionsViewModel
     @ObservedObject var tagViewModel: ClientTagViewModel
     let onClose: () -> Void
+    @Environment(\.colorScheme) var colorScheme
+    
+    private var cardBackgroundColor: Color {
+        colorScheme == .dark ? 
+            Color(.systemGray6) : 
+            Color(.systemBackground)
+    }
     
     // 添加触觉反馈生成器
     private let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
@@ -34,7 +41,7 @@ struct ConnectionRow: View {
         }
     }
     
-    // 添加���式化字节的辅助方法
+    // 添加格式化字节的辅助方法
     private func formatBytes(_ bytes: Int) -> String {
         let units = ["B", "K", "M", "G"]
         var size = Double(bytes)
@@ -222,7 +229,7 @@ struct ConnectionRow: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .background(Color(.systemBackground))
+        .background(cardBackgroundColor)
         .cornerRadius(16)
         .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
         .padding(.horizontal, 16)
