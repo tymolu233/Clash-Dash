@@ -37,7 +37,7 @@ struct AddServerView: View {
                         }
                     TextField("端口", text: $port)
                         .keyboardType(.numberPad)
-                    TextField("密钥", text: $secret)
+                    TextField("密钥（可选）", text: $secret)
                         .textInputAutocapitalization(.never)
                     
                     Toggle(isOn: $useSSL) {
@@ -82,7 +82,7 @@ struct AddServerView: View {
                         viewModel.addServer(server)
                         dismiss()
                     }
-                    .disabled(url.isEmpty || port.isEmpty || secret.isEmpty)
+                    .disabled(url.isEmpty || port.isEmpty)
                 }
             }
         }
