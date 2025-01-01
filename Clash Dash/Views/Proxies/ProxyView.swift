@@ -217,15 +217,15 @@ struct ProxyView: View {
                         VStack(spacing: 20) {
                             ProxyGroupsOverview(groups: viewModel.getSortedGroups(), viewModel: viewModel)
                             
-                            // 代理提供者部分 - 只显示有订阅信息的提供者
-                            let subscriptionProviders = viewModel.providers
-                                .filter { $0.subscriptionInfo != nil }
+                            // 代理提供者部分 - 只显示 vehicleType 为 HTTP 的提供者
+                            let httpProviders = viewModel.providers
+                                .filter { $0.vehicleType.uppercased() == "HTTP" }
                                 // 添加固定排序
                                 .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
                             
-                            if !subscriptionProviders.isEmpty {
+                            if !httpProviders.isEmpty {
                                 ProxyProvidersSection(
-                                    providers: subscriptionProviders,
+                                    providers: httpProviders,
                                     nodes: viewModel.providerNodes,
                                     viewModel: viewModel
                                 )
@@ -241,20 +241,20 @@ struct ProxyView: View {
                                 }
                             }
                             
-                            // 代理提供者部分 - 只显示有订阅信息的提供者
-                            let subscriptionProviders = viewModel.providers
-                                .filter { $0.subscriptionInfo != nil }
+                            // 代理提供者部分 - 只显示 vehicleType 为 HTTP 的提供者
+                            let httpProviders = viewModel.providers
+                                .filter { $0.vehicleType.uppercased() == "HTTP" }
                                 // 添加固定排序
                                 .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
                             
-                            if !subscriptionProviders.isEmpty {
+                            if !httpProviders.isEmpty {
                                 VStack(alignment: .leading, spacing: 12) {
                                     Text("代理提供者")
                                         .font(.headline)
                                         .padding(.horizontal)
                                     
                                     LazyVStack(spacing: 12) {
-                                        ForEach(subscriptionProviders, id: \.name) { provider in
+                                        ForEach(httpProviders, id: \.name) { provider in
                                             CompactProviderCard(
                                                 provider: provider,
                                                 nodes: viewModel.providerNodes[provider.name] ?? [],

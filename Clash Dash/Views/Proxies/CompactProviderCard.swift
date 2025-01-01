@@ -17,7 +17,9 @@ struct CompactProviderCard: View {
     
     private var usageInfo: String? {
         let currentProvider = viewModel.providers.first { $0.name == provider.name } ?? provider
-        guard let info = currentProvider.subscriptionInfo else { return nil }
+        guard let info = currentProvider.subscriptionInfo,
+              // 添加判断：只有当总流量不为 0 时才显示使用信息
+              info.total > 0 else { return nil }
         let used = Double(info.upload + info.download)
         return "\(formatBytes(Int64(used))) / \(formatBytes(info.total))"
     }
@@ -25,9 +27,7 @@ struct CompactProviderCard: View {
     private var timeInfo: (update: String, expire: String)? {
         let currentProvider = viewModel.providers.first { $0.name == provider.name } ?? provider
         
-        guard let updatedAt = currentProvider.updatedAt,
-              let info = currentProvider.subscriptionInfo,
-              info.expire > 0 else { return nil }
+        guard let updatedAt = currentProvider.updatedAt else { return nil }
         
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
@@ -37,9 +37,19 @@ struct CompactProviderCard: View {
         let relativeFormatter = RelativeDateTimeFormatter()
         relativeFormatter.unitsStyle = .short
         
+        // 如果有订阅信息且不全为 0，返回更新时间和到期时间
+        if let info = currentProvider.subscriptionInfo,
+           info.expire > 0 && info.total > 0 {
+            return (
+                update: relativeFormatter.localizedString(for: updateDate, relativeTo: Date()),
+                expire: formatExpireDate(info.expire)
+            )
+        }
+        
+        // 如果没有订阅信息或全为 0，只返回更新时间
         return (
             update: relativeFormatter.localizedString(for: updateDate, relativeTo: Date()),
-            expire: formatExpireDate(info.expire)
+            expire: ""
         )
     }
     
@@ -102,9 +112,11 @@ struct CompactProviderCard: View {
                                 Text("更新：\(times.update)")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
-                                Text("到期：\(times.expire)")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                if !times.expire.isEmpty {
+                                    Text("到期：\(times.expire)")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
                             }
                             .frame(width: 110)
                         }
