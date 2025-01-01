@@ -90,15 +90,47 @@ struct RulesView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color(uiColor: .systemGroupedBackground))
             } else {
-                ProvidersListRepresentable(
-                    providers: viewModel.providers,
-                    searchText: viewModel.searchText,
-                    onRefresh: { [weak viewModel] provider in
+                ZStack(alignment: .bottomTrailing) {
+                    ProvidersListRepresentable(
+                        providers: viewModel.providers,
+                        searchText: viewModel.searchText,
+                        onRefresh: { [weak viewModel] provider in
+                            Task {
+                                await viewModel?.refreshProvider(provider.name)
+                            }
+                        }
+                    )
+                    
+                    // 添加更新全部按钮
+                    Button(action: {
                         Task {
-                            await viewModel?.refreshProvider(provider.name)
+                            await viewModel.refreshAllProviders()
+                        }
+                    }) {
+                        ZStack {
+                            BlurView(style: .systemThinMaterial)
+                                .frame(width: 44, height: 44)
+                                .clipShape(Circle())
+                                .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+                            
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(viewModel.isRefreshingAll ? .secondary : .primary)
+                                .rotationEffect(.degrees(viewModel.isRefreshingAll ? 360 : 0))
+                                .animation(
+                                    viewModel.isRefreshingAll ?
+                                        Animation.linear(duration: 1).repeatForever(autoreverses: false) :
+                                        .default,
+                                    value: viewModel.isRefreshingAll
+                                )
                         }
                     }
-                )
+                    .disabled(viewModel.isRefreshingAll)
+                    .opacity(viewModel.isRefreshingAll ? 0.6 : 1.0)
+                    .animation(.easeInOut, value: viewModel.isRefreshingAll)
+                    .padding(.trailing, 16)
+                    .padding(.bottom, 80)  // 给搜索按钮留出空间
+                }
             }
         }
     }
@@ -505,6 +537,20 @@ class ProviderCell: UITableViewCell {
         behaviorLabel.text = provider.behavior
         timeLabel.text = "更新于 " + provider.formattedUpdateTime
         
+        // 根据刷新状态更新按钮状态
+        refreshButton.isEnabled = !provider.isRefreshing
+        if provider.isRefreshing {
+            // 创建旋转动画
+            let rotation = CABasicAnimation(keyPath: "transform.rotation")
+            rotation.fromValue = 0
+            rotation.toValue = 2 * Double.pi
+            rotation.duration = 1
+            rotation.repeatCount = .infinity
+            refreshButton.layer.add(rotation, forKey: "rotation")
+        } else {
+            refreshButton.layer.removeAnimation(forKey: "rotation")
+        }
+        
         // 移除之前的所有动作
         refreshButton.removeTarget(nil, action: nil, for: .allEvents)
         refreshButton.addAction(UIAction { _ in
@@ -548,3 +594,4 @@ struct BlurView: UIViewRepresentable {
                                     secret: "123456"))
     }
 } 
+
