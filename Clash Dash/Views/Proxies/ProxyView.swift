@@ -2,9 +2,15 @@ import SwiftUI
 
 // 添加到文件顶部，在 LoadingView 之前
 struct CardShadowModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+    
+    var cardBackgroundColor: Color {
+        colorScheme == .dark ? Color(.systemGray6) : Color(.systemBackground)
+    }
+    
     func body(content: Content) -> some View {
         content
-            .background(Color(.systemBackground))
+            .background(cardBackgroundColor)
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
     }
@@ -549,11 +555,7 @@ struct GroupCard: View {
             // .padding(.top, 2)
         }
         .padding(12)
-        .background {
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.systemBackground))
-                .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
-        }
+        .cardShadow()
         .onTapGesture {
             // 添加触觉反馈
             let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
