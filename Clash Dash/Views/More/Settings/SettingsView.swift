@@ -107,9 +107,10 @@ struct SettingsView: View {
                         Text("TUN 协议栈")
                         Spacer()
                         Picker("", selection: $viewModel.tunStack) {
-                            Text("gVisor").tag("gVisor")
+                            Text("gVisor").tag("gvisor")
                             Text("Mixed").tag("mixed")
                             Text("System").tag("system")
+                            Text("LWIP").tag("lwip")
                         }
                         .pickerStyle(.menu)
                         .onChange(of: viewModel.tunStack) { newValue in

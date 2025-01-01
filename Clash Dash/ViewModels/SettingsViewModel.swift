@@ -63,7 +63,9 @@ class SettingsViewModel: ObservableObject {
         if let tun = config.tun {
             self.tunEnable = tun.enable
             self.tunDevice = tun.device
-            self.tunStack = tun.stack
+            // logger.log("TUN Stack 原始值: \(tun.stack)")
+            self.tunStack = tun.stack.lowercased()
+            // logger.log("TUN Stack 转换后值: \(self.tunStack)")
             self.tunAutoRoute = tun.autoRoute
             self.tunAutoDetectInterface = tun.autoDetectInterface
         }
@@ -88,21 +90,50 @@ class SettingsViewModel: ObservableObject {
         guard var request = makeRequest(path: "configs", server: server) else { return }
         
         request.httpMethod = "PATCH"
-        let payload = [path: value]
-        request.httpBody = try? JSONSerialization.data(withJSONObject: payload)
         
-        URLSession.shared.dataTask(with: request) { [weak self] _, response, error in
-            if let httpResponse = response as? HTTPURLResponse,
-               (200...299).contains(httpResponse.statusCode) {
-                print("设置切换成功：\(path) = \(value)")
-                logger.log("设置切换成功：\(path) = \(value)")
-                DispatchQueue.main.async {
-                    completion?()
+        // 构建嵌套的 payload 结构
+        let payload: [String: Any]
+        if path.contains(".") {
+            // 处理嵌套路径，如 "tun.stack"
+            let components = path.split(separator: ".")
+            let lastKey = String(components.last!)
+            let firstKey = String(components.first!)
+            
+            // 直接构建嵌套结构
+            payload = [
+                firstKey: [
+                    lastKey: value
+                ]
+            ]
+        } else {
+            // 处理非嵌套路径，如 "mixed-port"
+            payload = [path: value]
+        }
+        
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: payload)
+            if let bodyString = String(data: request.httpBody!, encoding: .utf8) {
+                logger.log("配置更新请求: \(bodyString)")
+            }
+        } catch {
+            logger.log("配置更新失败: \(error.localizedDescription)")
+            return
+        }
+        
+        URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+            if let httpResponse = response as? HTTPURLResponse {
+                if httpResponse.statusCode == 204 {
+                    logger.log("配置更新成功：\(path) = \(value)")
+                    DispatchQueue.main.async {
+                        completion?()
+                    }
+                } else {
+                    logger.log("配置更新失败：状态码 \(httpResponse.statusCode)")
                 }
-            } else if let error = error {
-                print("设置切换失败：\(path) = \(value)")
-                print("错误：\(error.localizedDescription)")
-                logger.log("设置切换失败：\(path) = \(value)")
+            }
+            
+            if let error = error {
+                logger.log("配置更新错误：\(error.localizedDescription)")
             }
         }.resume()
     }
