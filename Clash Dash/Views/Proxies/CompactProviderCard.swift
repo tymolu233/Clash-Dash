@@ -355,7 +355,7 @@ struct CompactProviderCard: View {
                 download: 1024 * 1024 * 500,  // 500MB
                 total: 1024 * 1024 * 1024,    // 1GB
                 expire: 1735689600            // 2025-01-01
-            )
+            ), hidden: false
         ),
         nodes: [],
         viewModel: ProxyViewModel(

@@ -217,7 +217,7 @@ struct ProxyView: View {
                         VStack(spacing: 20) {
                             ProxyGroupsOverview(groups: viewModel.getSortedGroups(), viewModel: viewModel)
                             
-                            // 代理提供者部分 - 只显示 vehicleType 为 HTTP 的提供者
+                            // 代理提供者部分 - 只显示 vehicleType 为 HTTP 的提供者，且不显示隐藏的提供者
                             let httpProviders = viewModel.providers
                                 .filter { $0.vehicleType.uppercased() == "HTTP" }
                                 // 添加固定排序
@@ -241,7 +241,7 @@ struct ProxyView: View {
                                 }
                             }
                             
-                            // 代理提供者部分 - 只显示 vehicleType 为 HTTP 的提供者
+                            // 代理提供者部分 - 只显示 vehicleType 为 HTTP 的提供者，且不显示隐藏的提供者
                             let httpProviders = viewModel.providers
                                 .filter { $0.vehicleType.uppercased() == "HTTP" }
                                 // 添加固定排序

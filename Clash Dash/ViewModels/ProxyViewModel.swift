@@ -52,6 +52,7 @@ struct ProxyProvider: Codable {
     let testUrl: String?
     let subscriptionInfo: SubscriptionInfo?
     let updatedAt: String?
+    let hidden: Bool?
 }
 
 struct ProxyProvidersResponse: Codable {
@@ -66,6 +67,7 @@ struct Provider: Identifiable, Codable, Equatable {
     let vehicleType: String
     let updatedAt: String?
     let subscriptionInfo: SubscriptionInfo?
+    let hidden: Bool?
     
     static func == (lhs: Provider, rhs: Provider) -> Bool {
         return lhs.id == rhs.id
@@ -175,6 +177,7 @@ class ProxyViewModel: ObservableObject {
                 // 更新组数据
                 self.groups = proxiesResponse.proxies.compactMap { name, proxy in
                     guard proxy.all != nil else { return nil }
+                    if proxy.hidden == true { return nil }
                     return ProxyGroup(
                         name: name,
                         type: proxy.type,
@@ -201,9 +204,12 @@ class ProxyViewModel: ObservableObject {
                         type: provider.type,
                         vehicleType: provider.vehicleType,
                         updatedAt: provider.updatedAt,
-                        subscriptionInfo: provider.subscriptionInfo
+                        subscriptionInfo: provider.subscriptionInfo,
+                        hidden: provider.hidden
                     )
-                }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+                }
+                .filter { $0.hidden != true } // 过滤掉 hidden 为 true 的提供者
+                .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
                 // print("📦 更新后的提供者数量: \(self.providers.count)")
                 
                 // 更新 providerNodes
