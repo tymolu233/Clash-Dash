@@ -246,7 +246,7 @@ struct ProxyView: View {
                         LazyVStack(spacing: 12) {
                             ForEach(viewModel.getSortedGroups(), id: \.name) { group in
                                 CompactGroupCard(group: group, viewModel: viewModel)
-                                    .drawingGroup(opaque: false)  // 优化渲染
+                                    // .drawingGroup(opaque: false)  // 优化渲染
                             }
                         }
                         .padding(.horizontal)
@@ -269,7 +269,7 @@ struct ProxyView: View {
                                             nodes: viewModel.providerNodes[provider.name] ?? [],
                                             viewModel: viewModel
                                         )
-                                        .drawingGroup(opaque: false)  // 优化渲染
+                                        // .drawingGroup(opaque: false)  // 优化渲染
                                     }
                                 }
                             }
@@ -687,7 +687,7 @@ struct ProxyProvidersSection: View {
                 .font(.title2.bold())
             
             ForEach(providers.sorted(by: { $0.name < $1.name })) { provider in
-                let _ = print("📦 显示订阅提供者: \(provider.name)")
+                // let _ = print("📦 显示订阅提供者: \(provider.name)")
                 ProxyProviderCard(
                     provider: provider,
                     nodes: nodes[provider.name] ?? [],
@@ -842,8 +842,8 @@ struct ProxyProviderCard: View {
                             case .none:
                                 Image(systemName: "arrow.clockwise")
                             case .updating:
-                                ProgressView()
-                                    .scaleEffect(0.7)
+                                Image(systemName: "arrow.clockwise")
+                                    .foregroundStyle(.gray)
                             case .success:
                                 Image(systemName: "checkmark.circle.fill")
                                     .foregroundStyle(.green)

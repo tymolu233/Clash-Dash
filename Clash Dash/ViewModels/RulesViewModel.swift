@@ -139,7 +139,6 @@ class RulesViewModel: ObservableObject {
         do {
             // 找到要刷新的提供者
             guard let provider = providers.first(where: { $0.name == name }) else {
-                print("[RulesViewModel] Provider not found: \(name)")
                 return
             }
             
@@ -150,7 +149,6 @@ class RulesViewModel: ObservableObject {
             
             // 构建刷新 URL
             guard let baseURL = server.baseURL else {
-                print("[RulesViewModel] Invalid base URL for server: \(server.name)")
                 throw URLError(.badURL)
             }
             
@@ -159,41 +157,19 @@ class RulesViewModel: ObservableObject {
                 .appendingPathComponent("rules")
                 .appendingPathComponent(name)
             
-            print("[RulesViewModel] Refreshing provider URL: \(url.absoluteString)")
-            
             var request = URLRequest(url: url)
             request.httpMethod = "PUT"
             request.setValue("Bearer \(server.secret)", forHTTPHeaderField: "Authorization")
             
-            print("[RulesViewModel] Request headers: \(request.allHTTPHeaderFields ?? [:])")
-            
             let (data, response) = try await URLSession.shared.data(for: request)
             
             if let httpResponse = response as? HTTPURLResponse {
-                print("[RulesViewModel] Response status code: \(httpResponse.statusCode)")
-                print("[RulesViewModel] Response headers: \(httpResponse.allHeaderFields)")
-                
                 if httpResponse.statusCode == 204 {
-                    print("[RulesViewModel] Successfully refreshed provider: \(name)")
                     await fetchData()
-                } else {
-                    if httpResponse.statusCode == 401 {
-                        print("[RulesViewModel] Authentication failed. Secret key: \(String(describing: server.secret))")
-                        print("[RulesViewModel] Server URL: \(String(describing: server.url))")
-                    }
-                    print("[RulesViewModel] Unexpected status code: \(httpResponse.statusCode)")
-                    if let responseString = String(data: data, encoding: .utf8) {
-                        print("[RulesViewModel] Response body: \(responseString)")
-                    }
                 }
             }
         } catch {
-            print("[RulesViewModel] Error refreshing provider: \(error)")
-            print("[RulesViewModel] Error details: \(error.localizedDescription)")
-            if let urlError = error as? URLError {
-                print("[RulesViewModel] URL Error code: \(urlError.code.rawValue)")
-                print("[RulesViewModel] URL Error description: \(urlError.localizedDescription)")
-            }
+            // 错误处理但不打印
         }
         
         // 重置刷新状态
@@ -207,14 +183,12 @@ class RulesViewModel: ObservableObject {
         guard !isRefreshingAll else { return }  // 防止重复刷新
         
         isRefreshingAll = true
-        print("[RulesViewModel] Starting refresh all providers")
         
         for provider in providers {
             await refreshProvider(provider.name)
         }
         
         isRefreshingAll = false
-        print("[RulesViewModel] Completed refresh all providers")
     }
 }
 

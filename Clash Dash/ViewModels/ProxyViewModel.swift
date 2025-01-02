@@ -1,4 +1,6 @@
 import Foundation
+// 添加 LogManager
+private let logger = LogManager.shared
 
 struct ProxyNode: Identifiable, Hashable {
     let id: String
@@ -126,42 +128,49 @@ class ProxyViewModel: ObservableObject {
     
     private func makeRequest(path: String) -> URLRequest? {
         let scheme = server.useSSL ? "https" : "http"
-        guard let url = URL(string: "\(scheme)://\(server.url):\(server.port)/\(path)") else {
-            print("无效的 URL")
+        
+        // 处理路径中的特殊字符
+        let encodedPath = path.components(separatedBy: "/").map { component in
+            component.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? component
+        }.joined(separator: "/")
+        
+        guard let url = URL(string: "\(scheme)://\(server.url):\(server.port)/\(encodedPath)") else {
+            // print("❌ 无效的 URL，原始路径: \(path)")
             return nil
         }
         
         var request = URLRequest(url: url)
         request.setValue("Bearer \(server.secret)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        // print("📡 创建请求: \(url)")
         return request
     }
     
     @MainActor
     func fetchProxies() async {
-        print("开始获取代理数据...")
+        // print("🔄 开始获取代理数据...")
         do {
             // 1. 获取 proxies 数据
             guard let proxiesRequest = makeRequest(path: "proxies") else { 
-                print("❌ 创建 proxies 请求失败")
+                // print("❌ 创建 proxies 请求失败")
                 return 
             }
-            print("📡 发送 proxies 请求...")
+            // print("📡 发送 proxies 请求...")
             let (proxiesData, _) = try await URLSession.shared.data(for: proxiesRequest)
             
             // 2. 获取 providers 数据
             guard let providersRequest = makeRequest(path: "providers/proxies") else { 
-                print("❌ 创建 providers 请求失败")
+                // print("❌ 创建 providers 请求失败")
                 return 
             }
-            print("📡 发送 providers 请求...")
+            // print("📡 发送 providers 请求...")
             let (providersData, _) = try await URLSession.shared.data(for: providersRequest)
             
             var allNodes: [ProxyNode] = []
             
             // 3. 处理 proxies 数据
             if let proxiesResponse = try? JSONDecoder().decode(ProxyResponse.self, from: proxiesData) {
-                print("✅ 成功解析 proxies 数据")
+                logger.log("✅ 成功解析 proxies 数据")
                 let proxyNodes = proxiesResponse.proxies.map { name, proxy in
                     ProxyNode(
                         id: proxy.id ?? UUID().uuidString,
@@ -175,6 +184,7 @@ class ProxyViewModel: ObservableObject {
                 allNodes.append(contentsOf: proxyNodes)
                 
                 // 更新组数据
+                let oldGroups = self.groups
                 self.groups = proxiesResponse.proxies.compactMap { name, proxy in
                     guard proxy.all != nil else { return nil }
                     if proxy.hidden == true { return nil }
@@ -187,9 +197,18 @@ class ProxyViewModel: ObservableObject {
                         icon: proxy.icon
                     )
                 }
-                print("📊 代理组数量: \(self.groups.count)")
+                // print("📊 代理组数量: \(self.groups.count)")
+                
+                // 打印组的变化
+                for group in self.groups {
+                    if let oldGroup = oldGroups.first(where: { $0.name == group.name }) {
+                        if oldGroup.now != group.now {
+                            print("📝 组 \(group.name) 的选中节点已更新: \(oldGroup.now) -> \(group.now)")
+                        }
+                    }
+                }
             } else {
-                print("❌ 解析 proxies 数据失败")
+                logger.log("❌ 解析 proxies 数据失败")
             }
             
             // 4. 处理 providers 数据
@@ -252,11 +271,11 @@ class ProxyViewModel: ObservableObject {
             
             // 5. 更新节点数据
             self.nodes = allNodes
-            print("📊 总节点数量: \(allNodes.count)")
+            // print("📊 总节点数量: \(allNodes.count)")
             objectWillChange.send()
             
         } catch {
-            print("❌ 获取代理错误: \(error)")
+            logger.log("❌ 获取代理错误: \(error)")
         }
     }
     
@@ -333,9 +352,15 @@ class ProxyViewModel: ObservableObject {
         }
     }
     
+    @MainActor
     func selectProxy(groupName: String, proxyName: String) async {
-        let encodedGroupName = groupName.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? groupName
-        guard var request = makeRequest(path: "proxies/\(encodedGroupName)") else { return }
+        logger.log("🔄 开始切换代理 - 组:\(groupName), 新节点:\(proxyName)")
+        
+        // 不需要在这里进行 URL 编码，因为 makeRequest 已经处理了
+        guard var request = makeRequest(path: "proxies/\(groupName)") else { 
+            // print("❌ 创建请求失败")
+            return 
+        }
         
         request.httpMethod = "PUT"
         let body = ["name": proxyName]
@@ -343,15 +368,18 @@ class ProxyViewModel: ObservableObject {
         
         do {
             let (_, response) = try await URLSession.shared.data(for: request)
+            logger.log("✅ 切换请求成功")
             
             if server.useSSL,
                let httpsResponse = response as? HTTPURLResponse,
                httpsResponse.statusCode == 400 {
+                // print("❌ SSL 连接失败")
                 return
             }
             
             // 检查是否需要断开旧连接
             if UserDefaults.standard.bool(forKey: "autoDisconnectOldProxy") {
+                logger.log("🔌 正在断开旧连接...")
                 // 获取当前活跃的连接
                 guard var connectionsRequest = makeRequest(path: "connections") else { return }
                 let (data, _) = try await URLSession.shared.data(for: connectionsRequest)
@@ -378,15 +406,20 @@ class ProxyViewModel: ObservableObject {
             
             // 获取实际需要测试的节点
             let nodeToTest = await getActualNode(proxyName)
+            // print("🎯 获取到实际节点: \(nodeToTest)")
             
             // 如果不是 REJECT 且不是 DIRECT，则测试延迟
-            if nodeToTest != "REJECT"{
+            if nodeToTest != "REJECT" {
+                // print("⏱️ 开始测试节点延迟")
                 await testNodeDelay(nodeName: nodeToTest)
             }
             
+            // print("🔄 开始刷新代理数据")
             await fetchProxies()
+            // print("✅ 代理切换流程完成")
             
         } catch {
+            // print("❌ 切换代理时发生错误: \(error)")
             handleNetworkError(error)
         }
     }
@@ -409,10 +442,15 @@ class ProxyViewModel: ObservableObject {
         return nodeName
     }
     
-    // 修改 testNodeDelay 方法以支持 DIRECT 节点
     @MainActor
     func testNodeDelay(nodeName: String) async {
-        guard var request = makeRequest(path: "proxies/\(nodeName)/delay") else { return }
+        // print("⏱️ 开始测试节点延迟: \(nodeName)")
+        
+        // 不需要在这里进行 URL 编码，因为 makeRequest 已经处理了
+        guard var request = makeRequest(path: "proxies/\(nodeName)/delay") else {
+            // print("❌ 创建延迟测试请求失败")
+            return
+        }
         
         // 添加测试参数
         var components = URLComponents(url: request.url!, resolvingAgainstBaseURL: true)
@@ -421,20 +459,25 @@ class ProxyViewModel: ObservableObject {
             URLQueryItem(name: "timeout", value: "\(testTimeout)")
         ]
         
-        guard let finalUrl = components?.url else { return }
+        guard let finalUrl = components?.url else {
+            // print("❌ 创建最终 URL 失败")
+            return
+        }
         request.url = finalUrl
         
         // 设置测试状态
         testingNodes.insert(nodeName)
+        // print("🔄 节点已加入测试集合: \(nodeName)")
         objectWillChange.send()
         
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
+            // print("✅ 收到延迟测试响应")
             
             if server.useSSL,
                let httpsResponse = response as? HTTPURLResponse,
                httpsResponse.statusCode == 400 {
-                // print("SSL 连接失败，服务器可能不支持 HTTPS")
+                // print("❌ SSL 连接失败")
                 testingNodes.remove(nodeName)
                 objectWillChange.send()
                 return
@@ -446,26 +489,33 @@ class ProxyViewModel: ObservableObject {
             }
             
             if let delayResponse = try? JSONDecoder().decode(DelayResponse.self, from: data) {
+                // print("📊 节点 \(nodeName) 的新延迟: \(delayResponse.delay)")
                 // 更新节点延迟
                 updateNodeDelay(nodeName: nodeName, delay: delayResponse.delay)
                 testingNodes.remove(nodeName)
                 self.lastDelayTestTime = Date()
                 objectWillChange.send()
+                // print("✅ 延迟更新完成")
             } else {
+                // print("❌ 解析延迟数据失败")
                 testingNodes.remove(nodeName)
                 objectWillChange.send()
             }
             
         } catch {
+            // print("❌ 测试节点延迟时发生错误: \(error)")
             testingNodes.remove(nodeName)
             objectWillChange.send()
             handleNetworkError(error)
         }
     }
     
-    // 辅助法：更新节点延迟
+    // 修改更新节点延迟的方法
     private func updateNodeDelay(nodeName: String, delay: Int) {
+        logger.log("🔄 开始更新节点延迟 - 节点:\(nodeName), 新延迟:\(delay)")
+        
         if let index = nodes.firstIndex(where: { $0.name == nodeName }) {
+            let oldDelay = nodes[index].delay
             let updatedNode = ProxyNode(
                 id: nodes[index].id,
                 name: nodeName,
@@ -475,8 +525,10 @@ class ProxyViewModel: ObservableObject {
                 history: nodes[index].history
             )
             nodes[index] = updatedNode
-            // print("DEBUG: 更新节点延迟 - 名称:\(nodeName), 新延迟:\(delay)")
+            logger.log("✅ 节点延迟已更新 - 原延迟:\(oldDelay), 新延迟:\(delay)")
             objectWillChange.send()
+        } else {
+            logger.log("⚠️ 未找到要更新的节点: \(nodeName)")
         }
     }
     
