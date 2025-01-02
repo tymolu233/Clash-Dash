@@ -42,21 +42,23 @@ class ImageCache {
     private let memoryCache = NSCache<NSString, UIImage>()
     private let fileManager = FileManager.default
     private var diskCacheCount: Int = 0
+    private let maxMemoryCount = 30  // 进一步减少内存缓存数量
+    private let queue = DispatchQueue(label: "com.clashdash.imagecache", qos: .utility)
     
     private var cacheDirectory: URL? {
         fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first?.appendingPathComponent("ImageCache")
     }
     
     private init() {
-        memoryCache.countLimit = 100
+        memoryCache.countLimit = maxMemoryCount
         
-        // 创建缓存目录
-        if let cacheDir = cacheDirectory {
-            try? fileManager.createDirectory(at: cacheDir, withIntermediateDirectories: true)
+        // 在后台队列中创建缓存目录
+        queue.async {
+            if let cacheDir = self.cacheDirectory {
+                try? self.fileManager.createDirectory(at: cacheDir, withIntermediateDirectories: true)
+            }
+            self.updateDiskCacheCount()
         }
-        
-        // 读取磁盘缓存数量
-        updateDiskCacheCount()
     }
     
     var count: Int {
@@ -214,7 +216,7 @@ struct ProxyView: View {
     
     var body: some View {
         ScrollView {
-            VStack(spacing: 20) {
+            LazyVStack(spacing: 20) {
                 if viewModel.groups.isEmpty {
                     LoadingView()
                 } else {
@@ -222,11 +224,11 @@ struct ProxyView: View {
                     if proxyViewStyle == .detailed {
                         VStack(spacing: 20) {
                             ProxyGroupsOverview(groups: viewModel.getSortedGroups(), viewModel: viewModel)
+                                .drawingGroup(opaque: false)  // 优化渲染
                             
-                            // 代理提供者部分 - 只显示 vehicleType 为 HTTP 的提供者，且不显示隐藏的提供者
+                            // 代理提供者部分
                             let httpProviders = viewModel.providers
                                 .filter { $0.vehicleType.uppercased() == "HTTP" }
-                                // 添加固定排序
                                 .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
                             
                             if !httpProviders.isEmpty {
@@ -235,43 +237,44 @@ struct ProxyView: View {
                                     nodes: viewModel.providerNodes,
                                     viewModel: viewModel
                                 )
+                                .drawingGroup(opaque: false)  // 优化渲染
                             }
                         }
                         .padding(.horizontal)
                     } else {
-                        LazyVStack(spacing: 20) {
-                            // 代理组列表
-                            LazyVStack(spacing: 12) {
-                                ForEach(viewModel.getSortedGroups(), id: \.name) { group in
-                                    CompactGroupCard(group: group, viewModel: viewModel)
-                                }
-                            }
-                            
-                            // 代理提供者部分 - 只显示 vehicleType 为 HTTP 的提供者，且不显示隐藏的提供者
-                            let httpProviders = viewModel.providers
-                                .filter { $0.vehicleType.uppercased() == "HTTP" }
-                                // 添加固定排序
-                                .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
-                            
-                            if !httpProviders.isEmpty {
-                                VStack(alignment: .leading, spacing: 12) {
-                                    Text("代理提供者")
-                                        .font(.headline)
-                                        .padding(.horizontal)
-                                    
-                                    LazyVStack(spacing: 12) {
-                                        ForEach(httpProviders, id: \.name) { provider in
-                                            CompactProviderCard(
-                                                provider: provider,
-                                                nodes: viewModel.providerNodes[provider.name] ?? [],
-                                                viewModel: viewModel
-                                            )
-                                        }
-                                    }
-                                }
+                        // 代理组列表
+                        LazyVStack(spacing: 12) {
+                            ForEach(viewModel.getSortedGroups(), id: \.name) { group in
+                                CompactGroupCard(group: group, viewModel: viewModel)
+                                    .drawingGroup(opaque: false)  // 优化渲染
                             }
                         }
                         .padding(.horizontal)
+                        
+                        // 代理提供者部分
+                        let httpProviders = viewModel.providers
+                            .filter { $0.vehicleType.uppercased() == "HTTP" }
+                            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+                        
+                        if !httpProviders.isEmpty {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("代理提供者")
+                                    .font(.headline)
+                                    .padding(.horizontal)
+                                
+                                LazyVStack(spacing: 12) {
+                                    ForEach(httpProviders, id: \.name) { provider in
+                                        CompactProviderCard(
+                                            provider: provider,
+                                            nodes: viewModel.providerNodes[provider.name] ?? [],
+                                            viewModel: viewModel
+                                        )
+                                        .drawingGroup(opaque: false)  // 优化渲染
+                                    }
+                                }
+                            }
+                            .padding(.horizontal)
+                        }
                     }
                 }
             }
@@ -287,11 +290,14 @@ struct ProxyView: View {
     }
     
     private func refreshData() async {
-        withAnimation { isRefreshing = true }
+        withAnimation(.easeInOut(duration: 0.2)) {
+            isRefreshing = true
+        }
         await viewModel.fetchProxies()
-        withAnimation { isRefreshing = false }
+        withAnimation(.easeInOut(duration: 0.2)) {
+            isRefreshing = false
+        }
         
-        // 添加成功的触觉反馈
         let successFeedback = UINotificationFeedbackGenerator()
         successFeedback.notificationOccurred(.success)
     }
@@ -346,10 +352,8 @@ struct ProxyGroupsOverview: View {
     var body: some View {
         LazyVStack(spacing: 16) {
             ForEach(groups, id: \.name) { group in
-                GroupCard(
-                    group: group,
-                    viewModel: viewModel
-                )
+                GroupCard(group: group, viewModel: viewModel)
+                    .drawingGroup(opaque: false)  // 优化渲染
             }
         }
     }
@@ -434,6 +438,11 @@ struct GroupCard: View {
         
         // 如果是实际节点或特殊节点
         return [nodeName]
+    }
+    
+    // 缓存计算属性
+    private var cardBackgroundColor: Color {
+        Color(.systemBackground)
     }
     
     var body: some View {
@@ -555,7 +564,10 @@ struct GroupCard: View {
             // .padding(.top, 2)
         }
         .padding(12)
-        .cardShadow()
+        .background(cardBackgroundColor)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .shadow(color: Color.black.opacity(0.03), radius: 1, x: 0, y: 1)
+        .drawingGroup(opaque: false)  // 优化渲染
         .onTapGesture {
             // 添加触觉反馈
             let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
@@ -677,8 +689,8 @@ struct ProxyProvidersSection: View {
             ForEach(providers.sorted(by: { $0.name < $1.name })) { provider in
                 let _ = print("📦 显示订阅提供者: \(provider.name)")
                 ProxyProviderCard(
-                    provider: provider, 
-                    nodes: nodes[provider.name] ?? [], 
+                    provider: provider,
+                    nodes: nodes[provider.name] ?? [],
                     viewModel: viewModel
                 )
             }
@@ -715,9 +727,9 @@ struct ProxyProviderCard: View {
     }
     
     private var relativeUpdateTime: String {
-        guard let updatedAt = provider.updatedAt else { 
+        guard let updatedAt = provider.updatedAt else {
             // print("Provider \(provider.name) updatedAt is nil")
-            return "从未更新" 
+            return "从未更新"
         }
         
         // print("Provider \(provider.name) updatedAt: \(updatedAt)")
@@ -1318,6 +1330,9 @@ struct ProxyNodeCard: View {
     let isTesting: Bool
     @ObservedObject var viewModel: ProxyViewModel  // 添加 viewModel
     
+    // 添加缓存计算结果
+    private let cardBackgroundColor = Color(.secondarySystemBackground)
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             // 节点名称和选中状态
@@ -1402,11 +1417,16 @@ struct ProxyNodeCard: View {
         .background {
             RoundedRectangle(cornerRadius: 12)
                 .fill(Color(.secondarySystemBackground))
+                .drawingGroup(opaque: false)  // 优化背景渲染
         }
         .overlay {
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(isSelected ? .blue : .clear, lineWidth: 2)
+            if isSelected {
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(.blue, lineWidth: 2)
+                    .drawingGroup(opaque: false)  // 优化选中状态渲染
+            }
         }
+        .animation(.easeInOut(duration: 0.2), value: isSelected)  // 限制动画范围
     }
     
     // 获取节点延迟的辅助方法
@@ -1499,51 +1519,55 @@ struct DelayBar: View {
     var body: some View {
         GeometryReader { geometry in
             HStack(spacing: 2) {
-                // 低延迟部分
-                if green > 0 {
-                    DelaySegment(
-                        width: CGFloat(green) / CGFloat(total) * geometry.size.width,
-                        color: DelayColor.low,
-                        isFirst: true,
-                        isLast: yellow == 0 && red == 0 && timeout == 0
-                    )
+                Group {
+                    // 低延迟部分
+                    if green > 0 {
+                        DelaySegment(
+                            width: CGFloat(green) / CGFloat(total) * geometry.size.width,
+                            color: DelayColor.low,
+                            isFirst: true,
+                            isLast: yellow == 0 && red == 0 && timeout == 0
+                        )
+                    }
+                    
+                    // 中等延迟部分
+                    if yellow > 0 {
+                        DelaySegment(
+                            width: CGFloat(yellow) / CGFloat(total) * geometry.size.width,
+                            color: DelayColor.medium,
+                            isFirst: green == 0,
+                            isLast: red == 0 && timeout == 0
+                        )
+                    }
+                    
+                    // 高延迟部分
+                    if red > 0 {
+                        DelaySegment(
+                            width: CGFloat(red) / CGFloat(total) * geometry.size.width,
+                            color: DelayColor.high,
+                            isFirst: green == 0 && yellow == 0,
+                            isLast: timeout == 0
+                        )
+                    }
+                    
+                    // 超时部分
+                    if timeout > 0 {
+                        DelaySegment(
+                            width: CGFloat(timeout) / CGFloat(total) * geometry.size.width,
+                            color: DelayColor.disconnected,
+                            isFirst: green == 0 && yellow == 0 && red == 0,
+                            isLast: true
+                        )
+                    }
                 }
-                
-                // 中等延迟部分
-                if yellow > 0 {
-                    DelaySegment(
-                        width: CGFloat(yellow) / CGFloat(total) * geometry.size.width,
-                        color: DelayColor.medium,
-                        isFirst: green == 0,
-                        isLast: red == 0 && timeout == 0
-                    )
-                }
-                
-                // 高延迟部分
-                if red > 0 {
-                    DelaySegment(
-                        width: CGFloat(red) / CGFloat(total) * geometry.size.width,
-                        color: DelayColor.high,
-                        isFirst: green == 0 && yellow == 0,
-                        isLast: timeout == 0
-                    )
-                }
-                
-                // 超时部分
-                if timeout > 0 {
-                    DelaySegment(
-                        width: CGFloat(timeout) / CGFloat(total) * geometry.size.width,
-                        color: DelayColor.disconnected,
-                        isFirst: green == 0 && yellow == 0 && red == 0,
-                        isLast: true
-                    )
-                }
+                .drawingGroup(opaque: false)  // 优化渲染性能
             }
         }
         .frame(height: 6)
         .background(
             RoundedRectangle(cornerRadius: 3)
                 .fill(Color(.systemGray6))
+                .drawingGroup(opaque: false)  // 优化背景渲染
         )
     }
 }
@@ -1596,10 +1620,21 @@ struct RoundedCorner: Shape {
     }
 }
 
+// 添加性能优化修饰符
+struct PerformanceModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            // 禁用离屏渲染
+            .drawingGroup(opaque: false)
+            // 减少不必要的布局计算
+            .layoutPriority(1)
+    }
+}
+
 
 
 #Preview {
     NavigationStack {
-        ProxyView(server: ClashServer(name: "测试服务器", url: "10.1.1.2", port: "9090", secret: "123456"))
+        ProxyView(server: ClashServer(name: "测试服务器", url: "192.168.110.45", port: "9090", secret: "123456"))
     }
-} 
+}
