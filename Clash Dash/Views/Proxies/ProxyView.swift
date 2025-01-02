@@ -364,6 +364,11 @@ struct GroupCard: View {
     let group: ProxyGroup
     @ObservedObject var viewModel: ProxyViewModel
     @State private var showingProxySelector = false
+    @Environment(\.colorScheme) private var colorScheme
+    
+    private var cardBackgroundColor: Color {
+        colorScheme == .dark ? Color(.systemGray6) : Color(.systemBackground)
+    }
     
     private var delayStats: (green: Int, yellow: Int, red: Int, timeout: Int) {
         var green = 0
@@ -438,11 +443,6 @@ struct GroupCard: View {
         
         // 如果是实际节点或特殊节点
         return [nodeName]
-    }
-    
-    // 缓存计算属性
-    private var cardBackgroundColor: Color {
-        Color(.systemBackground)
     }
     
     var body: some View {
@@ -1328,10 +1328,13 @@ struct ProxyNodeCard: View {
     let node: ProxyNode?
     let isSelected: Bool
     let isTesting: Bool
-    @ObservedObject var viewModel: ProxyViewModel  // 添加 viewModel
+    @ObservedObject var viewModel: ProxyViewModel
+    @Environment(\.colorScheme) private var colorScheme
     
     // 添加缓存计算结果
-    private let cardBackgroundColor = Color(.secondarySystemBackground)
+    private var cardBackgroundColor: Color {
+        colorScheme == .dark ? Color(.systemGray6) : Color(.secondarySystemBackground)
+    }
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -1416,7 +1419,7 @@ struct ProxyNodeCard: View {
         .frame(maxWidth: .infinity)
         .background {
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.secondarySystemBackground))
+                .fill(cardBackgroundColor)
                 .drawingGroup(opaque: false)  // 优化背景渲染
         }
         .overlay {
