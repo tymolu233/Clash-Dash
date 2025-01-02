@@ -512,7 +512,7 @@ class ProxyViewModel: ObservableObject {
     
     // 修改更新节点延迟的方法
     private func updateNodeDelay(nodeName: String, delay: Int) {
-        logger.log("🔄 开始更新节点延迟 - 节点:\(nodeName), 新延迟:\(delay)")
+        // logger.log("🔄 开始更新节点延迟 - 节点:\(nodeName), 新延迟:\(delay)")
         
         if let index = nodes.firstIndex(where: { $0.name == nodeName }) {
             let oldDelay = nodes[index].delay

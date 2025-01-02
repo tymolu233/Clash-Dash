@@ -149,12 +149,12 @@ struct OpenWRTServerView: View {
                 if cleanHost == "openwrt.ym.si" && port == "9999" {
                     testServer.url = "metaclash.ym.si"
                     testServer.port = "443"
-                    testServer.secret = status.dase
+                    testServer.secret = status.dase ?? ""
                     testServer.useSSL = true
                 } else {
                     testServer.url = status.daip
                     testServer.port = status.cnPort
-                    testServer.secret = status.dase
+                    testServer.secret = status.dase ?? ""
                 }
                 
                 if isEditMode {

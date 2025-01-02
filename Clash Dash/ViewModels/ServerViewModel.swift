@@ -226,7 +226,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                 updateServerStatus(server, status: .error, message: "网络错误")
             }
         } catch {
-            print("❌ 未知错��: \(error)")
+            print("❌ 未知错误: \(error)")
             updateServerStatus(server, status: .error, message: "未知错误")
         }
     }
@@ -378,7 +378,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                     throw NetworkError.invalidResponse
                 }
                 
-                print("🔑 获取���认证令牌: \(token)")
+                print("🔑 获取认证令牌: \(token)")
                 logger.log("🔑 获取到认证令牌: \(token)")
                 // 2. 使用认证令牌获取 OpenClash 状态
                 let timestamp = Int(Date().timeIntervalSince1970 * 1000)
