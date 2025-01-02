@@ -62,7 +62,7 @@ struct ServerRowView: View {
                         }
                         .font(.caption)
                         
-                        if server.source == .clashController {
+                        // if server.source == .clashController {
                             Text("•")
                                 .foregroundColor(.secondary)
                                 .font(.caption)
@@ -77,7 +77,7 @@ struct ServerRowView: View {
                             }
                             .font(.caption)
                             .lineLimit(1)
-                        }
+                        // }
                     }
                 } else if let errorMessage = server.errorMessage {
                     Text(errorMessage)
