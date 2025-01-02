@@ -11,6 +11,11 @@ struct CompactProviderCard: View {
     @State private var toastMessage = ""
     @Environment(\.colorScheme) var colorScheme
     
+    // 添加触觉反馈生成器
+    private let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+    private let successFeedback = UINotificationFeedbackGenerator()
+    private let errorFeedback = UINotificationFeedbackGenerator()
+    
     private var cardBackgroundColor: Color {
         colorScheme == .dark ? 
             Color(.systemGray6) : 
@@ -77,6 +82,9 @@ struct CompactProviderCard: View {
     var body: some View {
         VStack(spacing: 0) {
             Button {
+                // 添加触觉反馈
+                impactFeedback.impactOccurred()
+                
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                     isExpanded.toggle()
                 }
@@ -172,35 +180,29 @@ struct CompactProviderCard: View {
             // 添加长按菜单
             .contextMenu {
                 Button {
+                    // 添加触觉反馈
+                    impactFeedback.impactOccurred()
+                    
                     Task {
                         await MainActor.run {
                             isUpdating = true
-                            // 显示更新中的 toast
                             withAnimation {
-                                showingUpdateSuccess = false  // 确保先隐藏成功提示
+                                showingUpdateSuccess = false
                             }
                         }
                         
                         do {
                             try await withTaskCancellationHandler {
                                 await viewModel.updateProxyProvider(providerName: provider.name)
-                                
-                                // 等待一小段时间确保数据已更新
-                                try? await Task.sleep(nanoseconds: 500_000_000) // 0.5秒
-                                
-                                // 手动获取最新数据
+                                try? await Task.sleep(nanoseconds: 500_000_000)
                                 await viewModel.fetchProxies()
                                 
                                 await MainActor.run {
-                                    let successFeedback = UINotificationFeedbackGenerator()
                                     successFeedback.notificationOccurred(.success)
                                     isUpdating = false
-                                    
-                                    // 显示成功提示
                                     withAnimation {
                                         showingUpdateSuccess = true
                                     }
-                                    // 2 秒后隐藏提示
                                     DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
                                         withAnimation {
                                             showingUpdateSuccess = false
@@ -210,16 +212,13 @@ struct CompactProviderCard: View {
                             } onCancel: {
                                 Task { @MainActor in
                                     isUpdating = false
-                                    let errorFeedback = UINotificationFeedbackGenerator()
                                     errorFeedback.notificationOccurred(.error)
                                 }
                             }
                         } catch {
                             await MainActor.run {
                                 isUpdating = false
-                                let errorFeedback = UINotificationFeedbackGenerator()
                                 errorFeedback.notificationOccurred(.error)
-                                print("更新提供者失败: \(error)")
                             }
                         }
                     }
@@ -249,8 +248,10 @@ struct CompactProviderCard: View {
                                 isTesting: testingNodes.contains(node.name)
                             )
                             .onTapGesture {
+                                // 添加触觉反馈
+                                impactFeedback.impactOccurred()
+                                
                                 Task {
-                                    print("📡 开始测试节点: \(node.name) (Provider: \(provider.name))")
                                     testingNodes.insert(node.name)
                                     
                                     do {
@@ -259,26 +260,16 @@ struct CompactProviderCard: View {
                                                 providerName: provider.name,
                                                 proxyName: node.name
                                             )
-                                            // 不需要再调用 fetchProxies，因为 healthCheckProviderProxy 已经包含了这个操作
-                                            print("✅ 节点测试完成: \(node.name), 延迟: \(node.delay)ms")
-                                            
-                                            let successFeedback = UINotificationFeedbackGenerator()
                                             successFeedback.notificationOccurred(.success)
                                         } onCancel: {
-                                            print("❌ 节点测试取消: \(node.name)")
                                             testingNodes.remove(node.name)
-                                            
-                                            let errorFeedback = UINotificationFeedbackGenerator()
                                             errorFeedback.notificationOccurred(.error)
                                         }
                                     } catch {
-                                        print("❌ 节点测试错误: \(node.name), 错误: \(error)")
-                                        let errorFeedback = UINotificationFeedbackGenerator()
                                         errorFeedback.notificationOccurred(.error)
                                     }
                                     
                                     testingNodes.remove(node.name)
-                                    print("🏁 节点测试流程结束: \(node.name)")
                                 }
                             }
                             

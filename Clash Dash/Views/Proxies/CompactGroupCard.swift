@@ -12,6 +12,11 @@ struct CompactGroupCard: View {
     @State private var showURLTestAlert = false
     @Environment(\.colorScheme) var colorScheme
     
+    // 添加触觉反馈生成器
+    private let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+    private let successFeedback = UINotificationFeedbackGenerator()
+    private let errorFeedback = UINotificationFeedbackGenerator()
+    
     private var cardBackgroundColor: Color {
         colorScheme == .dark ? 
             Color(.systemGray6) : 
@@ -110,6 +115,9 @@ struct CompactGroupCard: View {
     var body: some View {
         VStack(spacing: 0) {
             Button {
+                // 添加触觉反馈
+                impactFeedback.impactOccurred()
+                
                 // 使用计算的动画时间
                 withAnimation(.spring(
                     response: getAnimationDuration(),
@@ -227,14 +235,19 @@ struct CompactGroupCard: View {
                                 delay: viewModel.getNodeDelay(nodeName: nodeName)
                             )
                             .onTapGesture {
+                                // 添加触觉反馈
+                                impactFeedback.impactOccurred()
+                                
                                 if group.type == "URLTest" {
                                     showURLTestAlert = true
+                                    errorFeedback.notificationOccurred(.error)
                                 } else {
                                     Task {
                                         if currentNodeOrder == nil {
                                             currentNodeOrder = displayedNodes
                                         }
                                         await viewModel.selectProxy(groupName: group.name, proxyName: nodeName)
+                                        successFeedback.notificationOccurred(.success)
                                     }
                                 }
                             }
