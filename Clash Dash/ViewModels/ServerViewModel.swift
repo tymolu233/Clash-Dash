@@ -340,7 +340,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             guard let httpResponse = loginResponse as? HTTPURLResponse else {
                 print("❌ 无效的响应类型")
                 logger.log("❌ 无效的响应类型")
-                throw NetworkError.invalidResponse
+                throw NetworkError.invalidResponse(message: "无效的响应类型")
             }
             
             print("📥 登录响应状态码: \(httpResponse.statusCode)")
@@ -375,7 +375,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                     }
                     print("❌ 无效的响应结果")
                     logger.log("❌ 无效的响应结果")
-                    throw NetworkError.invalidResponse
+                    throw NetworkError.invalidResponse(message: "无效的响应结果")
                 }
                 
                 print("🔑 获取认证令牌: \(token)")
@@ -396,7 +396,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                 
                 guard let statusHttpResponse = statusResponse as? HTTPURLResponse else {
                     print("❌ 无效的状态响应类型")
-                    throw NetworkError.invalidResponse
+                    throw NetworkError.invalidResponse(message: "无效的状态响应类型")
                 }
                 
                 let message = "📥 状态响应状态码: \(statusHttpResponse.statusCode)"
@@ -440,7 +440,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                                 print("其他解码错误: \(decodingError)")
                             }
                         }
-                        throw NetworkError.invalidResponse
+                        throw NetworkError.invalidResponse(message: "解析错误")
                     }
                 case 403:
                     print("🔒 使用 OpenClash API 获取状态失败，尝试使用 exec 命令获取")
@@ -521,7 +521,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                         print("❌ 缺少必要的状态信息")
                         logger.log("❌ 缺少必要的状态信息")
                         logger.log("statusDict: \(statusDict)")
-                        throw NetworkError.invalidResponse
+                        throw NetworkError.invalidResponse(message: "缺少必要的状态信息")
                     }
                     
                     // 转换为 JSON 数据
@@ -604,7 +604,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             let (data, response) = try await session.data(for: request)
             
             guard let httpResponse = response as? HTTPURLResponse else {
-                throw NetworkError.invalidResponse
+                throw NetworkError.invalidResponse(message: "无效的响应类型")
             }
             
             switch httpResponse.statusCode {
@@ -1028,7 +1028,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         if fileInfo.isEmpty {
             print("❌ 文件验证失败：未找到文件")
             logger.log("❌ 文件验证失败：未找到文件")
-            throw NetworkError.invalidResponse
+            throw NetworkError.invalidResponse(message: "文件验证失败：未找到文件")
         }
         
         // 检查文件修改时间
@@ -1045,7 +1045,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                 if timeDiff < 0 || timeDiff > 5 {
                     print("❌ 文件时间验证失败")
                     logger.log("❌ 文件时间验证失败")
-                    throw NetworkError.invalidResponse
+                    throw NetworkError.invalidResponse(message: "文件时间验证失败")
                 }
             }
         }

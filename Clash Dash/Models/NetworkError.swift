@@ -2,7 +2,7 @@ import Foundation
 
 enum NetworkError: LocalizedError {
     case invalidURL
-    case invalidResponse
+    case invalidResponse(message: String)
     case unauthorized(message: String)
     case serverError(Int)
     case missingDependencies(String)
@@ -12,8 +12,8 @@ enum NetworkError: LocalizedError {
         switch self {
         case .invalidURL:
             return "无效的 URL"
-        case .invalidResponse:
-            return "无效的服务器响应，请检查服务器配置"
+        case .invalidResponse(let message):
+            return message
         case .unauthorized(let message):
             return message
         case .serverError(let code):

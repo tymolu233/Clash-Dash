@@ -55,7 +55,7 @@ struct ClashServer: Identifiable, Codable {
             if source == .clashController {
                 return "\(url):\(port)"
             } else {
-                return "\(url):\(openWRTPort ?? "")"
+                return "\(openWRTUrl ?? url):\(openWRTPort ?? "")"
             }
         }
         return name
@@ -96,7 +96,7 @@ struct ClashServer: Identifiable, Codable {
             case .userAuthenticationRequired:
                 return .unauthorized(message: "认证失败")
             case .badServerResponse, .cannotParseResponse:
-                return .invalidResponse
+                return .invalidResponse(message: "无效的服务器响应，请检查服务器配置")
             default:
                 return .unknown(error)
             }

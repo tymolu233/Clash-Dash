@@ -1,8 +1,142 @@
 import SwiftUI
 
+struct OpenWRTHelpView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
+    
+    private var cardBackground: Color {
+        colorScheme == .dark ? Color(.systemGray6) : Color(.systemGray6).opacity(0.5)
+    }
+    
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    // 依赖安装说明
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack {
+                            Image(systemName: "shippingbox.fill")
+                                .foregroundColor(.blue)
+                            Text("安装依赖")
+                                .font(.headline)
+                        }
+                        
+                        Text("使用该方式前，请确认您的 OpenWRT 已安装以下软件包并重启 uhttpd：")
+                            .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        
+                        VStack(alignment: .leading, spacing: 12) {
+                            ForEach(["opkg update",
+                                   "opkg install luci-mod-rpc luci-lib-ipkg luci-compat",
+                                   "/etc/init.d/uhttpd restart"], id: \.self) { command in
+                                HStack {
+                                    Text(command)
+                                        .font(.system(.body, design: .monospaced))
+                                    
+                                    Spacer()
+                                }
+                                .padding(10)
+                                .background(cardBackground)
+                                .cornerRadius(8)
+                            }
+                        }
+                        
+                        Text("注意：如果 OpenWRT 使用 APK 包管理器，请自行更改上面的命令运行")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .padding(.top, 4)
+                    }
+                    .padding(16)
+                    .background(Color(.systemBackground))
+                    .cornerRadius(12)
+                    .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+                    
+                    // 域名访问说明
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack {
+                            Image(systemName: "globe")
+                                .foregroundColor(.blue)
+                            Text("域名访问设置")
+                                .font(.headline)
+                        }
+                        
+                        Text("如果使用域名访问，必须启用 SSL，并在 OpenClash 的\"插件设置\" - \"外部控制\"中配置以下选项：")
+                            .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        
+                        VStack(alignment: .leading, spacing: 12) {
+                            SettingsRow(number: 1, title: "管理页面公网域名", description: "设置为您的域名")
+                            SettingsRow(number: 2, title: "管理页面映射端口", description: "通常设置为 443")
+                            SettingsRow(number: 3, title: "管理页面公网SSL访问", description: "必须启用")
+                        }
+                        
+                        Text("请确保 OpenClash 配置的外部访问能够正常访问")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .padding(.top, 4)
+                    }
+                    .padding(16)
+                    .background(Color(.systemBackground))
+                    .cornerRadius(12)
+                    .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+                    
+                    // 故障排除
+                    
+                }
+                .padding()
+            }
+            .background(Color(.systemGroupedBackground))
+            .navigationTitle("使用帮助")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("完成") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+// 设置项行视图
+private struct SettingsRow: View {
+    let number: Int
+    let title: String
+    let description: String?
+    
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(Color.blue)
+                    .frame(width: 24, height: 24)
+                Text("\(number)")
+                    .font(.caption.bold())
+                    .foregroundColor(.white)
+            }
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.body)
+                if let description = description {
+                    Text(description)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.systemGray6))
+        .cornerRadius(8)
+    }
+}
+
 struct OpenWRTServerView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var viewModel: ServerViewModel
+    @State private var showingHelp = false
     
     var server: ClashServer? // 如果是编辑模式，这个值会被设置
     @State private var name: String = ""
@@ -69,18 +203,14 @@ struct OpenWRTServerView: View {
                 }
                 
                 Section {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("使用该方式前，请确认您的 OpenWRT 已安装以下软件包并重启 uhttpd")
-                            .font(.footnote)
-                            .foregroundColor(.secondary)
-                        
-                        Text("opkg update\n\nopkg install luci-mod-rpc luci-lib-ipkg luci-compat\n\n/etc/init.d/uhttpd restart")
-                            .font(.system(.footnote, design: .monospaced))
-                            .padding(8)
-                            .background(Color(.systemGray6))
-                            .cornerRadius(8)
+                    Button {
+                        showingHelp = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "questionmark.circle")
+                            Text("使用帮助")
+                        }
                     }
-                    .padding(.vertical, 8)
                 }
             }
             .navigationTitle(isEditMode ? "编辑服务器" : "添加 OpenWRT 服务器")
@@ -109,6 +239,9 @@ struct OpenWRTServerView: View {
                 Button("确定", role: .cancel) { }
             } message: {
                 Text(errorMessage)
+            }
+            .sheet(isPresented: $showingHelp) {
+                OpenWRTHelpView()
             }
         }
     }
@@ -146,17 +279,28 @@ struct OpenWRTServerView: View {
                 // 验证连接并获取 Clash 信息
                 let status = try await viewModel.validateOpenWRTServer(testServer, username: username, password: password)
                 
-                // 硬编码特定服务器的 Clash 地址
-                if cleanHost == "openwrt.ym.si" && port == "9999" {
-                    testServer.url = "metaclash.ym.si"
-                    testServer.port = "443"
-                    testServer.secret = status.dase ?? ""
-                    testServer.useSSL = true
+                // 检查是否是域名访问
+                if cleanHost.contains(".") && !cleanHost.contains("192.168.") && !cleanHost.contains("10.0.") {
+                    // 检查是否配置了外部控制
+                    if let domain = status.dbForwardDomain,
+                       let port = status.dbForwardPort,
+                       let ssl = status.dbForwardSsl,
+                       !domain.isEmpty && !port.isEmpty {
+                        // 使用外部控制配置
+                        testServer.url = domain
+                        testServer.port = port
+                        testServer.useSSL = ssl == "1"
+                    } else {
+                        throw NetworkError.invalidResponse(message: "未在 OpenClash 中启用公网外部控制，请查看\"使用帮助\"")
+                    }
                 } else {
+                    // 使用本地地址
                     testServer.url = status.daip
                     testServer.port = status.cnPort
-                    testServer.secret = status.dase ?? ""
                 }
+                
+                // 设置密钥
+                testServer.secret = status.dase ?? ""
                 
                 if isEditMode {
                     viewModel.updateServer(testServer)
@@ -169,7 +313,11 @@ struct OpenWRTServerView: View {
                 }
             } catch {
                 await MainActor.run {
-                    errorMessage = error.localizedDescription
+                    if let networkError = error as? NetworkError {
+                        errorMessage = networkError.localizedDescription
+                    } else {
+                        errorMessage = error.localizedDescription
+                    }
                     showError = true
                     isLoading = false
                 }
