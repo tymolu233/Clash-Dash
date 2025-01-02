@@ -608,6 +608,31 @@ class ProxyViewModel: ObservableObject {
                     updateNodeDelay(nodeName: nodeName, delay: delay)
                 }
                 
+                // 如果是 URL-Test 类型的组，自动切换到延迟最低的节点
+                if let group = groups.first(where: { $0.name == groupName }),
+                   group.type == "URLTest" {
+                    // 找出延迟最低的节点
+                    var lowestDelay = Int.max
+                    var bestNode = ""
+                    
+                    for nodeName in group.all {
+                        if nodeName == "DIRECT" || nodeName == "REJECT" {
+                            continue
+                        }
+                        let delay = getNodeDelay(nodeName: nodeName)
+                        if delay > 0 && delay < lowestDelay {
+                            lowestDelay = delay
+                            bestNode = nodeName
+                        }
+                    }
+                    
+                    // 如果找到了最佳节点，切换到该节点
+                    if !bestNode.isEmpty {
+                        logger.log("🔄 URL-Test 组测速完成，自动切换到最佳节点: \(bestNode) (延迟: \(lowestDelay)ms)")
+                        await selectProxy(groupName: groupName, proxyName: bestNode)
+                    }
+                }
+                
                 // print("\n更新后节点状态:")
                 if let group = groups.first(where: { $0.name == groupName }) {
                     for nodeName in group.all {
