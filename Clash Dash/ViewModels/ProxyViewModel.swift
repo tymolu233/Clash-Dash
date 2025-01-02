@@ -170,7 +170,7 @@ class ProxyViewModel: ObservableObject {
             
             // 3. 处理 proxies 数据
             if let proxiesResponse = try? JSONDecoder().decode(ProxyResponse.self, from: proxiesData) {
-                logger.log("✅ 成功解析 proxies 数据")
+                // logger.log("✅ 成功解析 proxies 数据")
                 let proxyNodes = proxiesResponse.proxies.map { name, proxy in
                     ProxyNode(
                         id: proxy.id ?? UUID().uuidString,

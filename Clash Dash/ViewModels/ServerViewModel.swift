@@ -39,17 +39,18 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
 
     private func determineServerType(from response: VersionResponse) -> ClashServer.ServerType {
         // 检查是否是 sing-box
-        if response.version.lowercased().contains("sing-box") {
+        if response.version.lowercased().contains("sing") {
+            logger.log("后端为 sing-box 内核")
             return .singbox
         }
         
         // 如果不是 sing-box，则按原有逻辑判断
-        if response.premium == true {
-            return .premium
-        } else if response.meta == true {
+        if response.meta == true {
+            logger.log("后端为 Meta 内核")
             return .meta
         }
-        return .unknown
+        logger.log("后端为 Premium （原版 Clash）内核")
+        return .premium
     }
     
     private func makeURLSession(for server: ClashServer) -> URLSession {
@@ -194,21 +195,26 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                         updateServer(updatedServer)
                     } else {
                         updateServerStatus(server, status: .error, message: "无效的响应格式")
+                        logger.log("服务器地址：\(server.url):\(server.port) ：无效的响应格式")
                     }
                 }
             case 401:
                 updateServerStatus(server, status: .unauthorized, message: "认证失败，请检查密钥")
+                logger.log("服务器地址：\(server.url):\(server.port) ：认证失败，请检查密钥")
                 throw NetworkError.unauthorized(message: "认证失败: 服务器返回 401 未授权")
             case 404:
                 updateServerStatus(server, status: .error, message: "API 路径不存在")
+                logger.log("服务器地址：\(server.url):\(server.port) ：API 路径不存在")
             case 500...599:
                 updateServerStatus(server, status: .error, message: "服务器错误: \(httpResponse.statusCode)")
+                logger.log("服务器地址：\(server.url):\(server.port) ：服务器错误: \(httpResponse.statusCode)")
             default:
                 updateServerStatus(server, status: .error, message: "未知响应: \(httpResponse.statusCode)")
+                logger.log("服务器地址：\(server.url):\(server.port) ：未知响应: \(httpResponse.statusCode)")
             }
         } catch let urlError as URLError {
             print("🚫 URLError: \(urlError.localizedDescription)")
-            
+            logger.log("服务器地址：\(server.url):\(server.port) ：URLError: \(urlError.localizedDescription)")
             switch urlError.code {
             case .cancelled:
                 updateServerStatus(server, status: .error, message: "请求被取消")
