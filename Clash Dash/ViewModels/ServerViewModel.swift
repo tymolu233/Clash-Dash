@@ -302,7 +302,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
     // 修改验证方法
     func validateOpenWRTServer(_ server: ClashServer, username: String, password: String) async throws -> OpenWRTStatus {
         let scheme = server.useSSL ? "https" : "http"
-        let baseURL = "\(scheme)://\(server.url):\(server.openWRTPort ?? "80")"
+        let baseURL = "\(scheme)://\(server.openWRTUrl ?? server.url):\(server.openWRTPort ?? "80")"
         print("🔍 开始验证 OpenWRT 服务器: \(baseURL)")
         logger.log("🔍 开始验证 OpenWRT 服务器: \(baseURL)")
         
@@ -636,7 +636,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
     
     func fetchOpenClashConfigs(_ server: ClashServer) async throws -> [OpenClashConfig] {
         let scheme = server.useSSL ? "https" : "http"
-        let baseURL = "\(scheme)://\(server.url):\(server.openWRTPort ?? "80")"
+        let baseURL = "\(scheme)://\(server.openWRTUrl ?? server.url):\(server.openWRTPort ?? "80")"
         let message = "🔍 开始获取配置列表: \(baseURL)"
         print(message)
         logger.log(message)
@@ -1056,7 +1056,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
     
     func restartOpenClash(_ server: ClashServer) async throws -> AsyncThrowingStream<String, Error> {
         let scheme = server.useSSL ? "https" : "http"
-        let baseURL = "\(scheme)://\(server.url):\(server.openWRTPort ?? "80")"
+        let baseURL = "\(scheme)://\(server.openWRTUrl ?? server.url):\(server.openWRTPort ?? "80")"
         
         print("🔄 开始重启 OpenClash")
 
@@ -1186,7 +1186,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
     
     private func getOpenClashStatus(_ server: ClashServer) async throws -> ClashStatusResponse {
         let scheme = server.useSSL ? "https" : "http"
-        let baseURL = "\(scheme)://\(server.url):\(server.openWRTPort ?? "80")"
+        let baseURL = "\(scheme)://\(server.openWRTUrl ?? server.url):\(server.openWRTPort ?? "80")"
         
         guard let username = server.openWRTUsername,
               let password = server.openWRTPassword else {
@@ -1223,7 +1223,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
     
     func deleteOpenClashConfig(_ server: ClashServer, configName: String) async throws {
         let scheme = server.useSSL ? "https" : "http"
-        let baseURL = "\(scheme)://\(server.url):\(server.openWRTPort ?? "80")"
+        let baseURL = "\(scheme)://\(server.openWRTUrl ?? server.url):\(server.openWRTPort ?? "80")"
         
         print("🗑 开始删除配置文件: \(configName)")
         logger.log("🗑 开始删除配置文件: \(configName)")

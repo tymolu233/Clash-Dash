@@ -23,7 +23,7 @@ struct OpenWRTServerView: View {
         
         if let server = server {
             _name = State(initialValue: server.name)
-            _host = State(initialValue: server.url)
+            _host = State(initialValue: server.openWRTUrl ?? server.url)
             _port = State(initialValue: server.openWRTPort ?? "")
             _useSSL = State(initialValue: server.useSSL)
             _username = State(initialValue: server.openWRTUsername ?? "")
@@ -138,6 +138,7 @@ struct OpenWRTServerView: View {
                 )
                 
                 // 设置 OpenWRT 相关信息
+                testServer.openWRTUrl = cleanHost
                 testServer.openWRTUsername = username
                 testServer.openWRTPassword = password
                 testServer.openWRTPort = port

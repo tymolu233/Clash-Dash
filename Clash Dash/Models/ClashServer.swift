@@ -21,6 +21,7 @@ struct ClashServer: Identifiable, Codable {
     var openWRTUsername: String?
     var openWRTPassword: String?
     var openWRTPort: String?
+    var openWRTUrl: String?
     
     enum ServerType: String, Codable {
         case unknown = "Unknown"

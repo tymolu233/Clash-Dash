@@ -68,13 +68,13 @@ struct ServerDetailView: View {
                     }
                     .tag(4)
             }
-            .navigationTitle(server.name.isEmpty ? "\(server.url):\(server.port)" : server.name)
+            .navigationTitle(server.name.isEmpty ? "\(server.openWRTUrl ?? server.url):\(server.openWRTPort ?? server.port)" : server.name)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 if server.isQuickLaunch {
                     ToolbarItem(placement: .principal) {
                         HStack {
-                            Text(server.name.isEmpty ? "\(server.url):\(server.port)" : server.name)
+                            Text(server.name.isEmpty ? "\(server.openWRTUrl ?? server.url):\(server.openWRTPort ?? server.port)" : server.name)
                                 .font(.headline)
                             Image(systemName: "bolt.circle.fill")
                                 .foregroundColor(.yellow)
@@ -83,7 +83,7 @@ struct ServerDetailView: View {
                     }
                 } else {
                     ToolbarItem(placement: .principal) {
-                        Text(server.name.isEmpty ? "\(server.url):\(server.port)" : server.name)
+                        Text(server.name.isEmpty ? "\(server.openWRTUrl ?? server.url):\(server.openWRTPort ?? server.port)" : server.name)
                             .font(.headline)
                     }
                 }
