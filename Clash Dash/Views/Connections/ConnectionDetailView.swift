@@ -223,7 +223,7 @@ struct ConnectionDetailView: View {
                 
                 DetailRow(title: "开始时间", value: formatDate(currentConnection.start))
                 DetailRow(title: "连接时长", value: currentDuration)
-                DetailRow(title: "连接ID", value: currentConnection.id)
+                
             } header: {
                 Text("基本信息")
             }
@@ -248,18 +248,7 @@ struct ConnectionDetailView: View {
             } header: {
                 Text("来源信息")
             }
-            
-            // 入站信息
-            Section {
-                DetailRow(title: "入站类型", value: currentConnection.metadata.type)
-                DetailRow(title: "入站地址", value: currentConnection.metadata.inboundIP)
-                DetailRow(title: "入站端口", value: currentConnection.metadata.inboundPort)
-                DetailRow(title: "入站名称", value: currentConnection.metadata.inboundName)
-                DetailRow(title: "入站用户", value: currentConnection.metadata.inboundUser)
-            } header: {
-                Text("入站信息")
-            }
-            
+
             // 流量信息
             Section {
                 DetailRow(title: "上传流量", value: formatBytes(currentConnection.upload))
@@ -279,8 +268,22 @@ struct ConnectionDetailView: View {
                 Text("规则信息")
             }
             
+            // 入站信息
+            Section {
+                DetailRow(title: "入站类型", value: currentConnection.metadata.type)
+                DetailRow(title: "入站地址", value: currentConnection.metadata.inboundIP)
+                DetailRow(title: "入站端口", value: currentConnection.metadata.inboundPort)
+                DetailRow(title: "入站名称", value: currentConnection.metadata.inboundName)
+                DetailRow(title: "入站用户", value: currentConnection.metadata.inboundUser)
+            } header: {
+                Text("入站信息")
+            }
+            
+            
+            
             // 其他信息
             Section {
+                DetailRow(title: "连接ID", value: currentConnection.id)
                 DetailRow(title: "网络类型", value: currentConnection.metadata.network.uppercased())
                 DetailRow(title: "DNS模式", value: currentConnection.metadata.dnsMode)
                 DetailRow(title: "进程名", value: currentConnection.metadata.process)
