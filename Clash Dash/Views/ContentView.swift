@@ -82,133 +82,17 @@ struct ContentView: View {
                                     }
                             } label: {
                                 ServerRowView(server: server)
-                                    .contextMenu {
-                                        // 基础操作组
-                                        Group {
-                                            Button(role: .destructive) {
-                                                impactFeedback.impactOccurred()
-                                                viewModel.deleteServer(server)
-                                            } label: {
-                                                Label("删除", systemImage: "trash")
-                                            }
-                                            
-                                            Button {
-                                                impactFeedback.impactOccurred()
-                                                editingServer = server
-                                            } label: {
-                                                Label("编辑", systemImage: "pencil")
-                                            }
-                                        }
-                                        
-                                        Divider()
-                                        
-                                        // 添加上移和下移选项
-                                        if viewModel.servers.count > 1 {
-                                            Group {
-                                                // 上移选项
-                                                if let index = viewModel.servers.firstIndex(where: { $0.id == server.id }), index > 0 {
-                                                    Button {
-                                                        impactFeedback.impactOccurred()
-                                                        viewModel.moveServerUp(server)
-                                                    } label: {
-                                                        Label("上移", systemImage: "arrow.up")
-                                                    }
-                                                }
-                                                
-                                                // 下移选项
-                                                if let index = viewModel.servers.firstIndex(where: { $0.id == server.id }), index < viewModel.servers.count - 1 {
-                                                    Button {
-                                                        impactFeedback.impactOccurred()
-                                                        viewModel.moveServerDown(server)
-                                                    } label: {
-                                                        Label("下移", systemImage: "arrow.down")
-                                                    }
-                                                }
-                                            }
-                                            
-                                            Divider()
-                                        }
-                                        
-                                        // 快速启动组
-                                        Button {
-                                            impactFeedback.impactOccurred()
-                                            viewModel.setQuickLaunch(server)
-                                        } label: {
-                                            Label(server.isQuickLaunch ? "取消快速启动" : "设为快速启动", 
-                                                  systemImage: server.isQuickLaunch ? "bolt.slash.circle" : "bolt.circle")
-                                        }
-                                        
-                                        Menu {
-                                            Button {
-                                                impactFeedback.impactOccurred()
-                                                settingsViewModel.updateConfig("mode", value: "rule", server: server) { 
-                                                    settingsViewModel.mode = "rule"
-                                                    showModeChangeSuccess(mode: "rule")
-                                                }
-                                            } label: {
-                                                Label("规则模式", systemImage: settingsViewModel.mode == "rule" ? "checkmark" : "circle")
-                                            }
-                                            
-                                            Button {
-                                                impactFeedback.impactOccurred()
-                                                settingsViewModel.updateConfig("mode", value: "direct", server: server) { 
-                                                    settingsViewModel.mode = "direct"
-                                                    showModeChangeSuccess(mode: "direct")
-                                                }
-                                            } label: {
-                                                Label("直连模式", systemImage: settingsViewModel.mode == "direct" ? "checkmark" : "circle")
-                                            }
-                                            
-                                            Button {
-                                                impactFeedback.impactOccurred()
-                                                settingsViewModel.updateConfig("mode", value: "global", server: server) { 
-                                                    settingsViewModel.mode = "global"
-                                                    showModeChangeSuccess(mode: "global")
-                                                }
-                                            } label: {
-                                                Label("全局模式", systemImage: settingsViewModel.mode == "global" ? "checkmark" : "circle")
-                                            }
-                                        } label: {
-                                            Label(getModeText(settingsViewModel.mode), systemImage: getModeIcon(settingsViewModel.mode))
-                                        }
-                                        .onAppear {
-                                            settingsViewModel.getCurrentMode(server: server) { currentMode in
-                                                settingsViewModel.mode = currentMode
-                                            }
-                                        }
-                                        
-                                        // OpenWRT 特有功能组
-                                        if server.source == .openWRT {
-                                            Divider()
-                                            Button {
-                                                impactFeedback.impactOccurred()
-                                                showConfigSubscriptionView(for: server)
-                                            } label: {
-                                                Label("订阅管理", systemImage: "cloud.fill")
-                                            }
-                                            
-                                            Button {
-                                                impactFeedback.impactOccurred()
-                                                showSwitchConfigView(for: server)
-                                            } label: {
-                                                Label("切换配置", systemImage: "arrow.2.circlepath")
-                                            }
-                                            
-                                            Button {
-                                                impactFeedback.impactOccurred()
-                                                showCustomRulesView(for: server)
-                                            } label: {
-                                                Label("覆写规则", systemImage: "list.bullet.rectangle")
-                                            }
-                                            
-                                            Button {
-                                                impactFeedback.impactOccurred()
-                                                showRestartServiceView(for: server)
-                                            } label: {
-                                                Label("重启服务", systemImage: "arrow.clockwise.circle")
-                                            }
-                                        }
-                                    }
+                                    .serverContextMenu(
+                                        viewModel: viewModel,
+                                        settingsViewModel: settingsViewModel,
+                                        server: server,
+                                        onEdit: { editingServer = server },
+                                        onModeChange: { mode in showModeChangeSuccess(mode: mode) },
+                                        onShowConfigSubscription: { showConfigSubscriptionView(for: server) },
+                                        onShowSwitchConfig: { showSwitchConfigView(for: server) },
+                                        onShowCustomRules: { showCustomRulesView(for: server) },
+                                        onShowRestartService: { showRestartServiceView(for: server) }
+                                    )
                             }
                             .buttonStyle(PlainButtonStyle())
                             .onTapGesture {
@@ -259,13 +143,6 @@ struct ContentView: View {
                                         .foregroundColor(.secondary)
                                 }
                             }
-                            
-                            // SettingsLinkRow(
-                            //     title: "给APP评分",
-                            //     icon: "star.fill",
-                            //     iconColor: .yellow,
-                            //     destination: RateAppView()
-                            // )
                         }
                         .padding()
                         .background(Color(.secondarySystemGroupedBackground))
@@ -350,7 +227,7 @@ struct ContentView: View {
                         Image(systemName: "checkmark.circle.fill")
                             .foregroundColor(.green)
                             .font(.title3)
-                        Text("已切换至\(getModeText(lastChangedMode))")
+                        Text("已切换至\(ModeUtils.getModeText(lastChangedMode))")
                             .foregroundColor(.primary)
                             .font(.subheadline)
                     }
@@ -370,10 +247,6 @@ struct ContentView: View {
                 showQuickLaunchDestination = true
             }
         }
-    }
-    
-    private func showManagementView(for server: ClashServer) {
-        // 显示管理页的逻辑
     }
     
     private func showSwitchConfigView(for server: ClashServer) {
@@ -441,24 +314,6 @@ struct ContentView: View {
         }
     }
     
-    private func getModeText(_ mode: String) -> String {
-        switch mode {
-        case "rule": return "规则模式"
-        case "direct": return "直连模式"
-        case "global": return "全局模式"
-        default: return "切换模式"
-        }
-    }
-    
-    private func getModeIcon(_ mode: String) -> String {
-        switch mode {
-        case "rule": return "list.bullet"
-        case "direct": return "arrow.up.right"
-        case "global": return "globe"
-        default: return "shuffle"
-        }
-    }
-    
     private func showModeChangeSuccess(mode: String) {
         lastChangedMode = mode
         withAnimation {
@@ -472,8 +327,6 @@ struct ContentView: View {
         }
     }
 }
-
-
 
 struct SettingsLinkRow<Destination: View>: View {
     let title: String
