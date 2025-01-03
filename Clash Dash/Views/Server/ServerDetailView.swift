@@ -74,6 +74,8 @@ struct ServerDetailView: View {
                 if server.isQuickLaunch {
                     ToolbarItem(placement: .principal) {
                         HStack {
+                            Spacer()
+                                .frame(width: 25) // 调整图标与标题的间距，使得标题永远居中
                             Text(server.name.isEmpty ? "\(server.openWRTUrl ?? server.url):\(server.openWRTPort ?? server.port)" : server.name)
                                 .font(.headline)
                             Image(systemName: "bolt.circle.fill")
