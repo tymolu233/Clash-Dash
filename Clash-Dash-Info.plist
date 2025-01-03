@@ -13,5 +13,12 @@
 			</array>
 		</dict>
 	</array>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_bonjour._tcp</string>
+		<string>_lnp._tcp.</string>
+	</array>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>需要访问本地网络以连接和管理 Clash 服务</string>
 </dict>
 </plist>

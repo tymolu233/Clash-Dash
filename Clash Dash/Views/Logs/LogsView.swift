@@ -130,7 +130,7 @@ struct LogEntryView: View {
                 let timeString = dateFormatter.string(from: entry.timestamp)
                 UIPasteboard.general.string = "[\(timeString)] \(entry.message)"
             } label: {
-                Label("复制（含时间）", systemImage: "clock.copy")
+                Label("复制（含时间）", systemImage: "document.badge.clock")
             }
         }
     }
