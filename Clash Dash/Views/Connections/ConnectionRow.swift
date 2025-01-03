@@ -234,13 +234,17 @@ struct ConnectionRow: View {
         .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
         .padding(.horizontal, 16)
         .padding(.vertical, 6)
-        // 无论连接是活跃还是已断开，卡片都会以相同的不透明度显示
-        // .opacity(connection.isAlive ? 1 : 0.6)
-        // 使用字符串作为动画的值，包含所有需要监视的状态
-        .animation(
-            .smooth(duration: 0.2),
-            value: "\(connection.isAlive)_\(connection.download)_\(connection.upload)_\(connection.downloadSpeed)_\(connection.uploadSpeed)"
-        )
+        // 移除原有的简单动画
+        // 添加更复杂的组合动画
+        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: connection.isAlive)
+        .animation(.smooth(duration: 0.2), value: connection.download)
+        .animation(.smooth(duration: 0.2), value: connection.upload)
+        .animation(.smooth(duration: 0.2), value: connection.downloadSpeed)
+        .animation(.smooth(duration: 0.2), value: connection.uploadSpeed)
+        .transition(.asymmetric(
+            insertion: .scale(scale: 0.95).combined(with: .opacity).combined(with: .offset(y: 20)),
+            removal: .scale(scale: 0.95).combined(with: .opacity).combined(with: .offset(y: -20))
+        ))
     }
 }
 

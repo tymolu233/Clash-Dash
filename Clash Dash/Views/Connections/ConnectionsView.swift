@@ -507,9 +507,14 @@ struct ConnectionsView: View {
                                         viewModel.closeConnection(connection.id)
                                     }
                                 )
+                                .transition(.asymmetric(
+                                    insertion: .move(edge: .top).combined(with: .opacity),
+                                    removal: .move(edge: .bottom).combined(with: .opacity)
+                                ))
                             }
                         }
                         .padding(.vertical, 8)
+                        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: filteredConnections)
                     }
                     .background(Color(.systemGroupedBackground))
                 }
