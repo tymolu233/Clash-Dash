@@ -234,7 +234,8 @@ struct ConnectionRow: View {
         .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
         .padding(.horizontal, 16)
         .padding(.vertical, 6)
-        .opacity(connection.isAlive ? 1 : 0.6)
+        // 无论连接是活跃还是已断开，卡片都会以相同的不透明度显示
+        // .opacity(connection.isAlive ? 1 : 0.6)
         // 使用字符串作为动画的值，包含所有需要监视的状态
         .animation(
             .smooth(duration: 0.2),
