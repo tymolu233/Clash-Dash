@@ -8,7 +8,7 @@
 - "认证令牌已过期"
 
 ### 诊断步骤
-> **注意**：从 v1.2.3 版本后，可以从 Clash Dash 的“运行日志”中直接查看 OpenWRT 的认证状态，无需运行下面的诊断脚本。
+> **注意**：从 v1.2.3 版本后，可以从 Clash Dash 的"运行日志"中直接查看 OpenWRT 的认证状态，无需运行下面的诊断脚本。
 
 1. 运行诊断脚本：
    ```bash
@@ -58,3 +58,31 @@
 > **注意**：插件崩溃通常与 Clash Dash 无关，是路由器资源问题导致的。
 
 这个 WIKI 提供了基本的故障排除步骤和解决方案。如果你觉得需要补充其他内容，请告诉我。
+
+## Clash 连接问题
+
+### 诊断方法
+1. 使用诊断脚本：
+   - 运行 `Debug/test_clash_controller.sh` 脚本进行连接测试
+   ```bash
+   curl -O https://raw.githubusercontent.com/bin64/Clash-Dash/refs/heads/main/Debug/test_clash_controller.sh && chmod +x test_clash_controller.sh && ./test_clash_controller.sh
+   ```
+   - 脚本会测试各个 API 端点的连接情况，并生成详细日志
+
+2. 查看运行日志：
+   - 在 Clash Dash 的"运行日志"页面中可以查看详细的连接日志
+   - 日志中会显示连接状态、错误信息等
+
+### 常见问题
+1. WebSocket 连接问题：
+   - Clash Dash 使用 WebSocket 进行连接
+   - 请确保服务器端的 WebSocket 端口可用且未被防火墙阻止
+   - 检查服务器是否正确配置了 WebSocket 支持
+
+2. 连接失败的可能原因：
+   - 服务器地址或端口错误
+   - 连接密钥（Secret）不正确
+   - 防火墙阻止了连接
+   - WebSocket 服务未正确启动
+
+> **提示**：如果遇到连接问题，建议先运行诊断脚本进行测试，这样可以快速定位问题所在。
