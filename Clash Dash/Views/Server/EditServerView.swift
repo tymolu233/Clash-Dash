@@ -91,7 +91,8 @@ struct EditServerView: View {
                             secret: secret,
                             status: server.status,
                             version: server.version,
-                            useSSL: useSSL
+                            useSSL: useSSL,
+                            isQuickLaunch: server.isQuickLaunch
                         )
                         viewModel.updateServer(updatedServer)
                         dismiss()

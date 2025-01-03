@@ -38,7 +38,8 @@ struct ClashServer: Identifiable, Codable {
          status: ServerStatus = .unknown, 
          version: String? = nil,
          useSSL: Bool = false,
-         source: ServerSource = .clashController) {
+         source: ServerSource = .clashController,
+         isQuickLaunch: Bool = false) {
         self.id = id
         self.name = name
         self.url = url
@@ -48,6 +49,7 @@ struct ClashServer: Identifiable, Codable {
         self.version = version
         self.useSSL = useSSL
         self.source = source
+        self.isQuickLaunch = isQuickLaunch
     }
     
     var displayName: String {
