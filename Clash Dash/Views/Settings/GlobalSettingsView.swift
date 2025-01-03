@@ -26,7 +26,7 @@ struct GlobalSettingsView: View {
             Section {
                 SettingToggleRow(
                     title: "隐藏不可用代理",
-                    subtitle: "在列表中不显示无法连接的代理",
+                    subtitle: "在代理组的代理节点列表中不显示无法连接的代理",
                     isOn: $hideUnavailableProxies
                 )
                 
@@ -45,7 +45,7 @@ struct GlobalSettingsView: View {
                 //     message: "DIRECT 和 REJECT 节点不受此设置影响"
                 // )
             } header: {
-                SectionHeader(title: "排序设置", systemImage: "arrow.up.arrow.down")
+                SectionHeader(title: "代理组排序设置", systemImage: "arrow.up.arrow.down")
             }
             
             Section {

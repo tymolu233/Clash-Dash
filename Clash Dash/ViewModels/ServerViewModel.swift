@@ -118,8 +118,8 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         
         if challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust {
             let acceptMessage = "✅ 无条件接受服务器证书"
-            print(acceptMessage)
-            logger.log(acceptMessage)
+            // print(acceptMessage)
+            // logger.log(acceptMessage)
             
             if let serverTrust = challenge.protectionSpace.serverTrust {
                 let credential = URLCredential(trust: serverTrust)
@@ -302,6 +302,24 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         }
         
         // 保存更改
+        saveServers()
+    }
+    
+    // 添加上移服务器的方法
+    func moveServerUp(_ server: ClashServer) {
+        guard let currentIndex = servers.firstIndex(where: { $0.id == server.id }),
+              currentIndex > 0 else { return }
+        
+        servers.swapAt(currentIndex, currentIndex - 1)
+        saveServers()
+    }
+    
+    // 添加下移服务器的方法
+    func moveServerDown(_ server: ClashServer) {
+        guard let currentIndex = servers.firstIndex(where: { $0.id == server.id }),
+              currentIndex < servers.count - 1 else { return }
+        
+        servers.swapAt(currentIndex, currentIndex + 1)
         saveServers()
     }
     

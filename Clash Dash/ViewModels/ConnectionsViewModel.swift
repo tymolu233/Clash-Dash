@@ -315,7 +315,7 @@ class ConnectionsViewModel: ObservableObject {
             }
             
             // 记录状态变化
-            log("状态更新: \(self.connectionState.message)")
+            // log("状态更新: \(self.connectionState.message)")
         }
     }
     

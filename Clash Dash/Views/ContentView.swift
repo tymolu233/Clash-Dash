@@ -102,6 +102,33 @@ struct ContentView: View {
                                         
                                         Divider()
                                         
+                                        // 添加上移和下移选项
+                                        if viewModel.servers.count > 1 {
+                                            Group {
+                                                // 上移选项
+                                                if let index = viewModel.servers.firstIndex(where: { $0.id == server.id }), index > 0 {
+                                                    Button {
+                                                        impactFeedback.impactOccurred()
+                                                        viewModel.moveServerUp(server)
+                                                    } label: {
+                                                        Label("上移", systemImage: "arrow.up")
+                                                    }
+                                                }
+                                                
+                                                // 下移选项
+                                                if let index = viewModel.servers.firstIndex(where: { $0.id == server.id }), index < viewModel.servers.count - 1 {
+                                                    Button {
+                                                        impactFeedback.impactOccurred()
+                                                        viewModel.moveServerDown(server)
+                                                    } label: {
+                                                        Label("下移", systemImage: "arrow.down")
+                                                    }
+                                                }
+                                            }
+                                            
+                                            Divider()
+                                        }
+                                        
                                         // 快速启动组
                                         Button {
                                             impactFeedback.impactOccurred()
