@@ -582,13 +582,8 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                     1. luci-mod-rpc
                     2. luci-lib-ipkg
                     3. luci-compat
-                    
-                    可以通过以下命令安装：
-                    opkg update
-                    opkg install luci-mod-rpc luci-lib-ipkg luci-compat
 
-                    并重启 uhttpd：
-                    /etc/init.d/uhttpd restart
+                    并重启 uhttpd
                     """)
                 
             default:
