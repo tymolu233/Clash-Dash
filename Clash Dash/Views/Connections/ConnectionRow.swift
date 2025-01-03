@@ -7,6 +7,7 @@ struct ConnectionRow: View {
     @ObservedObject var tagViewModel: ClientTagViewModel
     let onClose: () -> Void
     @Environment(\.colorScheme) var colorScheme
+    @Binding var selectedConnection: ClashConnection?
     
     private var cardBackgroundColor: Color {
         colorScheme == .dark ? 
@@ -120,122 +121,125 @@ struct ConnectionRow: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // 第一行：时间信息和关闭按钮
-            HStack {
-                HStack(spacing: 6) {
-                    Image(systemName: "clock.fill")
-                        .foregroundColor(.secondary)
-                        .frame(width: 16, height: 16)
-                    Text(connection.formattedStartTime)
-                        .foregroundColor(.secondary)
-                    
-                    // 根据连接状态显示不同的信息
-                    if connection.isAlive {
-                        SpeedView(download: connection.downloadSpeed, upload: connection.uploadSpeed)
-                    } else {
-                        Text(connection.formattedDuration)
+        Button {
+            selectedConnection = connection
+        } label: {
+            VStack(alignment: .leading, spacing: 8) {
+                // 第一行：时间信息和关闭按钮
+                HStack {
+                    HStack(spacing: 6) {
+                        Image(systemName: "clock.fill")
                             .foregroundColor(.secondary)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(
-                                RoundedRectangle(cornerRadius: 6)
-                                    .fill(Color(.systemGray6))
-                            )
+                            .frame(width: 16, height: 16)
+                        Text(connection.formattedStartTime)
+                            .foregroundColor(.secondary)
+                        
+                        // 根据连接状态显示不同的信息
+                        if connection.isAlive {
+                            SpeedView(download: connection.downloadSpeed, upload: connection.uploadSpeed)
+                        } else {
+                            Text(connection.formattedDuration)
+                                .foregroundColor(.secondary)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .fill(Color(.systemGray6))
+                                )
+                        }
                     }
-                }
-                .font(.footnote)
-                
-                Spacer()
-                
-                // 只在连接活跃时显示关闭按钮
-                if connection.isAlive {
-                    Button {
-                        // 添加触觉反馈
-                        impactFeedback.impactOccurred()
-                        onClose()
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(.secondary.opacity(0.5))
-                            .frame(width: 20, height: 20)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            
-            // 第二行：主机信息
-            HStack(spacing: 6) {
-                Image(systemName: "globe.americas.fill")
-                    .foregroundColor(.accentColor)
-                    .frame(width: 16, height: 16)
-                Text("\(connection.metadata.host.isEmpty ? (connection.metadata.destinationIP ?? "") : connection.metadata.host):\(connection.metadata.destinationPort)")
-                    .foregroundColor(.primary)
-            }
-            .font(.system(size: 16, weight: .medium))
-            
-            // 第三行：规则链
-            HStack(spacing: 6) {
-                Image(systemName: "arrow.triangle.branch")
-                    .foregroundColor(.orange)
-                    .frame(width: 16, height: 16)
-                Text(connection.formattedChains)
-                    .foregroundColor(.secondary)
-            }
-            .font(.callout)
-            
-            // 第四行：网络信息和流量
-            HStack {
-                // 网络类型和源IP信息
-                HStack(spacing: 6) {
-                    Text(connection.metadata.network.uppercased())
-                        .font(.caption)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color.green.opacity(0.1))
-                        .foregroundColor(.green)
-                        .cornerRadius(4)
+                    .font(.footnote)
                     
-                    if let tagName = getClientTag(for: connection.metadata.sourceIP) {
-                        Text(tagName)
+                    Spacer()
+                    
+                    // 只在连接活跃时显示关闭按钮
+                    if connection.isAlive {
+                        Button {
+                            // 添加触觉反馈
+                            impactFeedback.impactOccurred()
+                            onClose()
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.secondary.opacity(0.5))
+                                .frame(width: 20, height: 20)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                
+                // 第二行：主机信息
+                HStack(spacing: 6) {
+                    Image(systemName: "globe.americas.fill")
+                        .foregroundColor(.accentColor)
+                        .frame(width: 16, height: 16)
+                    Text("\(connection.metadata.host.isEmpty ? (connection.metadata.destinationIP ?? "") : connection.metadata.host):\(connection.metadata.destinationPort)")
+                        .foregroundColor(.primary)
+                }
+                .font(.system(size: 16, weight: .medium))
+                
+                // 第三行：规则链
+                HStack(spacing: 6) {
+                    Image(systemName: "arrow.triangle.branch")
+                        .foregroundColor(.orange)
+                        .frame(width: 16, height: 16)
+                    Text(connection.formattedChains)
+                        .foregroundColor(.secondary)
+                }
+                .font(.callout)
+                
+                // 第四行：网络信息和流量
+                HStack {
+                    // 网络类型和源IP信息
+                    HStack(spacing: 6) {
+                        Text(connection.metadata.network.uppercased())
                             .font(.caption)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
-                            .background(Color.blue.opacity(0.1))
-                            .foregroundColor(.blue)
+                            .background(Color.green.opacity(0.1))
+                            .foregroundColor(.green)
                             .cornerRadius(4)
-                    } else {
-                        Text("\(connection.metadata.sourceIP):\(connection.metadata.sourcePort)")
-                            .foregroundColor(.secondary)
-                            .font(.caption)
+                        
+                        if let tagName = getClientTag(for: connection.metadata.sourceIP) {
+                            Text(tagName)
+                                .font(.caption)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color.blue.opacity(0.1))
+                                .foregroundColor(.blue)
+                                .cornerRadius(4)
+                        } else {
+                            Text("\(connection.metadata.sourceIP):\(connection.metadata.sourcePort)")
+                                .foregroundColor(.secondary)
+                                .font(.caption)
+                        }
+                    }
+                    
+                    Spacer()
+                    
+                    // 使用修改后的流量显示组件
+                    HStack(spacing: 16) {
+                        TrafficView(
+                            bytes: connection.download,
+                            icon: "arrow.down.circle.fill",
+                            color: .blue
+                        )
+                        TrafficView(
+                            bytes: connection.upload,
+                            icon: "arrow.up.circle.fill",
+                            color: .green
+                        )
                     }
                 }
-                
-                Spacer()
-                
-                // 使用修改后的流量显示组件
-                HStack(spacing: 16) {
-                    TrafficView(
-                        bytes: connection.download,
-                        icon: "arrow.down.circle.fill",
-                        color: .blue
-                    )
-                    TrafficView(
-                        bytes: connection.upload,
-                        icon: "arrow.up.circle.fill",
-                        color: .green
-                    )
-                }
             }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(cardBackgroundColor)
+            .cornerRadius(16)
+            .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 6)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(cardBackgroundColor)
-        .cornerRadius(16)
-        .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 6)
-        // 移除原有的简单动画
-        // 添加更复杂的组合动画
+        .buttonStyle(.plain)
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: connection.isAlive)
         .animation(.smooth(duration: 0.2), value: connection.download)
         .animation(.smooth(duration: 0.2), value: connection.upload)
@@ -253,7 +257,8 @@ struct ConnectionRow: View {
         connection: .preview(),
         viewModel: ConnectionsViewModel(),
         tagViewModel: ClientTagViewModel(),
-        onClose: {}
+        onClose: {},
+        selectedConnection: .constant(nil)
     )
 } 
 

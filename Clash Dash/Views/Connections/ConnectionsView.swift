@@ -9,6 +9,7 @@ struct ConnectionsView: View {
     @State private var connectionFilter: ConnectionFilter = .active
     @State private var showMenu = false
     @State private var showClientTagSheet = false
+    @State private var selectedConnection: ClashConnection?
     
     // 添加确认对话框的状态
     @State private var showCloseAllConfirmation = false
@@ -505,7 +506,8 @@ struct ConnectionsView: View {
                                         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
                                         impactFeedback.impactOccurred()
                                         viewModel.closeConnection(connection.id)
-                                    }
+                                    },
+                                    selectedConnection: $selectedConnection
                                 )
                                 .transition(.asymmetric(
                                     insertion: .move(edge: .top).combined(with: .opacity),
@@ -525,6 +527,16 @@ struct ConnectionsView: View {
             
             menuButtons
                 .padding()
+        }
+        .sheet(item: $selectedConnection) { connection in
+            NavigationStack {
+                ConnectionDetailView(
+                    connection: connection,
+                    viewModel: viewModel
+                )
+            }
+            .presentationDragIndicator(.visible)
+            .presentationDetents([.large])
         }
         .onAppear {
             viewModel.startMonitoring(server: server)
