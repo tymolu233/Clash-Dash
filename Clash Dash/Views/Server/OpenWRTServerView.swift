@@ -280,7 +280,7 @@ struct OpenWRTServerView: View {
                 let status = try await viewModel.validateOpenWRTServer(testServer, username: username, password: password)
                 
                 // 检查是否是域名访问
-                if cleanHost.contains(".") && !cleanHost.contains("192.168.") && !cleanHost.contains("10.0.") {
+                if cleanHost.contains(".") && cleanHost.matches(of: /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/).isEmpty {
                     // 检查是否配置了外部控制
                     if let domain = status.dbForwardDomain,
                        let port = status.dbForwardPort,
