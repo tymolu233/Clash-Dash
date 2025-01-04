@@ -87,7 +87,6 @@ struct ConnectionsView: View {
             if devices.isEmpty {
                 Text("暂无设备记录")
             } else {
-
                 Button("显示全部") {
                     selectedDevices.removeAll()
                 }
@@ -95,10 +94,7 @@ struct ConnectionsView: View {
                 Button("全部隐藏") {
                     selectedDevices = Set(devices.map(\.id))
                 }
-
-                
                 Divider()
-
                 ForEach(viewModel.deviceCache, id: \.self) { ip in
                     if let device = devices.first(where: { $0.id == ip }) {
                         Button {
@@ -527,31 +523,6 @@ struct ConnectionsView: View {
                     .background(Color(.systemGroupedBackground))
                 }
             }
-            .simultaneousGesture(
-                DragGesture()
-                    .onEnded { value in
-                        let threshold: CGFloat = 50
-                        if abs(value.translation.height) < abs(value.translation.width) {  // 确保是水平滑动
-                            if value.translation.width > threshold {
-                                // 向右滑动，切换到上一个状态
-                                withAnimation {
-                                    connectionFilter = .active
-                                }
-                                // 添加触觉反馈
-                                let impactFeedback = UIImpactFeedbackGenerator(style: .light)
-                                impactFeedback.impactOccurred()
-                            } else if value.translation.width < -threshold {
-                                // 向左滑动，切换到下一个状态
-                                withAnimation {
-                                    connectionFilter = .closed
-                                }
-                                // 添加触觉反馈
-                                let impactFeedback = UIImpactFeedbackGenerator(style: .light)
-                                impactFeedback.impactOccurred()
-                            }
-                        }
-                    }
-            )
             .refreshable {
                 await viewModel.refresh()
             }
@@ -638,7 +609,7 @@ struct SearchBar: View {
         ConnectionsView(
             server: ClashServer(
                 name: "测试服务器",
-                url: "192.168.110.45",
+                url: "10.1.1.2",
                 port: "9090",
                 secret: "123456"
             )
