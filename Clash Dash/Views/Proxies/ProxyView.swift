@@ -205,6 +205,7 @@ struct ProxyView: View {
     @State private var showProviderSheet = false
     @Namespace private var animation
     @AppStorage("proxyViewStyle") private var proxyViewStyle = ProxyViewStyle.detailed
+    @AppStorage("hideProxyProviders") private var hideProxyProviders = false
     
     // 添加触觉反馈生成器
     private let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
@@ -227,17 +228,19 @@ struct ProxyView: View {
                                 .drawingGroup(opaque: false)  // 优化渲染
                             
                             // 代理提供者部分
-                            let httpProviders = viewModel.providers
-                                .filter { $0.vehicleType.uppercased() == "HTTP" }
-                                .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
-                            
-                            if !httpProviders.isEmpty {
-                                ProxyProvidersSection(
-                                    providers: httpProviders,
-                                    nodes: viewModel.providerNodes,
-                                    viewModel: viewModel
-                                )
-                                .drawingGroup(opaque: false)  // 优化渲染
+                            if !hideProxyProviders {
+                                let httpProviders = viewModel.providers
+                                    .filter { $0.vehicleType.uppercased() == "HTTP" }
+                                    .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+                                
+                                if !httpProviders.isEmpty {
+                                    ProxyProvidersSection(
+                                        providers: httpProviders,
+                                        nodes: viewModel.providerNodes,
+                                        viewModel: viewModel
+                                    )
+                                    .drawingGroup(opaque: false)  // 优化渲染
+                                }
                             }
                         }
                         .padding(.horizontal)
@@ -246,34 +249,34 @@ struct ProxyView: View {
                         LazyVStack(spacing: 12) {
                             ForEach(viewModel.getSortedGroups(), id: \.name) { group in
                                 CompactGroupCard(group: group, viewModel: viewModel)
-                                    // .drawingGroup(opaque: false)  // 优化渲染
                             }
                         }
                         .padding(.horizontal)
                         
                         // 代理提供者部分
-                        let httpProviders = viewModel.providers
-                            .filter { $0.vehicleType.uppercased() == "HTTP" }
-                            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
-                        
-                        if !httpProviders.isEmpty {
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("代理提供者")
-                                    .font(.headline)
-                                    .padding(.horizontal)
-                                
-                                LazyVStack(spacing: 12) {
-                                    ForEach(httpProviders, id: \.name) { provider in
-                                        CompactProviderCard(
-                                            provider: provider,
-                                            nodes: viewModel.providerNodes[provider.name] ?? [],
-                                            viewModel: viewModel
-                                        )
-                                        // .drawingGroup(opaque: false)  // 优化渲染
+                        if !hideProxyProviders {
+                            let httpProviders = viewModel.providers
+                                .filter { $0.vehicleType.uppercased() == "HTTP" }
+                                .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+                            
+                            if !httpProviders.isEmpty {
+                                VStack(alignment: .leading, spacing: 12) {
+                                    Text("代理提供者")
+                                        .font(.headline)
+                                        .padding(.horizontal)
+                                    
+                                    LazyVStack(spacing: 12) {
+                                        ForEach(httpProviders, id: \.name) { provider in
+                                            CompactProviderCard(
+                                                provider: provider,
+                                                nodes: viewModel.providerNodes[provider.name] ?? [],
+                                                viewModel: viewModel
+                                            )
+                                        }
                                     }
                                 }
+                                .padding(.horizontal)
                             }
-                            .padding(.horizontal)
                         }
                     }
                 }

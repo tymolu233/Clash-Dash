@@ -39,11 +39,14 @@ struct GlobalSettingsView: View {
                     )
                 }
                 
-                // SettingsInfoRow(
-                //     icon: "info.circle",
-                //     text: "DIRECT 和 REJECT 节点不受此设置影响",
-                //     message: "DIRECT 和 REJECT 节点不受此设置影响"
-                // )
+                SettingToggleRow(
+                    title: "隐藏代理提供者",
+                    subtitle: "在代理页面中不显示代理提供者信息",
+                    isOn: .init(
+                        get: { UserDefaults.standard.bool(forKey: "hideProxyProviders") },
+                        set: { UserDefaults.standard.set($0, forKey: "hideProxyProviders") }
+                    )
+                )
             } header: {
                 SectionHeader(title: "代理组排序设置", systemImage: "arrow.up.arrow.down")
             }
