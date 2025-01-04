@@ -172,9 +172,6 @@ struct ConnectionsView: View {
             // 根据连接状态过滤
             let stateMatches = connectionFilter == .active ? connection.isAlive : !connection.isAlive
             
-            // 如果选择了任何协议，则按协议过滤
-            let protocolMatches = selectedProtocols.isEmpty || selectedProtocols.contains(connection.metadata.network.uppercased())
-            
             // 添加搜索过滤逻辑
             let searchMatches = searchText.isEmpty || {
                 let searchTerm = searchText.lowercased()
@@ -199,7 +196,7 @@ struct ConnectionsView: View {
                 return false
             }()
             
-            return deviceMatches && stateMatches && protocolMatches && searchMatches
+            return deviceMatches && stateMatches && searchMatches
         }
         
         // 修改排序逻辑
@@ -371,28 +368,12 @@ struct ConnectionsView: View {
             // 连接状态切换器
             Picker("连接状态", selection: $connectionFilter) {
                 Text("正活跃 (\(activeConnectionsCount))")
-                // Text("正活跃 (99+)")
                     .tag(ConnectionFilter.active)
                 Text("已断开 (\(closedConnectionsCount))")
                     .tag(ConnectionFilter.closed)
             }
             .pickerStyle(.segmented)
-            .frame(width: 170)
-            
-            // TCP/UDP 过滤器
-            ForEach(["TCP", "UDP"], id: \.self) { protocolType in
-                FilterTag(
-                    title: protocolType,
-                    count: protocolType == "TCP" ? tcpConnectionsCount : udpConnectionsCount,
-                    isSelected: selectedProtocols.contains(protocolType)
-                ) {
-                    if selectedProtocols.contains(protocolType) {
-                        selectedProtocols.remove(protocolType)
-                    } else {
-                        selectedProtocols.insert(protocolType)
-                    }
-                }
-            }
+            .frame(maxWidth: .infinity)
             
             Spacer(minLength: 0)
             

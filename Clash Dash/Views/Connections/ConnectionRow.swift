@@ -122,6 +122,8 @@ struct ConnectionRow: View {
     
     var body: some View {
         Button {
+            // 添加触觉反馈
+            impactFeedback.impactOccurred()
             selectedConnection = connection
         } label: {
             VStack(alignment: .leading, spacing: 8) {
