@@ -11,6 +11,8 @@ struct ConnectionDetailView: View {
     @State private var currentConnection: ClashConnection
     @State private var durationTimer: Timer?
     @State private var currentDuration: String = ""
+    @State private var showIPInfo = false
+    @State private var ipInfoURL: URL?
     
     init(connection: ClashConnection, viewModel: ConnectionsViewModel) {
         self.initialConnection = connection
@@ -161,7 +163,27 @@ struct ConnectionDetailView: View {
                 Text(title)
                     .foregroundColor(.secondary)
                 Spacer()
-                if copyable {
+                if title == "目标地址" {
+                    Text(value)
+                        .foregroundColor(.primary)
+                        .contextMenu {
+                            Button(action: {
+                                UIPasteboard.general.string = value
+                                impactFeedback.impactOccurred()
+                            }) {
+                                Label("复制", systemImage: "doc.on.doc")
+                            }
+                            
+                            Button(action: {
+                                if let url = URL(string: "https://ipinfo.io/\(value)") {
+                                    showIPInfo = true
+                                    ipInfoURL = url
+                                }
+                            }) {
+                                Label("查看 IP 信息", systemImage: "info.circle")
+                            }
+                        }
+                } else if copyable {
                     Text(value)
                         .foregroundColor(.primary)
                         .contextMenu {
@@ -343,6 +365,11 @@ struct ConnectionDetailView: View {
                 currentDuration = Self.formatDuration(from: newConnection.start)
             } else {
                 startDurationTimer()
+            }
+        }
+        .sheet(isPresented: $showIPInfo) {
+            if let url = ipInfoURL {
+                SafariWebView(url: url)
             }
         }
     }

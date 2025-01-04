@@ -60,14 +60,25 @@ class RulesViewModel: ObservableObject {
         }
         
         var formattedUpdateTime: String {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSS'Z'"
-            formatter.timeZone = TimeZone(identifier: "UTC")
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds, .withTimeZone]
             
             guard let date = formatter.date(from: updatedAt) else {
-                return "未知"
+                // 尝试使用备用格式
+                let backupFormatter = DateFormatter()
+                backupFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSS'Z'"
+                backupFormatter.timeZone = TimeZone(identifier: "UTC")
+                
+                guard let backupDate = backupFormatter.date(from: updatedAt) else {
+                    return "未知"
+                }
+                return formatRelativeTime(from: backupDate)
             }
             
+            return formatRelativeTime(from: date)
+        }
+        
+        private func formatRelativeTime(from date: Date) -> String {
             let now = Date()
             let calendar = Calendar.current
             let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: date, to: now)
