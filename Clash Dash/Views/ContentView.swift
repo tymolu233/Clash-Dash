@@ -22,58 +22,56 @@ struct ContentView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                if viewModel.servers.isEmpty {
-                    VStack(spacing: 20) {
-                        Spacer()
-                            .frame(height: 60)
-                        
-                        Image(systemName: "server.rack")
-                            .font(.system(size: 50))
-                            .foregroundColor(.secondary.opacity(0.7))
-                            .padding(.bottom, 10)
-                        
-                        Text("没有服务器")
-                            .font(.title2)
-                            .fontWeight(.medium)
-                        
-                        Text("点击添加按钮来添加一个新的服务器")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 32)
-                        
-                        Menu {
-                            Button(action: {
-                                impactFeedback.impactOccurred()
-                                showingAddSheet = true
-                            }) {
-                                Label("Clash 控制器", systemImage: "server.rack")
-                            }
+                VStack(spacing: 20) {
+                    if viewModel.servers.isEmpty {
+                        VStack(spacing: 20) {
+                            Spacer()
+                                .frame(height: 60)
                             
-                            Button(action: {
-                                impactFeedback.impactOccurred()
-                                showingAddOpenWRTSheet = true
-                            }) {
-                                Label("OpenWRT 服务器", systemImage: "wifi.router")
-                            }
-                        } label: {
-                            Text("添加服务器")
-                                .font(.headline)
-                                .foregroundColor(.white)
-                                .frame(width: 160, height: 44)
-                                .background(Color.blue)
-                                .cornerRadius(22)
-                                .onTapGesture {
+                            Image(systemName: "server.rack")
+                                .font(.system(size: 50))
+                                .foregroundColor(.secondary.opacity(0.7))
+                                .padding(.bottom, 10)
+                            
+                            Text("没有服务器")
+                                .font(.title2)
+                                .fontWeight(.medium)
+                            
+                            Text("点击添加按钮来添加一个新的服务器")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 32)
+                            
+                            Menu {
+                                Button(action: {
                                     impactFeedback.impactOccurred()
+                                    showingAddSheet = true
+                                }) {
+                                    Label("Clash 控制器", systemImage: "server.rack")
                                 }
+                                
+                                Button(action: {
+                                    impactFeedback.impactOccurred()
+                                    showingAddOpenWRTSheet = true
+                                }) {
+                                    Label("OpenWRT 服务器", systemImage: "wifi.router")
+                                }
+                            } label: {
+                                Text("添加服务器")
+                                    .font(.headline)
+                                    .foregroundColor(.white)
+                                    .frame(width: 160, height: 44)
+                                    .background(Color.blue)
+                                    .cornerRadius(22)
+                                    .onTapGesture {
+                                        impactFeedback.impactOccurred()
+                                    }
+                            }
+                            .padding(.top, 20)
+                            .padding(.bottom, 40)
                         }
-                        .padding(.top, 20)
-                        
-                        Spacer()
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    VStack(spacing: 20) {
+                    } else {
                         // 服务器卡片列表
                         ForEach(viewModel.servers) { server in
                             NavigationLink {
@@ -101,63 +99,63 @@ struct ContentView: View {
                                 impactFeedback.impactOccurred()
                             }
                         }
+                    }
+                    
+                    // 设置卡片
+                    VStack(spacing: 16) {
+                        SettingsLinkRow(
+                            title: "全局配置",
+                            icon: "gearshape.fill",
+                            iconColor: .gray,
+                            destination: GlobalSettingsView()
+                        )
                         
-                        // 设置卡片
-                        VStack(spacing: 16) {
-                            SettingsLinkRow(
-                                title: "全局配置",
-                                icon: "gearshape.fill",
-                                iconColor: .gray,
-                                destination: GlobalSettingsView()
-                            )
-                            
-                            SettingsLinkRow(
-                                title: "运行日志",
-                                icon: "doc.text.fill",
-                                iconColor: .orange,
-                                destination: LogsView()
-                            )
-                            
-                            SettingsLinkRow(
-                                title: "如何使用",
-                                icon: "questionmark.circle.fill",
-                                iconColor: .blue,
-                                destination: HelpView()
-                            )
-                            
-                            Button {
-                                impactFeedback.impactOccurred()
-                                showingSourceCode = true
-                            } label: {
-                                HStack {
-                                    Image(systemName: "chevron.left.forwardslash.chevron.right")
-                                        .font(.body)
-                                        .foregroundColor(.purple)
-                                        .frame(width: 32)
-                                    
-                                    Text("源码查看")
-                                        .font(.body)
-                                    
-                                    Spacer()
-                                    
-                                    Image(systemName: "chevron.right")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
+                        SettingsLinkRow(
+                            title: "运行日志",
+                            icon: "doc.text.fill",
+                            iconColor: .orange,
+                            destination: LogsView()
+                        )
+                        
+                        SettingsLinkRow(
+                            title: "如何使用",
+                            icon: "questionmark.circle.fill",
+                            iconColor: .blue,
+                            destination: HelpView()
+                        )
+                        
+                        Button {
+                            impactFeedback.impactOccurred()
+                            showingSourceCode = true
+                        } label: {
+                            HStack {
+                                Image(systemName: "chevron.left.forwardslash.chevron.right")
+                                    .font(.body)
+                                    .foregroundColor(.purple)
+                                    .frame(width: 32)
+                                
+                                Text("源码查看")
+                                    .font(.body)
+                                
+                                Spacer()
+                                
+                                Image(systemName: "chevron.right")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
                             }
                         }
-                        .padding()
-                        .background(Color(.secondarySystemGroupedBackground))
-                        .cornerRadius(16)
-                        
-                        // 版本信息
-                        Text("Ver: 1.2.9 (TestFlight Build 3)")
-                            .foregroundColor(.secondary)
-                            .font(.footnote)
-                            .padding(.top, 8)
                     }
                     .padding()
+                    .background(Color(.secondarySystemGroupedBackground))
+                    .cornerRadius(16)
+                    
+                    // 版本信息
+                    Text("Ver: 1.2.9 (TestFlight Build 3)")
+                        .foregroundColor(.secondary)
+                        .font(.footnote)
+                        .padding(.top, 8)
                 }
+                .padding()
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("Clash Dash")
