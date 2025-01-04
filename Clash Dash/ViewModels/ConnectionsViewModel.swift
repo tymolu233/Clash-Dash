@@ -209,6 +209,7 @@ class ConnectionsViewModel: ObservableObject {
                 // 创建新连接
                 let wsSession = URLSession(configuration: sessionConfig)
                 let task = wsSession.webSocketTask(with: request)
+                task.maximumMessageSize = 10 * 1024 * 1024 // 设置最大消息大小为 10MB
                 connectionsTask = task
                 
                 // 设置消息处理

@@ -135,6 +135,7 @@ class NetworkMonitor: ObservableObject {
         }
         
         connectionsTask = session.webSocketTask(with: request)
+        connectionsTask?.maximumMessageSize = 10 * 1024 * 1024 // 设置最大消息大小为 10MB
         connectionsTask?.resume()
         receiveConnectionsData()
     }

@@ -210,6 +210,18 @@ struct ConnectionDetailView: View {
         return geoip
     }
     
+    private var breakButton: some View {
+        Button {
+            Task {
+                await viewModel.closeConnection(currentConnection.id)
+            }
+        } label: {
+            Text("打断")
+                .foregroundColor(currentConnection.isAlive ? .red : .gray)
+        }
+        .disabled(!currentConnection.isAlive)
+    }
+    
     var body: some View {
         List {
             // 状态信息
@@ -302,6 +314,10 @@ struct ConnectionDetailView: View {
                     cleanup()
                     dismiss()
                 }
+            }
+            
+            ToolbarItem(placement: .navigationBarTrailing) {
+                breakButton
             }
         }
         .interactiveDismissDisabled(false)
