@@ -87,6 +87,14 @@ struct ConnectionsView: View {
             if devices.isEmpty {
                 Text("暂无设备记录")
             } else {
+                Button("显示全部") {
+                    selectedDevices.removeAll()
+                }
+                
+                Button("全部隐藏") {
+                    selectedDevices = Set(devices.map(\.id))
+                }
+                Divider()
                 ForEach(viewModel.deviceCache, id: \.self) { ip in
                     if let device = devices.first(where: { $0.id == ip }) {
                         Button {
@@ -108,15 +116,9 @@ struct ConnectionsView: View {
                     }
                 }
                 
-                Divider()
                 
-                Button("显示全部") {
-                    selectedDevices.removeAll()
-                }
                 
-                Button("全部隐藏") {
-                    selectedDevices = Set(devices.map(\.id))
-                }
+                
             }
         } label: {
             Image(systemName: "desktopcomputer")
