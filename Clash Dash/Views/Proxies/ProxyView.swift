@@ -719,7 +719,9 @@ struct ProxyProviderCard: View {
     private let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
     
     private var trafficInfo: (used: String, total: String, percentage: Double)? {
-        guard let info = provider.subscriptionInfo else { return nil }
+        guard let info = provider.subscriptionInfo,
+              // 添加判断：只有当总流量不为 0 时才显示流量信息
+              info.total > 0 else { return nil }
         let used = Double(info.upload + info.download)
         let total = Double(info.total)
         let percentage = (used / total) * 100
@@ -766,7 +768,9 @@ struct ProxyProviderCard: View {
     }
     
     private var expirationDate: String? {
-        guard let info = provider.subscriptionInfo else { return nil }
+        guard let info = provider.subscriptionInfo,
+              // 添加判断：只有当总流量不为 0 时才显示到期时间
+              info.total > 0 && info.expire > 0 else { return nil }
         let date = Date(timeIntervalSince1970: TimeInterval(info.expire))
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
