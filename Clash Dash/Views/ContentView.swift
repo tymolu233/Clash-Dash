@@ -14,6 +14,7 @@ struct ContentView: View {
     @State private var lastChangedMode = ""
     @State private var showingSourceCode = false
     @AppStorage("appThemeMode") private var appThemeMode = AppThemeMode.system
+    @Environment(\.scenePhase) private var scenePhase
     
     // 添加触觉反馈生成器
     private let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
@@ -244,9 +245,22 @@ struct ContentView: View {
         }
         .preferredColorScheme(colorScheme)
         .onAppear {
+            // 首次打开时刷新服务器列表
+            Task {
+                await viewModel.checkAllServersStatus()
+            }
+            
             if let quickLaunchServer = viewModel.servers.first(where: { $0.isQuickLaunch }) {
                 selectedQuickLaunchServer = quickLaunchServer
                 showQuickLaunchDestination = true
+            }
+        }
+        .onChange(of: scenePhase) { newPhase in
+            if newPhase == .active {
+                // 从后台返回前台时刷新服务器列表
+                Task {
+                    await viewModel.checkAllServersStatus()
+                }
             }
         }
     }
