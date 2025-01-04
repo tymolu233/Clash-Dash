@@ -8,6 +8,7 @@ struct GlobalSettingsView: View {
     @AppStorage("proxyViewStyle") private var proxyViewStyle = ProxyViewStyle.detailed
     @AppStorage("speedTestURL") private var speedTestURL = "https://www.gstatic.com/generate_204"
     @AppStorage("speedTestTimeout") private var speedTestTimeout = 5000
+    @AppStorage("appThemeMode") private var appThemeMode = AppThemeMode.system
     @State private var showClearCacheAlert = false
 
     
@@ -111,6 +112,13 @@ struct GlobalSettingsView: View {
                     ForEach(ProxyViewStyle.allCases) { style in
                         Text(style.description)
                             .tag(style)
+                    }
+                }
+                
+                Picker("主题模式", selection: $appThemeMode) {
+                    ForEach(AppThemeMode.allCases) { mode in
+                        Text(mode.description)
+                            .tag(mode)
                     }
                 }
             } header: {
@@ -266,6 +274,22 @@ enum ProxyViewStyle: String, CaseIterable, Identifiable {
         switch self {
         case .detailed: return "详细"
         case .compact: return "简洁"
+        }
+    }
+}
+
+enum AppThemeMode: String, CaseIterable, Identifiable {
+    case system = "system"
+    case light = "light"
+    case dark = "dark"
+    
+    var id: String { self.rawValue }
+    
+    var description: String {
+        switch self {
+        case .system: return "跟随系统"
+        case .light: return "浅色"
+        case .dark: return "深色"
         }
     }
 }

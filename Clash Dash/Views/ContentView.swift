@@ -13,6 +13,7 @@ struct ContentView: View {
     @State private var showingModeChangeSuccess = false
     @State private var lastChangedMode = ""
     @State private var showingSourceCode = false
+    @AppStorage("appThemeMode") private var appThemeMode = AppThemeMode.system
     
     // 添加触觉反馈生成器
     private let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
@@ -149,7 +150,7 @@ struct ContentView: View {
                         .cornerRadius(16)
                         
                         // 版本信息
-                        Text("Ver: 1.2.9 (TestFlight)")
+                        Text("Ver: 1.2.9 (TestFlight Build 3)")
                             .foregroundColor(.secondary)
                             .font(.footnote)
                             .padding(.top, 8)
@@ -241,6 +242,7 @@ struct ContentView: View {
                 }
             }
         }
+        .preferredColorScheme(colorScheme)
         .onAppear {
             if let quickLaunchServer = viewModel.servers.first(where: { $0.isQuickLaunch }) {
                 selectedQuickLaunchServer = quickLaunchServer
@@ -324,6 +326,17 @@ struct ContentView: View {
             withAnimation {
                 showingModeChangeSuccess = false
             }
+        }
+    }
+    
+    private var colorScheme: ColorScheme? {
+        switch appThemeMode {
+        case .light:
+            return .light
+        case .dark:
+            return .dark
+        case .system:
+            return nil
         }
     }
 }

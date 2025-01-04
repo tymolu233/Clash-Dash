@@ -172,11 +172,11 @@ struct OpenWRTServerView: View {
                     TextField("名称", text: $name)
                         .textContentType(.name)
                     
-                    TextField("服务器地址", text: $host)
+                    TextField("OpenWRT地址", text: $host)
                         .textContentType(.URL)
                         .autocapitalization(.none)
                     
-                    TextField("端口", text: $port)
+                    TextField("网页端口", text: $port)
                         .keyboardType(.numberPad)
                     
                     Toggle("使用 HTTPS", isOn: $useSSL)
