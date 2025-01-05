@@ -12,6 +12,24 @@ struct OpenWRTHelpView: View {
         NavigationView {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
+                    // 版本兼容性提示
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack {
+                            Image(systemName: "info.circle.fill")
+                                .foregroundColor(.blue)
+                            Text("版本兼容性")
+                                .font(.headline)
+                        }
+                        
+                        Text("目前支持 OpenWRT + OpenClash（v0.46.050）的组合，后续会添加更多支持。")
+                            .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(16)
+                    .background(Color(.systemBackground))
+                    .cornerRadius(12)
+                    .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+                    
                     // 依赖安装说明
                     VStack(alignment: .leading, spacing: 16) {
                         HStack {
@@ -38,6 +56,19 @@ struct OpenWRTHelpView: View {
                                 .padding(10)
                                 .background(cardBackground)
                                 .cornerRadius(8)
+                                .contextMenu {
+                                    Button {
+                                        UIPasteboard.general.string = command
+                                    } label: {
+                                        Label("复制命令", systemImage: "doc.on.doc")
+                                    }
+                                }
+                                .onTapGesture {
+                                    UIPasteboard.general.string = command
+                                    // 添加触觉反馈
+                                    let generator = UINotificationFeedbackGenerator()
+                                    generator.notificationOccurred(.success)
+                                }
                             }
                         }
                         
