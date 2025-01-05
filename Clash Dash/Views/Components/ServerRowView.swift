@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ServerRowView: View {
     let server: ClashServer
+    @StateObject private var settingsViewModel = SettingsViewModel()
     @Environment(\.colorScheme) var colorScheme
     
     private var versionDisplay: String {
@@ -51,7 +52,7 @@ struct ServerRowView: View {
                 }
                 
                 if server.status == .ok {
-                    HStack(spacing: 4) {
+                    HStack(spacing: 12) {
                         // 服务器来源标签
                         Label {
                             Text(server.source == .clashController ? "Clash 控制器" : "OpenWRT")
@@ -62,22 +63,21 @@ struct ServerRowView: View {
                         }
                         .font(.caption)
                         
-                        // if server.source == .clashController {
-                            Text("•")
-                                .foregroundColor(.secondary)
-                                .font(.caption)
-                            
-                            // 版本信息
-                            Label {
-                                Text(versionDisplay)
-                                    .foregroundColor(.secondary)
-                            } icon: {
-                                Image(systemName: "tag")
-                                    .foregroundColor(.secondary)
-                            }
+                        Text("•")
+                            .foregroundColor(.secondary)
                             .font(.caption)
-                            .lineLimit(1)
-                        // }
+                        
+                        // 代理模式信息
+                        Label {
+                            Text(ModeUtils.getModeText(settingsViewModel.mode))
+                                .foregroundColor(.secondary)
+                        } icon: {
+                            Image(systemName: ModeUtils.getModeIcon(settingsViewModel.mode))
+                                .foregroundColor(.secondary)
+                        }
+                        .font(.caption)
+                        
+                        Spacer()
                     }
                 } else if let errorMessage = server.errorMessage {
                     Text(errorMessage)
@@ -97,5 +97,10 @@ struct ServerRowView: View {
         .frame(height: 80)
         .background(cardBackgroundColor)
         .cornerRadius(16)
+        .onAppear {
+            if server.status == .ok {
+                settingsViewModel.getCurrentMode(server: server) { _ in }
+            }
+        }
     }
 } 

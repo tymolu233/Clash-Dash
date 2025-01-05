@@ -522,6 +522,28 @@ struct ChartCard<Content: View>: View {
 
 struct MoreView: View {
     let server: ClashServer
+    @Environment(\.colorScheme) var colorScheme
+    
+    private var cardBackgroundColor: Color {
+        colorScheme == .dark ? 
+            Color(.systemGray6) : 
+            Color(.systemBackground)
+    }
+    
+    private var versionDisplay: String {
+        guard let version = server.version else { return "未知版本" }
+        return version
+    }
+    
+    private var kernelType: String {
+        guard let type = server.serverType else { return "未知内核" }
+        switch type {
+        case .meta: return "Mihomo (meta) 内核"
+        case .premium: return "Clash Premium 内核"
+        case .singbox: return "Sing-Box 内核"
+        case .unknown: return "未知内核"
+        }
+    }
     
     var body: some View {
         List {
@@ -545,6 +567,28 @@ struct MoreView: View {
             }
         }
         .navigationBarTitleDisplayMode(.inline)
+        .overlay(alignment: .bottom) {
+            if server.status == .ok {
+                VStack(spacing: 4) {
+                    Label {
+                        Text(kernelType)
+                    } icon: {
+                        Image(systemName: "cpu")
+                    }
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    
+                    Label {
+                        Text(versionDisplay)
+                    } icon: {
+                        Image(systemName: "tag")
+                    }
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                }
+                .padding(.bottom, 20)
+            }
+        }
     }
 }
 
