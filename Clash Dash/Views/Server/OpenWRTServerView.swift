@@ -148,6 +148,7 @@ struct OpenWRTServerView: View {
     @State private var isLoading = false
     @State private var showError = false
     @State private var errorMessage: String = ""
+    @State private var isPasswordVisible = false  // 添加密码可见性状态
     
     private var isEditMode: Bool { server != nil }
     
@@ -168,27 +169,41 @@ struct OpenWRTServerView: View {
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("服务器信息")) {
-                    TextField("名称", text: $name)
+                Section(header: Text("OpenWRT 信息")) {
+                    TextField("名称（可选）", text: $name)
                         .textContentType(.name)
                     
-                    TextField("OpenWRT地址", text: $host)
+                    TextField("OpenWRT地址（192.168.1.1）", text: $host)
                         .textContentType(.URL)
                         .autocapitalization(.none)
                     
-                    TextField("网页端口", text: $port)
+                    TextField("网页端口（80）", text: $port)
                         .keyboardType(.numberPad)
                     
                     Toggle("使用 HTTPS", isOn: $useSSL)
                 }
                 
                 Section(header: Text("登录信息")) {
-                    TextField("用户名", text: $username)
+                    TextField("用户名（root）", text: $username)
                         .textContentType(.username)
                         .autocapitalization(.none)
                     
-                    SecureField("密码", text: $password)
-                        .textContentType(.password)
+                    HStack {
+                        if isPasswordVisible {
+                            TextField("密码", text: $password)
+                                .textContentType(.password)
+                        } else {
+                            SecureField("密码", text: $password)
+                                .textContentType(.password)
+                        }
+                        
+                        Button {
+                            isPasswordVisible.toggle()
+                        } label: {
+                            Image(systemName: isPasswordVisible ? "eye.slash.fill" : "eye.fill")
+                                .foregroundColor(.secondary)
+                        }
+                    }
                 }
                 
                 if isEditMode {
