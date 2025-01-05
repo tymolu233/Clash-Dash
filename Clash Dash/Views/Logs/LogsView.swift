@@ -8,9 +8,9 @@ struct LogsView: View {
     
     var filteredLogs: [LogManager.LogEntry] {
         if searchText.isEmpty {
-            return logManager.logs
+            return logManager.logs.reversed()
         }
-        return logManager.logs.filter { $0.message.localizedCaseInsensitiveContains(searchText) }
+        return logManager.logs.filter { $0.message.localizedCaseInsensitiveContains(searchText) }.reversed()
     }
     
     var body: some View {
