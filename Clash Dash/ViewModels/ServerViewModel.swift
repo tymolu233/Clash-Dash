@@ -420,6 +420,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                 
                 guard let statusHttpResponse = statusResponse as? HTTPURLResponse else {
                     print("❌ 无效的状态响应类型")
+                    logger.log("❌ 无效的状态响应类型")
                     throw NetworkError.invalidResponse(message: "无效的状态响应类型")
                 }
                 
@@ -429,7 +430,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                 
                 if let responseStr = String(data: statusData, encoding: .utf8) {
                     print("📥 OpenClash 状态响应: \(responseStr)")
-                    // logger.log("📥 OpenClash 状态响应: \(responseStr)")
+                    logger.log("📥 OpenClash 状态响应: \(responseStr)")
                 }
                 
                 
@@ -437,8 +438,15 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                 case 200:
                     print("✅ 获取状态成功，开始解析")
                     print("📥 原始响应容：")
+                    logger.log("📥 原始响应容：")
                     if let jsonString = String(data: statusData, encoding: .utf8) {
                         print("""
+                        {
+                            解析到的 JSON 内容：
+                            \(jsonString.replacingOccurrences(of: ",", with: ",\n    "))
+                        }
+                        """)
+                        logger.log("""
                         {
                             解析到的 JSON 内容：
                             \(jsonString.replacingOccurrences(of: ",", with: ",\n    "))
