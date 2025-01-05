@@ -15,6 +15,17 @@ struct ModeSelectionMenu: View {
                 settingsViewModel.updateConfig("mode", value: "rule", server: server) { 
                     settingsViewModel.mode = "rule"
                     onModeChange("rule")
+                    // 刷新模式信息
+                    Task {
+                        try? await Task.sleep(nanoseconds: 1_000_000_000) // 等待1秒
+                        await MainActor.run {
+                            settingsViewModel.getCurrentMode(server: server) { currentMode in
+                                settingsViewModel.mode = currentMode
+                                // 发送通知以刷新服务器卡片
+                                NotificationCenter.default.post(name: NSNotification.Name("RefreshServerMode"), object: nil)
+                            }
+                        }
+                    }
                 }
             } label: {
                 Label("规则模式", systemImage: settingsViewModel.mode == "rule" ? "checkmark" : "circle")
@@ -25,6 +36,17 @@ struct ModeSelectionMenu: View {
                 settingsViewModel.updateConfig("mode", value: "direct", server: server) { 
                     settingsViewModel.mode = "direct"
                     onModeChange("direct")
+                    // 刷新模式信息
+                    Task {
+                        try? await Task.sleep(nanoseconds: 1_000_000_000) // 等待1秒
+                        await MainActor.run {
+                            settingsViewModel.getCurrentMode(server: server) { currentMode in
+                                settingsViewModel.mode = currentMode
+                                // 发送通知以刷新服务器卡片
+                                NotificationCenter.default.post(name: NSNotification.Name("RefreshServerMode"), object: nil)
+                            }
+                        }
+                    }
                 }
             } label: {
                 Label("直连模式", systemImage: settingsViewModel.mode == "direct" ? "checkmark" : "circle")
@@ -35,6 +57,17 @@ struct ModeSelectionMenu: View {
                 settingsViewModel.updateConfig("mode", value: "global", server: server) { 
                     settingsViewModel.mode = "global"
                     onModeChange("global")
+                    // 刷新模式信息
+                    Task {
+                        try? await Task.sleep(nanoseconds: 1_000_000_000) // 等待1秒
+                        await MainActor.run {
+                            settingsViewModel.getCurrentMode(server: server) { currentMode in
+                                settingsViewModel.mode = currentMode
+                                // 发送通知以刷新服务器卡片
+                                NotificationCenter.default.post(name: NSNotification.Name("RefreshServerMode"), object: nil)
+                            }
+                        }
+                    }
                 }
             } label: {
                 Label("全局模式", systemImage: settingsViewModel.mode == "global" ? "checkmark" : "circle")

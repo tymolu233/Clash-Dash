@@ -98,9 +98,29 @@ struct ServerRowView: View {
         .background(cardBackgroundColor)
         .cornerRadius(16)
         .onAppear {
-            if server.status == .ok {
-                settingsViewModel.getCurrentMode(server: server) { _ in }
+            // 初始获取代理模式
+            settingsViewModel.getCurrentMode(server: server) { currentMode in
+                settingsViewModel.mode = currentMode
             }
+            
+            // 添加通知监听
+            NotificationCenter.default.addObserver(
+                forName: NSNotification.Name("RefreshServerMode"),
+                object: nil,
+                queue: .main
+            ) { _ in
+                settingsViewModel.getCurrentMode(server: server) { currentMode in
+                    settingsViewModel.mode = currentMode
+                }
+            }
+        }
+        .onDisappear {
+            // 移除通知监听
+            NotificationCenter.default.removeObserver(
+                self,
+                name: NSNotification.Name("RefreshServerMode"),
+                object: nil
+            )
         }
     }
 } 
