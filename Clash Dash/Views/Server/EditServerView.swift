@@ -36,7 +36,7 @@ struct EditServerView: View {
             Form {
                 Section {
                     TextField("名称（可选）", text: $name)
-                    TextField("服务器地址", text: $url)
+                    TextField("控制面板登录地址，如 192.168.1.1", text: $url)
                         .textInputAutocapitalization(.never)
                         .keyboardType(.URL)
                         .onSubmit {
@@ -46,9 +46,9 @@ struct EditServerView: View {
                                 useSSL = true
                             }
                         }
-                    TextField("端口", text: $port)
+                    TextField("控制面板登录端口，如 9090", text: $port)
                         .keyboardType(.numberPad)
-                    TextField("密钥（可选）", text: $secret)
+                    TextField("控制面板登录密钥（可选）", text: $secret)
                         .textInputAutocapitalization(.never)
                     
                     Toggle(isOn: $useSSL) {
@@ -60,19 +60,19 @@ struct EditServerView: View {
                         }
                     }
                 } header: {
-                    Text("服务器信息")
+                    Text("外部控制器信息")
                 } footer: {
                     VStack(alignment: .leading) {
-                        Text("如果服务器启用了 HTTPS，请打开 HTTPS 开关")
+                        Text("如果外部控制器启用了 HTTPS，请打开 HTTPS 开关")
                         if checkIfHostname(url) {
-                            Text("根据苹果的应用传输安全(App Transport Security, ATS)策略，建议在与域名通信时使用 HTTPS")
+                            Text("根据苹果的应用传输安全(App Transport Security, ATS)策略，与域名通信时必须使用 HTTPS")
                                 .foregroundColor(.secondary)
                                 .padding(.top, 4)
                         }
                     }
                 }
             }
-            .navigationTitle("编辑服务器")
+            .navigationTitle("编辑外部控制器")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
