@@ -10,6 +10,7 @@ struct EditServerView: View {
     @State private var port: String
     @State private var secret: String
     @State private var useSSL: Bool
+    @State private var showingHelp = false
     
     // 添加触觉反馈生成器
     private let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
@@ -71,6 +72,28 @@ struct EditServerView: View {
                         }
                     }
                 }
+                
+                Section {
+                    Button {
+                        showingHelp = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "questionmark.circle")
+                            Text("使用帮助")
+                        }
+                    }
+                }
+                
+                if server.source != .openWRT {
+                    Section {
+                        Button(role: .destructive) {
+                            viewModel.deleteServer(server)
+                            dismiss()
+                        } label: {
+                            Text("删除服务器")
+                        }
+                    }
+                }
             }
             .navigationTitle("编辑外部控制器")
             .navigationBarTitleDisplayMode(.inline)
@@ -99,6 +122,9 @@ struct EditServerView: View {
                     }
                     .disabled(url.isEmpty || port.isEmpty)
                 }
+            }
+            .sheet(isPresented: $showingHelp) {
+                AddServerHelpView()
             }
         }
     }

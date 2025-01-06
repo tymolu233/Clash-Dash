@@ -538,9 +538,9 @@ struct MoreView: View {
     private var kernelType: String {
         guard let type = server.serverType else { return "未知内核" }
         switch type {
-        case .meta: return "Mihomo (meta) 内核"
-        case .premium: return "Clash Premium 内核"
-        case .singbox: return "Sing-Box 内核"
+        case .meta: return "Mihomo (meta)"
+        case .premium: return "Clash Premium"
+        case .singbox: return "Sing-Box"
         case .unknown: return "未知内核"
         }
     }
