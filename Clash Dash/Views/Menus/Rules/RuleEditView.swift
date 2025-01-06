@@ -1,10 +1,13 @@
 import SwiftUI
 
+private let logger = LogManager.shared
+
 struct RuleEditView: View {
     @Environment(\.dismiss) private var dismiss
     let title: String
     let rule: OpenClashRule?
     let onSave: (OpenClashRule) -> Void
+    let server: ClashServer  // 添加服务器参数
     
     @State private var selectedType: RuleType = .domain
     @State private var target: String = ""
@@ -12,13 +15,13 @@ struct RuleEditView: View {
     @State private var comment: String = ""
     @State private var showError = false
     @State private var errorMessage: String?
+    @State private var proxyGroups: [String] = []
+    @State private var isLoadingProxies = true
     
-    // 添加常用策略选项
-    private let commonActions = ["DIRECT", "REJECT"]
-    
-    init(title: String = "添加规则", rule: OpenClashRule? = nil, onSave: @escaping (OpenClashRule) -> Void) {
+    init(title: String = "添加规则", rule: OpenClashRule? = nil, server: ClashServer, onSave: @escaping (OpenClashRule) -> Void) {
         self.title = title
         self.rule = rule
+        self.server = server
         self.onSave = onSave
         
         // 如果是编辑模式，设置初始值
@@ -28,6 +31,52 @@ struct RuleEditView: View {
             _action = State(initialValue: rule.action)
             _comment = State(initialValue: rule.comment ?? "")
         }
+    }
+    
+    private func fetchProxyGroups() {
+        isLoadingProxies = true
+        let scheme = server.useSSL ? "https" : "http"
+        guard let url = URL(string: "\(scheme)://\(server.url):\(server.port)/proxies") else {
+            proxyGroups = ["获取失败"]
+            isLoadingProxies = false
+            return
+        }
+        
+        var request = URLRequest(url: url)
+        if !server.secret.isEmpty {
+            request.setValue("Bearer \(server.secret)", forHTTPHeaderField: "Authorization")
+        }
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                defer { isLoadingProxies = false }
+                
+                if let error = error {
+                    logger.log("覆写规则 - 获取代理列表失败: \(error)")
+                    proxyGroups = ["获取失败"]
+                    return
+                }
+                
+                guard let data = data else {
+                    proxyGroups = ["获取失败"]
+                    return
+                }
+                
+                do {
+                    if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                       let proxies = json["proxies"] as? [String: Any],
+                       let global = proxies["GLOBAL"] as? [String: Any],
+                       let all = global["all"] as? [String] {
+                        proxyGroups = all
+                    } else {
+                        proxyGroups = ["获取失败"]
+                    }
+                } catch {
+                    logger.log("覆写规则 - 解析代理列表失败: \(error)")
+                    proxyGroups = ["获取失败"]
+                }
+            }
+        }.resume()
     }
     
     private func save() {
@@ -146,9 +195,15 @@ struct RuleEditView: View {
                             .font(.headline)
                             .foregroundColor(.primary)
                         
-                        TextField("请输入策略名称", text: $action)
-                            .textFieldStyle(.plain)
-                            .padding(.horizontal, 12)
+                        if isLoadingProxies {
+                            HStack {
+                                ProgressView()
+                                    .scaleEffect(0.8)
+                                Text("正在加载策略列表...")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                            }
+                            .frame(maxWidth: .infinity)
                             .padding(.vertical, 10)
                             .background(Color(.systemBackground))
                             .clipShape(RoundedRectangle(cornerRadius: 8))
@@ -156,47 +211,52 @@ struct RuleEditView: View {
                                 RoundedRectangle(cornerRadius: 8)
                                     .stroke(Color(.separator), lineWidth: 0.5)
                             )
-                        
-                        // 常用策略快速选择
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 8) {
-                                ForEach(commonActions, id: \.self) { commonAction in
+                        } else {
+                            Menu {
+                                ForEach(proxyGroups, id: \.self) { proxy in
                                     Button {
-                                        action = commonAction
+                                        action = proxy
                                     } label: {
-                                        Text(commonAction)
-                                            .font(.subheadline)
-                                            .padding(.horizontal, 12)
-                                            .padding(.vertical, 8)
-                                            .background(action == commonAction ? 
-                                                      selectedType.iconColor : 
-                                                      Color(.systemBackground))
-                                            .foregroundColor(action == commonAction ? .white : .primary)
-                                            .clipShape(RoundedRectangle(cornerRadius: 6))
-                                            .overlay(
-                                                RoundedRectangle(cornerRadius: 6)
-                                                    .stroke(action == commonAction ? 
-                                                           Color.clear : 
-                                                           Color(.separator), lineWidth: 0.5)
-                                            )
+                                        HStack {
+                                            Text(proxy)
+                                            if action == proxy {
+                                                Image(systemName: "checkmark")
+                                            }
+                                        }
                                     }
                                 }
+                            } label: {
+                                HStack {
+                                    Text(action.isEmpty ? "请选择策略" : action)
+                                        .foregroundColor(action.isEmpty ? .secondary : .primary)
+                                    Spacer()
+                                    Image(systemName: "chevron.up.chevron.down")
+                                        .foregroundColor(.secondary)
+                                        .imageScale(.small)
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 10)
+                                .background(Color(.systemBackground))
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(Color(.separator), lineWidth: 0.5)
+                                )
                             }
-                            .padding(.vertical, 4)
                         }
                         
-                        VStack(alignment: .leading, spacing: 4) {
-                            Label("常用策略说明", systemImage: "info.circle")
-                                .font(.caption)
-                                .foregroundColor(.blue)
-                            Text("• DIRECT - 直接连接")
-                                .font(.caption)
-                            Text("• REJECT - 拒绝连接")
-                                .font(.caption)
-                            Text("• 其他策略需要与配置文件中的策略组名称一致")
-                                .font(.caption)
-                        }
-                        .foregroundColor(.secondary)
+                        // VStack(alignment: .leading, spacing: 4) {
+                        //     Label("策略说明", systemImage: "info.circle")
+                        //         .font(.caption)
+                        //         .foregroundColor(.blue)
+                        //     Text("• DIRECT - 直接连接")
+                        //         .font(.caption)
+                        //     Text("• REJECT - 拒绝连接")
+                        //         .font(.caption)
+                        //     Text("• 其他策略需要与配置文件中的策略组名称一致")
+                        //         .font(.caption)
+                        // }
+                        // .foregroundColor(.secondary)
                     }
                     .padding(.horizontal)
                     
@@ -247,6 +307,9 @@ struct RuleEditView: View {
                 if let errorMessage = errorMessage {
                     Text(errorMessage)
                 }
+            }
+            .task {
+                fetchProxyGroups()
             }
         }
     }

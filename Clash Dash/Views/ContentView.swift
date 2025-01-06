@@ -33,11 +33,11 @@ struct ContentView: View {
                                 .foregroundColor(.secondary.opacity(0.7))
                                 .padding(.bottom, 10)
                             
-                            Text("没有服务器")
+                            Text("没有控制器")
                                 .font(.title2)
                                 .fontWeight(.medium)
                             
-                            Text("点击添加按钮来添加一个新的服务器")
+                            Text("点击添加按钮来添加一个新的控制器")
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
                                 .multilineTextAlignment(.center)
@@ -58,7 +58,7 @@ struct ContentView: View {
                                     Label("OpenWRT 服务器", systemImage: "wifi.router")
                                 }
                             } label: {
-                                Text("添加服务器")
+                                Text("添加控制器")
                                     .font(.headline)
                                     .foregroundColor(.white)
                                     .frame(width: 160, height: 44)
@@ -150,7 +150,7 @@ struct ContentView: View {
                     .cornerRadius(16)
                     
                     // 版本信息
-                    Text("Ver: 1.2.9 (TestFlight Build 7)")
+                    Text("Ver: 1.2.9 (TestFlight Build 8)")
                         .foregroundColor(.secondary)
                         .font(.footnote)
                         .padding(.top, 8)

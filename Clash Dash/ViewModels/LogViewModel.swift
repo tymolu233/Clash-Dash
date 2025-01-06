@@ -2,6 +2,8 @@ import Foundation
 import SwiftUI
 import Network
 
+private let logger = LogManager.shared
+
 class LogViewModel: ObservableObject {
     @Published var logs: [LogMessage] = []
     @Published var isConnected = false
@@ -84,7 +86,8 @@ class LogViewModel: ObservableObject {
     func setLogLevel(_ level: String) {
         guard self.logLevel != level else { return }
         self.logLevel = level
-        print("📝 切换日志级别到: \(level)")
+        print("📝 切换实时日志级别到: \(level)")
+        logger.log("切换实时日志级别到: \(level)")
         
         Task { @MainActor in
             // 先断开现有连接
@@ -139,10 +142,20 @@ class LogViewModel: ObservableObject {
     }
     
     func connect(to server: ClashServer) {
-        guard !isReconnecting else { return }
+        guard !isReconnecting else {
+            print("⚠️ 正在重连中，跳过连接请求")
+            logger.log("⚠️ 日志 - 正在重连中，跳过连接请求")
+            return
+        }
+        
+        print("📡 开始连接到服务器: \(server.url):\(server.port)")
+        logger.log("📡 日志 - 开始连接到服务器: \(server.url):\(server.port)")
+        // 每次主动连接时重置重试计数
+        connectionRetryCount = 0
         
         if connectionRetryCount >= maxRetryCount {
             print("⚠️ 达到最大重试次数，停止重连")
+            logger.log("⚠️ 日志 - 达到最大重试次数，停止重连")
             connectionRetryCount = 0
             return
         }
@@ -152,6 +165,7 @@ class LogViewModel: ObservableObject {
         
         guard let request = makeWebSocketRequest(server: server) else {
             print("❌ 无法创建 WebSocket 请求")
+            logger.log("❌ 日志 - 无法创建 WebSocket 请求")
             return
         }
         
@@ -173,18 +187,20 @@ class LogViewModel: ObservableObject {
         guard !error.isCancellationError else { return }
         
         print("❌ WebSocket 错误: \(error.localizedDescription)")
-        
+        logger.log("❌ 日志 - WebSocket 错误: \(error.localizedDescription)")
         if let urlError = error as? URLError {
             switch urlError.code {
             case .secureConnectionFailed:
-                print("❌ SSL/TLS 连接失败")
+                print("❌ SSL/TLS 连接失败，服务器: \(currentServer?.url ?? ""):\(currentServer?.port ?? "0")")
+                logger.log("❌ 日志 - SSL/TLS 连接失败，服务器: \(currentServer?.url ?? ""):\(currentServer?.port ?? "0")")
                 DispatchQueue.main.async { [weak self] in
                     self?.isConnected = false
                     // 不要在 SSL 错误时自动重连
                     self?.connectionRetryCount = self?.maxRetryCount ?? 5
                 }
             case .serverCertificateUntrusted:
-                print("❌ 服务器证书不受信任")
+                print("❌ 服务器证书不受信任，服务器: \(currentServer?.url ?? ""):\(currentServer?.port ?? "0")")
+                logger.log("❌ 日志 - 服务器证书不受信任，服务器: \(currentServer?.url ?? ""):\(currentServer?.port ?? "0")")
                 DispatchQueue.main.async { [weak self] in
                     self?.isConnected = false
                     self?.connectionRetryCount = self?.maxRetryCount ?? 5

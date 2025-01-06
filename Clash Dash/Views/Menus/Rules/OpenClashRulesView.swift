@@ -12,6 +12,8 @@ struct OpenClashRulesView: View {
     @State private var isUpdating = false
     @State private var isProcessing = false
     @State private var editingRule: OpenClashRule?
+    @State private var isCustomRulesEnabled = false
+    @State private var showingHelp = false
     
     var body: some View {
         NavigationStack {
@@ -20,158 +22,168 @@ struct OpenClashRulesView: View {
                     ProgressView()
                         .scaleEffect(1.5)
                         .frame(maxWidth: .infinity, maxHeight: 200)
-                } else if rules.isEmpty {
-                    VStack(spacing: 20) {
-                        Image(systemName: "text.badge.plus")
-                            .font(.system(size: 50))
-                            .foregroundColor(.secondary.opacity(0.7))
-                            .padding(.bottom, 10)
-                        
-                        Text("没有规则")
-                            .font(.title2)
-                            .fontWeight(.medium)
-                        
-                        Text("点击添加按钮来添加一个新的规则")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 32)
-                    }
-                    .frame(maxWidth: .infinity, minHeight: 200)
-                    .padding(.top, 40)
                 } else {
-                    List {
-                        ForEach(rules) { rule in
-                            HStack(spacing: 12) {
-                                // 左侧：目标
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(rule.target)
-                                        .font(.system(.body, design: .monospaced))
-                                        .foregroundColor(rule.isEnabled ? .primary : .secondary)
-                                        .lineLimit(1)
-                                    
-                                    if let comment = rule.comment {
-                                        Text(comment)
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                            .lineLimit(1)
+                    VStack {
+                        if rules.isEmpty {
+                            VStack(spacing: 20) {
+                                Image(systemName: "text.badge.plus")
+                                    .font(.system(size: 50))
+                                    .foregroundColor(.secondary.opacity(0.7))
+                                    .padding(.bottom, 10)
+                                
+                                Text("没有规则")
+                                    .font(.title2)
+                                    .fontWeight(.medium)
+                                
+                                Text("点击添加按钮来添加一个新的规则")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal, 32)
+                            }
+                            .frame(maxWidth: .infinity, minHeight: 200)
+                            .padding(.top, 40)
+                        } else {
+                            List {
+                                ForEach(rules) { rule in
+                                    HStack(spacing: 12) {
+                                        // 左侧：目标
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            Text(rule.target)
+                                                .font(.system(.body, design: .monospaced))
+                                                .foregroundColor(rule.isEnabled ? .primary : .secondary)
+                                                .lineLimit(1)
+                                            
+                                            if let comment = rule.comment {
+                                                Text(comment)
+                                                    .font(.caption)
+                                                    .foregroundColor(.secondary)
+                                                    .lineLimit(1)
+                                            }
+                                        }
+                                        
+                                        Spacer()
+                                        
+                                        // 右侧：类型和动作
+                                        VStack(alignment: .trailing, spacing: 4) {
+                                            Text(rule.type)
+                                                .font(.caption)
+                                                .foregroundColor(typeColor(for: rule.type))
+                                                .padding(.horizontal, 6)
+                                                .padding(.vertical, 2)
+                                                .background(typeColor(for: rule.type).opacity(0.12))
+                                                .cornerRadius(4)
+                                            
+                                            Text(rule.action)
+                                                .font(.caption)
+                                                .foregroundColor(.orange)
+                                                .padding(.horizontal, 6)
+                                                .padding(.vertical, 2)
+                                                .background(Color.orange.opacity(0.12))
+                                                .cornerRadius(4)
+                                        }
                                     }
-                                }
-                                
-                                Spacer()
-                                
-                                // 右侧：类型和动作
-                                VStack(alignment: .trailing, spacing: 4) {
-                                    Text(rule.type)
-                                        .font(.caption)
-                                        .foregroundColor(typeColor(for: rule.type))
-                                        .padding(.horizontal, 6)
-                                        .padding(.vertical, 2)
-                                        .background(typeColor(for: rule.type).opacity(0.12))
-                                        .cornerRadius(4)
-                                    
-                                    Text(rule.action)
-                                        .font(.caption)
-                                        .foregroundColor(.orange)
-                                        .padding(.horizontal, 6)
-                                        .padding(.vertical, 2)
-                                        .background(Color.orange.opacity(0.12))
-                                        .cornerRadius(4)
+                                    .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
+                                    .listRowBackground(Color(.secondarySystemGroupedBackground))
+                                    .opacity(rule.isEnabled ? 1 : 0.6)
+                                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                        Button(role: .destructive) {
+                                            Task {
+                                                await deleteRule(rule)
+                                            }
+                                        } label: {
+                                            Label("删除", systemImage: "trash")
+                                        }
+                                        
+                                        Button {
+                                            editingRule = rule  // 设置要编辑的规则，触发编辑视图
+                                        } label: {
+                                            Label("编辑", systemImage: "pencil")
+                                        }
+                                        .tint(.blue)
+                                        
+                                        Button {
+                                            Task {
+                                                await toggleRule(rule)
+                                            }
+                                        } label: {
+                                            Label(rule.isEnabled ? "禁用" : "启用", 
+                                                  systemImage: rule.isEnabled ? "livephoto.slash" : "livephoto")
+                                        }
+                                        .tint(rule.isEnabled ? .orange : .green)
+                                    }
                                 }
                             }
-                            .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
-                            .listRowBackground(Color(.secondarySystemGroupedBackground))
-                            .opacity(rule.isEnabled ? 1 : 0.6)
-                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                Button(role: .destructive) {
-                                    Task {
-                                        await deleteRule(rule)
-                                    }
-                                } label: {
-                                    Label("删除", systemImage: "trash")
-                                }
-                                
-                                Button {
-                                    editingRule = rule  // 设置要编辑的规则，触发编辑视图
-                                } label: {
-                                    Label("编辑", systemImage: "pencil")
-                                }
-                                .tint(.blue)
-                                
-                                Button {
-                                    Task {
-                                        await toggleRule(rule)
-                                    }
-                                } label: {
-                                    Label(rule.isEnabled ? "禁用" : "启用", 
-                                          systemImage: rule.isEnabled ? "livephoto.slash" : "livephoto")
-                                }
-                                .tint(rule.isEnabled ? .orange : .green)
-                            }
+                            .listStyle(.insetGrouped)
                         }
                     }
-                    .listStyle(.insetGrouped)
-                }
-            }
-            .navigationTitle("覆写规则")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("关闭", action: { dismiss() })
-                }
-                
-                ToolbarItem(placement: .primaryAction) {
-                    HStack {
-                        // 更新按钮
-                        Button {
-                            Task {
-                                await loadRules()
-                            }
-                        } label: {
-                            Image(systemName: "arrow.triangle.2.circlepath")
+                    .navigationTitle("覆写规则")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarLeading) {
+                            Button("关闭", action: { dismiss() })
                         }
-                        .disabled(isUpdating)
                         
-                        // 添加按钮
-                        Button {
-                            showingAddSheet = true
-                        } label: {
-                            Image(systemName: "plus")
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            HStack(spacing: 16) {
+                                Button {
+                                    showingHelp = true
+                                } label: {
+                                    Image(systemName: "info.circle")
+                                }
+                                
+                                Toggle("", isOn: $isCustomRulesEnabled)
+                                    .toggleStyle(SwitchToggleStyle(tint: .blue))
+                                    .onChange(of: isCustomRulesEnabled) { newValue in
+                                        Task {
+                                            await toggleCustomRules(enabled: newValue)
+                                        }
+                                    }
+                                
+                                Button {
+                                    showingAddSheet = true
+                                } label: {
+                                    Image(systemName: "plus")
+                                }
+                            }
+                        }
+                    }
+                    .overlay {
+                        if isUpdating {
+                            ProgressView()
+                                .scaleEffect(1.5)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                .background(Color(.systemBackground).opacity(0.8))
                         }
                     }
                 }
             }
-            .overlay {
-                if isUpdating {
-                    ProgressView()
-                        .scaleEffect(1.5)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(Color(.systemBackground).opacity(0.8))
+            .task {
+                await loadRules()
+            }
+            .alert("错误", isPresented: $showError) {
+                Button("确定", role: .cancel) { }
+            } message: {
+                if let errorMessage = errorMessage {
+                    Text(errorMessage)
                 }
             }
-        }
-        .task {
-            await loadRules()
-        }
-        .alert("错误", isPresented: $showError) {
-            Button("确定", role: .cancel) { }
-        } message: {
-            if let errorMessage = errorMessage {
-                Text(errorMessage)
-            }
-        }
-        .sheet(isPresented: $showingAddSheet) {
-            RuleEditView { rule in
-                Task {
-                    await addRule(rule)
+            .sheet(isPresented: $showingAddSheet) {
+                RuleEditView(server: server) { rule in
+                    Task {
+                        await addRule(rule)
+                    }
                 }
             }
-        }
-        .sheet(item: $editingRule) { rule in
-            RuleEditView(title: "编辑规则", rule: rule) { updatedRule in
-                Task {
-                    await updateRule(updatedRule)
+            .sheet(item: $editingRule) { rule in
+                RuleEditView(title: "编辑规则", rule: rule, server: server) { updatedRule in
+                    Task {
+                        await updateRule(updatedRule)
+                    }
                 }
+            }
+            .sheet(isPresented: $showingHelp) {
+                OpenClashRulesHelpView()
             }
         }
     }
@@ -199,6 +211,34 @@ struct OpenClashRulesView: View {
             
             let scheme = server.useSSL ? "https" : "http"
             let baseURL = "\(scheme)://\(server.url):\(server.openWRTPort ?? "80")"
+            
+            // 获取自定义规则启用状态
+            guard let statusUrl = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
+                errorMessage = "无效的服务器地址"
+                showError = true
+                return
+            }
+            
+            var statusRequest = URLRequest(url: statusUrl)
+            statusRequest.httpMethod = "POST"
+            statusRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            
+            let statusPayload: [String: Any] = [
+                "method": "exec",
+                "params": ["uci get openclash.config.enable_custom_clash_rules"]
+            ]
+            
+            statusRequest.httpBody = try JSONSerialization.data(withJSONObject: statusPayload)
+            
+            let (statusData, _) = try await URLSession.shared.data(for: statusRequest)
+            if let statusResponse = try? JSONDecoder().decode(OpenClashRuleResponse.self, from: statusData),
+               let statusResult = statusResponse.result {
+                let enabled = statusResult.trimmingCharacters(in: .whitespacesAndNewlines) == "1"
+                await MainActor.run {
+                    self.isCustomRulesEnabled = enabled
+                }
+                print("📍 自定义规则状态: \(enabled ? "启用" : "禁用")")
+            }
             
             // 获取规则内容
             guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
@@ -478,6 +518,80 @@ struct OpenClashRulesView: View {
             rules[index] = originalRule
             errorMessage = error.localizedDescription
             showError = true
+        }
+    }
+    
+    private func toggleCustomRules(enabled: Bool) async {
+        print("🔄 切换自定义规则状态: \(enabled)")
+        isProcessing = true
+        defer { isProcessing = false }
+        
+        guard let username = server.openWRTUsername,
+              let password = server.openWRTPassword else {
+            errorMessage = "未设置 OpenWRT 用户名或密码"
+            showError = true
+            return
+        }
+        
+        do {
+            let token = try await viewModel.getAuthToken(server, username: username, password: password)
+            let scheme = server.useSSL ? "https" : "http"
+            let baseURL = "\(scheme)://\(server.url):\(server.openWRTPort ?? "80")"
+            
+            guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
+                throw NetworkError.invalidURL
+            }
+            
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            
+            // 设置启用状态
+            let setCmd = "uci set openclash.config.enable_custom_clash_rules='\(enabled ? "1" : "0")' && uci commit openclash"
+            let payload: [String: Any] = [
+                "method": "exec",
+                "params": [setCmd]
+            ]
+            
+            request.httpBody = try JSONSerialization.data(withJSONObject: payload)
+            
+            let (data, response) = try await URLSession.shared.data(for: request)
+            
+            guard let httpResponse = response as? HTTPURLResponse,
+                  httpResponse.statusCode == 200 else {
+                throw NetworkError.serverError((response as? HTTPURLResponse)?.statusCode ?? 500)
+            }
+            
+            if let responseString = String(data: data, encoding: .utf8) {
+                print("📥 服务器响应: \(responseString)")
+            }
+            
+            // 重启 OpenClash 服务使配置生效
+            // let restartCmd = "/etc/init.d/openclash restart"
+            // let restartPayload: [String: Any] = [
+            //     "method": "exec",
+            //     "params": [restartCmd]
+            // ]
+            
+            // request.httpBody = try JSONSerialization.data(withJSONObject: restartPayload)
+            
+            // let (_, restartResponse) = try await URLSession.shared.data(for: request)
+            
+            // guard let restartHttpResponse = restartResponse as? HTTPURLResponse,
+            //       restartHttpResponse.statusCode == 200 else {
+            //     throw NetworkError.serverError((restartResponse as? HTTPURLResponse)?.statusCode ?? 500)
+            // }
+            
+            print("✅ 自定义规则状态已更新为: \(enabled ? "启用" : "禁用")")
+            
+        } catch {
+            print("❌ 切换自定义规则状态失败: \(error.localizedDescription)")
+            errorMessage = error.localizedDescription
+            showError = true
+            // 恢复UI状态
+            await MainActor.run {
+                self.isCustomRulesEnabled = !enabled
+            }
         }
     }
 }
