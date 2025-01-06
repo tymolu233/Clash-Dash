@@ -40,16 +40,16 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
     private func determineServerType(from response: VersionResponse) -> ClashServer.ServerType {
         // 检查是否是 sing-box
         if response.version.lowercased().contains("sing") {
-            logger.log("后端为 sing-box 内核")
+            // logger.log("检测到后端为 sing-box 内核")
             return .singbox
         }
         
         // 如果不是 sing-box，则按原有逻辑判断
         if response.meta == true {
-            logger.log("后端为 Meta 内核")
+            // logger.log("检测到后端为 Meta 内核")
             return .meta
         }
-        logger.log("后端为 Premium （原版 Clash）内核")
+        // logger.log("检测到后端为 Premium （原版 Clash）内核")
         return .premium
     }
     
@@ -193,6 +193,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                         updatedServer.version = version
                         updatedServer.errorMessage = nil
                         updateServer(updatedServer)
+                        logger.log("更新：\(updatedServer.name ?? server.url) 状态为 OK")
                     } else {
                         updateServerStatus(server, status: .error, message: "无效的响应格式")
                         logger.log("服务器地址：\(server.url):\(server.port) ：无效的响应格式")
