@@ -173,13 +173,6 @@ struct AddServerView: View {
                     TextField("控制面板登录地址", text: $url)
                         .textInputAutocapitalization(.never)
                         .keyboardType(.URL)
-                        .onSubmit {
-                            // 在用户完成输入后检查是否是域名
-                            if checkIfHostname(url) {
-                                // 如果是域名，建议使用 HTTPS
-                                useSSL = true
-                            }
-                        }
                     TextField("控制面板登录端口", text: $port)
                         .keyboardType(.numberPad)
                     TextField("控制面板登录密钥（可选）", text: $secret)
@@ -198,8 +191,6 @@ struct AddServerView: View {
                 } footer: {
                     VStack(alignment: .leading) {
                         Text("如果外部控制器启用了 HTTPS，请打开 HTTPS 开关")
-                        Text("根据苹果的 App Transport Security 策略，与域名通信时必须使用 HTTPS")
-                            .padding(.top, 4)
                     }
                 }
                 
