@@ -1,5 +1,7 @@
 import SwiftUI
 
+private let logger = LogManager.shared
+
 struct OpenWRTHelpView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
@@ -21,7 +23,7 @@ struct OpenWRTHelpView: View {
                                 .font(.headline)
                         }
                         
-                        Text("目前支持 OpenWRT + OpenClash（v0.46.050）的组合，后续会添加更多支持。")
+                        Text("目前支持 OpenWRT + OpenClash（v0.46.050）的组合，后续会添加更多支持")
                             .foregroundColor(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -91,14 +93,14 @@ struct OpenWRTHelpView: View {
                                 .font(.headline)
                         }
                         
-                        Text("如果使用域名访问，必须启用 SSL，并在 OpenClash 的\"插件设置\" - \"外部控制\"中配置以下选项：")
+                        Text("如果使用域名访问，推荐启用 SSL，并在 OpenClash 的\"插件设置\" - \"外部控制\"中配置以下选项：")
                             .foregroundColor(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                         
                         VStack(alignment: .leading, spacing: 12) {
                             SettingsRow(number: 1, title: "管理页面公网域名", description: "设置为您的域名")
                             SettingsRow(number: 2, title: "管理页面映射端口", description: "通常设置为 443")
-                            SettingsRow(number: 3, title: "管理页面公网SSL访问", description: "必须启用")
+                            SettingsRow(number: 3, title: "管理页面公网SSL访问", description: "推荐启用")
                         }
                         
                         Text("请确保 OpenClash 配置的外部访问能够正常访问")
@@ -312,6 +314,43 @@ struct OpenWRTServerView: View {
         hasOpenClash // 添加 OpenClash 确认检查
     }
     
+    private func isPrivateIP(_ ipString: String) -> Bool {
+        // 检查是否是合法的 IP 地址
+        guard ipString.matches(of: /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/).first != nil else {
+            return false
+        }
+        
+        let components = ipString.split(separator: ".")
+        guard components.count == 4,
+              let firstByte = UInt8(components[0]),
+              let secondByte = UInt8(components[1]) else {
+            return false
+        }
+        
+        // 检查是否是内网 IP
+        // 10.0.0.0/8
+        if firstByte == 10 {
+            return true
+        }
+        
+        // 172.16.0.0/12
+        if firstByte == 172 && (secondByte >= 16 && secondByte <= 31) {
+            return true
+        }
+        
+        // 192.168.0.0/16
+        if firstByte == 192 && secondByte == 168 {
+            return true
+        }
+        
+        // 127.0.0.0/8 (本地回环)
+        if firstByte == 127 {
+            return true
+        }
+        
+        return false
+    }
+    
     private func saveServer() {
         isLoading = true
         
@@ -340,8 +379,8 @@ struct OpenWRTServerView: View {
                 // 验证连接并获取 Clash 信息
                 let status = try await viewModel.validateOpenWRTServer(testServer, username: username, password: password)
                 
-                // 检查是否是域名访问
-                if cleanHost.contains(".") && cleanHost.matches(of: /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/).isEmpty {
+                // 检查是否是内网 IP
+                if !isPrivateIP(cleanHost) {
                     // 检查是否配置了外部控制
                     if let domain = status.dbForwardDomain,
                        let port = status.dbForwardPort,
@@ -351,10 +390,12 @@ struct OpenWRTServerView: View {
                         testServer.url = domain
                         testServer.port = port
                         testServer.useSSL = ssl == "1"
+                        logger.log("外部控制器使用公网地址 \(domain) 和端口 \(port) 连接")
                     } else {
                         throw NetworkError.invalidResponse(message: "未在 OpenClash 中启用公网外部控制，请查看\"使用帮助\"")
                     }
                 } else {
+                    logger.log("外部控制器使用局域网地址 \(status.daip) 和端口 \(status.cnPort) 连接")
                     // 使用本地地址
                     testServer.url = status.daip
                     testServer.port = status.cnPort

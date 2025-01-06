@@ -328,8 +328,8 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
     func validateOpenWRTServer(_ server: ClashServer, username: String, password: String) async throws -> OpenWRTStatus {
         let scheme = server.useSSL ? "https" : "http"
         let baseURL = "\(scheme)://\(server.openWRTUrl ?? server.url):\(server.openWRTPort ?? "80")"
-        print("🔍 开始验证 OpenWRT 服务器: \(baseURL)")
-        logger.log("🔍 开始验证 OpenWRT 服务器: \(baseURL)")
+        print("第一步：开始验证 OpenWRT 服务器: \(baseURL)")
+        logger.log("第一步：开始验证 OpenWRT 服务器: \(baseURL)")
         
         // 1. 使用 JSON-RPC 登录
         guard let loginURL = URL(string: "\(baseURL)/cgi-bin/luci/rpc/auth") else {
@@ -358,8 +358,8 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             
             loginRequest.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
             
-            print("📤 发送 JSON-RPC 登录请求")
-            logger.log("📤 发送 JSON-RPC 登录请求")
+            print("第二步：发送 JSON-RPC 登录请求")
+            logger.log("第二步：发送 JSON-RPC 登录请求")
             let (loginData, loginResponse) = try await session.data(for: loginRequest)
             
             guard let httpResponse = loginResponse as? HTTPURLResponse else {
@@ -378,8 +378,8 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             case 200:
                 // 解析 JSON-RPC 响应
                 let authResponse = try JSONDecoder().decode(OpenWRTAuthResponse.self, from: loginData)
-                print("📥 解析后的 JSON-RPC 响应: id=\(authResponse.id), result=\(authResponse.result ?? "nil"), error=\(authResponse.error ?? "nil")")
-                logger.log("📥 解析后的 JSON-RPC 响应: id=\(authResponse.id), result=\(authResponse.result ?? "nil"), error=\(authResponse.error ?? "nil")")
+                // print("📥 解析后的 JSON-RPC 响应: id=\(authResponse.id), result=\(authResponse.result ?? "nil"), error=\(authResponse.error ?? "nil")")
+                // logger.log("📥 解析后的 JSON-RPC 响应: id=\(authResponse.id), result=\(authResponse.result ?? "nil"), error=\(authResponse.error ?? "nil")")
                 
                 guard let token = authResponse.result, !token.isEmpty else {
                     if authResponse.result == nil && authResponse.error == nil {
@@ -412,8 +412,8 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                     throw NetworkError.invalidURL
                 }
                 
-                print("📤 发送状态请求: \(statusURL)")
-                logger.log("📤 发送状态请求: \(statusURL)")
+                print("第四步：发送状态请求: \(statusURL)")
+                logger.log("第四步：发送状态请求: \(statusURL)")
                 var statusRequest = URLRequest(url: statusURL)
                 statusRequest.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
                 

@@ -150,7 +150,7 @@ struct ContentView: View {
                     .cornerRadius(16)
                     
                     // 版本信息
-                    Text("Ver: 1.2.9 (TestFlight Build 8)")
+                    Text("Ver: 1.2.9 (TF Build 10)")
                         .foregroundColor(.secondary)
                         .font(.footnote)
                         .padding(.top, 8)
