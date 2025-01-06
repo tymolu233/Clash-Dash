@@ -1432,7 +1432,7 @@ struct ProxyNodeCard: View {
         .overlay {
             if isSelected {
                 RoundedRectangle(cornerRadius: 12)
-                    .stroke(.blue, lineWidth: 2)
+                    .strokeBorder(.blue, lineWidth: 2)
                     .drawingGroup(opaque: false)  // 优化选中状态渲染
             }
         }
