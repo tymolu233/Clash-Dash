@@ -170,7 +170,7 @@ struct AddServerView: View {
             Form {
                 Section {
                     TextField("名称（可选）", text: $name)
-                    TextField("控制面板登录地址，如 192.168.1.1", text: $url)
+                    TextField("控制面板登录地址", text: $url)
                         .textInputAutocapitalization(.never)
                         .keyboardType(.URL)
                         .onSubmit {
@@ -180,7 +180,7 @@ struct AddServerView: View {
                                 useSSL = true
                             }
                         }
-                    TextField("控制面板登录端口，如 9090", text: $port)
+                    TextField("控制面板登录端口", text: $port)
                         .keyboardType(.numberPad)
                     TextField("控制面板登录密钥（可选）", text: $secret)
                         .textInputAutocapitalization(.never)
@@ -198,11 +198,8 @@ struct AddServerView: View {
                 } footer: {
                     VStack(alignment: .leading) {
                         Text("如果外部控制器启用了 HTTPS，请打开 HTTPS 开关")
-                        if checkIfHostname(url) {
-                            Text("根据苹果的应用传输安全(App Transport Security, ATS)策略，与域名通信时必须使用 HTTPS")
-                                .foregroundColor(.secondary)
-                                .padding(.top, 4)
-                        }
+                        Text("根据苹果的 App Transport Security 策略，与域名通信时必须使用 HTTPS")
+                            .padding(.top, 4)
                     }
                 }
                 
