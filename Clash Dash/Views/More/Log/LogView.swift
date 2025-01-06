@@ -52,13 +52,6 @@ struct LogView: View {
                         description: "正在等待日志..."
                     )
                     .transition(.opacity)
-                } else if !viewModel.isConnected {
-                    EmptyStateView(
-                        title: "连接断开",
-                        systemImage: "wifi.slash",
-                        description: "正在尝试重新连接..."
-                    )
-                    .transition(.opacity)
                 } else {
                     ScrollView {
                         LazyVStack(spacing: 12) {
@@ -73,8 +66,23 @@ struct LogView: View {
             }
             .frame(maxHeight: .infinity)
         }
-        .navigationTitle("日志")
+        .navigationTitle("内核日志")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button {
+                    if viewModel.isConnected {
+                        viewModel.disconnect(clearLogs: false)
+                    } else {
+                        viewModel.connect(to: server)
+                    }
+                } label: {
+                    Image(systemName: viewModel.isConnected ? "pause.circle.fill" : "play.circle.fill")
+                        .foregroundColor(viewModel.isConnected ? .blue : .green)
+                        .imageScale(.large)
+                }
+            }
+        }
         .onAppear {
             viewModel.connect(to: server)
         }

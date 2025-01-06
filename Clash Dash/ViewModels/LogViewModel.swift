@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import Network
 
 class LogViewModel: ObservableObject {
     @Published var logs: [LogMessage] = []
@@ -9,11 +10,31 @@ class LogViewModel: ObservableObject {
     private var webSocketTask: URLSessionWebSocketTask?
     private let session = URLSession(configuration: .default)
     private var currentServer: ClashServer?
-    private var pingTask: Task<Void, Never>?
-    private var receiveTask: Task<Void, Never>?
     private var isReconnecting = false
     private var connectionRetryCount = 0
     private let maxRetryCount = 5
+    
+    // 添加网络状态监控
+    private let networkMonitor = NWPathMonitor()
+    private var isNetworkAvailable = true
+    
+    init() {
+        setupNetworkMonitoring()
+    }
+    
+    private func setupNetworkMonitoring() {
+        networkMonitor.pathUpdateHandler = { [weak self] path in
+            DispatchQueue.main.async {
+                self?.isNetworkAvailable = path.status == .satisfied
+                if self?.isNetworkAvailable == true && self?.isConnected == false {
+                    if let server = self?.currentServer {
+                        self?.connect(to: server)
+                    }
+                }
+            }
+        }
+        networkMonitor.start(queue: DispatchQueue.global(qos: .background))
+    }
     
     // 添加设置日志级别的方法
     func setLogLevel(_ level: String) {
@@ -47,7 +68,7 @@ class LogViewModel: ObservableObject {
         guard let url = components.url else { return nil }
         
         var request = URLRequest(url: url)
-        request.timeoutInterval = 5
+        request.timeoutInterval = 15 // 增加超时时间到 15 秒
         
         // WebSocket 必需的请求头
         request.setValue("websocket", forHTTPHeaderField: "Upgrade")
@@ -94,8 +115,6 @@ class LogViewModel: ObservableObject {
         let session = makeSession(server: server)
         webSocketTask?.cancel()
         webSocketTask = session.webSocketTask(with: request)
-        
-        schedulePing()
         webSocketTask?.resume()
         
         DispatchQueue.main.async {
@@ -103,46 +122,6 @@ class LogViewModel: ObservableObject {
         }
         
         receiveLog()
-    }
-    
-    // 修改 ping 方法来使用消息发送代替 ping
-    private func schedulePing() {
-        guard let webSocketTask = webSocketTask else { return }
-        
-        let task = Task {
-            var failureCount = 0
-            while !Task.isCancelled {
-                do {
-                    try await Task.sleep(nanoseconds: 5_000_000_000) // 5秒
-                    try await webSocketTask.send(.string("ping"))
-                    
-                    await MainActor.run {
-                        self.isConnected = true
-                        failureCount = 0 // 重置失败计数
-                    }
-                } catch {
-                    // 忽略取消错误的日志输出
-                    if !error.isCancellationError {
-                        failureCount += 1
-                        print("❌ Ping 失败 (\(failureCount)): \(error.localizedDescription)")
-                        
-                        await MainActor.run {
-                            self.isConnected = false
-                        }
-                        
-                        // 只有在连续失败多次后才重连
-                        if failureCount >= 3 {
-                            await MainActor.run {
-                                reconnect()
-                            }
-                            break
-                        }
-                    }
-                }
-            }
-        }
-        
-        pingTask = task
     }
     
     private func handleWebSocketError(_ error: Error) {
@@ -235,8 +214,7 @@ class LogViewModel: ObservableObject {
     }
     
     func disconnect(clearLogs: Bool = true) {
-        pingTask?.cancel()
-        pingTask = nil
+        networkMonitor.cancel()
         webSocketTask?.cancel(with: .goingAway, reason: nil)
         webSocketTask = nil
         
@@ -248,12 +226,22 @@ class LogViewModel: ObservableObject {
         }
     }
     
+    // 修改重连策略，使用指数退避
+    private func getReconnectDelay() -> UInt64 {
+        let baseDelay: UInt64 = 3_000_000_000 // 3秒
+        let maxDelay: UInt64 = 30_000_000_000 // 30秒
+        let delay = baseDelay * UInt64(min(pow(2.0, Double(connectionRetryCount - 1)), 10))
+        return min(delay, maxDelay)
+    }
+    
     private func reconnect() {
         guard !isReconnecting else { return }
         isReconnecting = true
         
         Task {
-            try? await Task.sleep(nanoseconds: 3_000_000_000) // 3秒重连延迟
+            // 使用指数退避延迟
+            try? await Task.sleep(nanoseconds: getReconnectDelay())
+            
             await MainActor.run {
                 if let server = self.currentServer {
                     connect(to: server)
@@ -261,6 +249,10 @@ class LogViewModel: ObservableObject {
                 isReconnecting = false
             }
         }
+    }
+    
+    deinit {
+        networkMonitor.cancel()
     }
 }
 
