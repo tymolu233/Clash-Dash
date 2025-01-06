@@ -180,6 +180,7 @@ struct OpenWRTServerView: View {
     @State private var showError = false
     @State private var errorMessage: String = ""
     @State private var isPasswordVisible = false  // 添加密码可见性状态
+    @State private var hasOpenClash: Bool = false // 添加 OpenClash 确认状态
     
     private var isEditMode: Bool { server != nil }
     
@@ -194,6 +195,7 @@ struct OpenWRTServerView: View {
             _useSSL = State(initialValue: server.useSSL)
             _username = State(initialValue: server.openWRTUsername ?? "")
             _password = State(initialValue: server.openWRTPassword ?? "")
+            _hasOpenClash = State(initialValue: true) // 编辑模式下默认为 true
         }
     }
     
@@ -232,6 +234,18 @@ struct OpenWRTServerView: View {
                             isPasswordVisible.toggle()
                         } label: {
                             Image(systemName: isPasswordVisible ? "eye.slash.fill" : "eye.fill")
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+                
+                Section {
+                    Toggle(isOn: $hasOpenClash) {
+                        VStack(alignment: .leading) {
+                            Text("已安装 OpenClash")
+                                .font(.body)
+                            Text("请确认 OpenWRT 中已安装 OpenClash")
+                                .font(.caption)
                                 .foregroundColor(.secondary)
                         }
                     }
@@ -294,7 +308,8 @@ struct OpenWRTServerView: View {
     
     private var isValid: Bool {
         !host.isEmpty && !port.isEmpty &&
-        !username.isEmpty && !password.isEmpty
+        !username.isEmpty && !password.isEmpty &&
+        hasOpenClash // 添加 OpenClash 确认检查
     }
     
     private func saveServer() {
