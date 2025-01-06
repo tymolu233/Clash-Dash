@@ -1,13 +1,13 @@
 import Foundation
 import SwiftUI
 
-struct LogMessage: Identifiable, Codable {
+struct LogMessage: Identifiable, Codable, Equatable {
     let id = UUID()
     let type: LogType
     let payload: String
     let timestamp: Date
     
-    enum LogType: String, Codable {
+    enum LogType: String, Codable, Equatable {
         case info = "info"
         case warning = "warning"
         case error = "error"
@@ -36,5 +36,12 @@ struct LogMessage: Identifiable, Codable {
         type = try container.decode(LogType.self, forKey: .type)
         payload = try container.decode(String.self, forKey: .payload)
         timestamp = Date()
+    }
+    
+    static func == (lhs: LogMessage, rhs: LogMessage) -> Bool {
+        lhs.id == rhs.id &&
+        lhs.type == rhs.type &&
+        lhs.payload == rhs.payload &&
+        lhs.timestamp == rhs.timestamp
     }
 }

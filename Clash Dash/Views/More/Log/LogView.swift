@@ -57,10 +57,12 @@ struct LogView: View {
                         LazyVStack(spacing: 12) {
                             ForEach(viewModel.logs.reversed()) { log in
                                 LogRow(log: log)
+                                    .transition(.opacity.combined(with: .move(edge: .bottom)))
                             }
                         }
                         .padding(.vertical, 12)
                         .padding(.horizontal)
+                        .animation(.easeOut(duration: 0.2), value: viewModel.logs)
                     }
                 }
             }

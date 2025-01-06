@@ -31,9 +31,5 @@ struct EmptyStateView: View {
                 .padding(.top, 8)
             }
         }
-        .padding(40)
-        .background(Color(.secondarySystemGroupedBackground))
-        .cornerRadius(16)
-        .padding()
     }
 } 

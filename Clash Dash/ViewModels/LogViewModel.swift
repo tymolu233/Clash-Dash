@@ -14,12 +14,24 @@ class LogViewModel: ObservableObject {
     private var connectionRetryCount = 0
     private let maxRetryCount = 5
     
+    // 添加日志缓冲队列
+    private var logBuffer: [LogMessage] = []
+    private var displayTimer: Timer?
+    private let displayInterval: TimeInterval = 0.1 // 每条日志显示间隔
+    
     // 添加网络状态监控
     private let networkMonitor = NWPathMonitor()
     private var isNetworkAvailable = true
     
     init() {
         setupNetworkMonitoring()
+    }
+    
+    deinit {
+        networkMonitor.cancel()
+        stopDisplayTimer()
+        webSocketTask?.cancel()
+        webSocketTask = nil
     }
     
     private func setupNetworkMonitoring() {
@@ -34,6 +46,38 @@ class LogViewModel: ObservableObject {
             }
         }
         networkMonitor.start(queue: DispatchQueue.global(qos: .background))
+    }
+    
+    private func startDisplayTimer() {
+        stopDisplayTimer()
+        displayTimer = Timer.scheduledTimer(withTimeInterval: displayInterval, repeats: true) { [weak self] _ in
+            self?.displayNextLog()
+        }
+    }
+    
+    private func stopDisplayTimer() {
+        displayTimer?.invalidate()
+        displayTimer = nil
+    }
+    
+    private func displayNextLog() {
+        guard !logBuffer.isEmpty else {
+            stopDisplayTimer()
+            return
+        }
+        
+        DispatchQueue.main.async {
+            // 从缓冲区取出第一条日志
+            let log = self.logBuffer.removeFirst()
+            
+            // 只保留最新的 1000 条日志
+            if self.logs.count > 1000 {
+                self.logs.removeFirst(self.logs.count - 1000)
+            }
+            
+            // 添加新日志
+            self.logs.append(log)
+        }
     }
     
     // 添加设置日志级别的方法
@@ -203,13 +247,14 @@ class LogViewModel: ObservableObject {
             return
         }
         
-        DispatchQueue.main.async {
-            // 只保留最新的 1000 条日志
-            if self.logs.count > 1000 {
-                self.logs.removeFirst(self.logs.count - 1000)
+        // 将新日志添加到缓冲区
+        logBuffer.append(logMessage)
+        
+        // 如果定时器没有运行，启动定时器
+        if displayTimer == nil {
+            DispatchQueue.main.async {
+                self.startDisplayTimer()
             }
-            self.logs.append(logMessage)
-            self.isConnected = true
         }
     }
     
@@ -217,6 +262,8 @@ class LogViewModel: ObservableObject {
         networkMonitor.cancel()
         webSocketTask?.cancel(with: .goingAway, reason: nil)
         webSocketTask = nil
+        stopDisplayTimer()
+        logBuffer.removeAll()
         
         DispatchQueue.main.async {
             self.isConnected = false
@@ -249,10 +296,6 @@ class LogViewModel: ObservableObject {
                 isReconnecting = false
             }
         }
-    }
-    
-    deinit {
-        networkMonitor.cancel()
     }
 }
 
