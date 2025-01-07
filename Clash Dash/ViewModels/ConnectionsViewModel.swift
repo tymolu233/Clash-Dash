@@ -358,7 +358,8 @@ class ConnectionsViewModel: ObservableObject {
                                 rulePayload: connection.rulePayload,
                                 downloadSpeed: 0,
                                 uploadSpeed: 0,
-                                isAlive: false
+                                isAlive: false,
+                                endTime: Date()
                             )
                             self.connectionHistory[id] = closedConnection
                         }
@@ -426,7 +427,8 @@ class ConnectionsViewModel: ObservableObject {
                                 rulePayload: connection.rulePayload,
                                 downloadSpeed: 0,
                                 uploadSpeed: 0,
-                                isAlive: false  // 标记为已断开
+                                isAlive: false,
+                                endTime: Date()
                             )
                             hasChanges = true
                             self.connectionHistory[id] = closedConnection
@@ -470,7 +472,8 @@ class ConnectionsViewModel: ObservableObject {
                             rulePayload: connection.rulePayload,
                             downloadSpeed: 0,
                             uploadSpeed: 0,
-                            isAlive: false
+                            isAlive: false,
+                            endTime: Date()
                         )
                         self.connectionHistory[id] = closedConnection
                     }

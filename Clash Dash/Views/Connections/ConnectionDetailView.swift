@@ -87,7 +87,8 @@ struct ConnectionDetailView: View {
                 rulePayload: currentConnection.rulePayload,
                 downloadSpeed: 0,
                 uploadSpeed: 0,
-                isAlive: false
+                isAlive: false,
+                endTime: Date()
             )
             // 更新一次最终时长
             currentDuration = Self.formatDuration(from: currentConnection.start)
@@ -256,7 +257,7 @@ struct ConnectionDetailView: View {
                 }
                 
                 DetailRow(title: "开始时间", value: formatDate(currentConnection.start))
-                DetailRow(title: "连接时长", value: currentDuration)
+                DetailRow(title: "连接时长", value: currentConnection.isAlive ? currentDuration : currentConnection.formattedDuration)
                 
             } header: {
                 Text("基本信息")

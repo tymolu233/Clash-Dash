@@ -12,9 +12,10 @@ struct ClashConnection: Identifiable, Codable, Equatable {
     let downloadSpeed: Double
     let uploadSpeed: Double
     let isAlive: Bool
+    private let endTime: Date?
     
     // 添加一个标准初始化方法
-    init(id: String, metadata: ConnectionMetadata, upload: Int, download: Int, start: Date, chains: [String], rule: String, rulePayload: String, downloadSpeed: Double, uploadSpeed: Double, isAlive: Bool) {
+    init(id: String, metadata: ConnectionMetadata, upload: Int, download: Int, start: Date, chains: [String], rule: String, rulePayload: String, downloadSpeed: Double, uploadSpeed: Double, isAlive: Bool, endTime: Date? = nil) {
         self.id = id
         self.metadata = metadata
         self.upload = upload
@@ -26,6 +27,7 @@ struct ClashConnection: Identifiable, Codable, Equatable {
         self.downloadSpeed = downloadSpeed
         self.uploadSpeed = uploadSpeed
         self.isAlive = isAlive
+        self.endTime = isAlive ? nil : (endTime ?? Date())
     }
     
     // 解码器初始化方法
@@ -45,6 +47,7 @@ struct ClashConnection: Identifiable, Codable, Equatable {
         
         // 设置 isAlive 默认为 true，因为从服务器接收的连接都是活跃的
         isAlive = try container.decodeIfPresent(Bool.self, forKey: .isAlive) ?? true
+        endTime = try container.decodeIfPresent(Date.self, forKey: .endTime)
         
         let dateString = try container.decode(String.self, forKey: .start)
         let formatter = ISO8601DateFormatter()
@@ -69,12 +72,30 @@ struct ClashConnection: Identifiable, Codable, Equatable {
     }
     
     var formattedDuration: String {
-        let interval = Date().timeIntervalSince(start)
-        let formatter = DateComponentsFormatter()
-        formatter.unitsStyle = .abbreviated
-        formatter.allowedUnits = [.day, .hour, .minute]
-        formatter.maximumUnitCount = 1
-        return formatter.string(from: interval) ?? ""
+        let endDate = isAlive ? Date() : (endTime ?? Date())
+        let components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute, .second], from: start, to: endDate)
+        var parts: [String] = []
+        
+        if let years = components.year, years > 0 {
+            parts.append("\(years)y")
+        }
+        if let months = components.month, months > 0 {
+            parts.append("\(months)m")
+        }
+        if let days = components.day, days > 0 {
+            parts.append("\(days)d")
+        }
+        if let hours = components.hour, hours > 0 {
+            parts.append("\(hours)h")
+        }
+        if let minutes = components.minute, minutes > 0 {
+            parts.append("\(minutes)m")
+        }
+        if let seconds = components.second {
+            parts.append("\(seconds)s")
+        }
+        
+        return parts.joined(separator: " ")
     }
     
     var formattedChains: String {
@@ -234,5 +255,5 @@ struct ConnectionsResponse: Codable {
 // 添加编码键
 private enum CodingKeys: String, CodingKey {
     case id, metadata, upload, download, start, chains, rule, rulePayload
-    case downloadSpeed, uploadSpeed, isAlive
+    case downloadSpeed, uploadSpeed, isAlive, endTime
 } 
