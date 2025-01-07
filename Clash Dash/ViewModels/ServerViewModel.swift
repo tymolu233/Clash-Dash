@@ -1053,9 +1053,9 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             logger.log("📥 写入响应状态码: \(httpResponse.statusCode)")
         }
         
-        if let responseStr = String(data: data, encoding: .utf8) {
-            print("📥 写入响应内容: \(responseStr)")
-        }
+        // if let responseStr = String(data: data, encoding: .utf8) {
+        //     print("📥 写入响应内容: \(responseStr)")
+        // }
         
         guard let httpResponse = response as? HTTPURLResponse,
               httpResponse.statusCode == 200 else {
@@ -1067,48 +1067,37 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         // 验证文件是否成功写入
         print("🔍 验证文件写入...")
         logger.log("🔍 验证文件写入...")
-        let verifyCommand: [String: Any] = [
-            "method": "exec",
-            "params": ["ls -l --full-time \(filePath)"]
+        
+        // 使用 fs.stat 验证文件
+        guard let fsURL = URL(string: "\(baseURL)/cgi-bin/luci/rpc/fs?auth=\(token)") else {
+            throw NetworkError.invalidURL
+        }
+        
+        var statRequest = URLRequest(url: fsURL)
+        statRequest.httpMethod = "POST"
+        statRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        statRequest.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
+        
+        let statCommand: [String: Any] = [
+            "method": "stat",
+            "params": [filePath]
         ]
+        statRequest.httpBody = try JSONSerialization.data(withJSONObject: statCommand)
         
-        request.httpBody = try JSONSerialization.data(withJSONObject: verifyCommand)
-        let (verifyData, _) = try await session.data(for: request)
-        
-        if let verifyStr = String(data: verifyData, encoding: .utf8) {
-            print("📥 验证响应内容: \(verifyStr)")
-        }
-        
-        struct VerifyResponse: Codable {
-            let result: String
-        }
-        
-        let verifyResult = try JSONDecoder().decode(VerifyResponse.self, from: verifyData)
-        let fileInfo = verifyResult.result.trimmingCharacters(in: .whitespacesAndNewlines)
-        
-        if fileInfo.isEmpty {
-            print("❌ 文件验证失败：未找到文件")
-            logger.log("❌ 文件验证失败：未找到文件")
-            throw NetworkError.invalidResponse(message: "文件验证失败：未找到文件")
-        }
+        let (statData, _) = try await session.data(for: statRequest)
+        let statResponse = try JSONDecoder().decode(FSStatResponse.self, from: statData)
         
         // 检查文件修改时间
-        let components = fileInfo.split(separator: " ")
-        if components.count >= 8 {
-            let dateFormatter = DateFormatter()
-            dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-            let dateString = "\(components[5]) \(components[6])"
-            
-            if let fileDate = dateFormatter.date(from: dateString) {
-                let timeDiff = Date().timeIntervalSince(fileDate)
-                print("⏱ 文件修改时间差: \(timeDiff)秒")
-                logger.log("⏱ 文件修改时间差: \(timeDiff)秒")
-                if timeDiff < 0 || timeDiff > 5 {
-                    print("❌ 文件时间验证失败")
-                    logger.log("❌ 文件时间验证失败")
-                    throw NetworkError.invalidResponse(message: "文件时间验证失败")
-                }
-            }
+        let fileDate = Date(timeIntervalSince1970: TimeInterval(statResponse.result.mtime))
+        let timeDiff = Date().timeIntervalSince(fileDate)
+        
+        print("⏱ 文件修改时间差: \(timeDiff)秒")
+        logger.log("⏱ 文件修改时间差: \(timeDiff)秒")
+        
+        if timeDiff < 0 || timeDiff > 5 {
+            print("❌ 文件时间验证失败")
+            logger.log("❌ 文件时间验证失败")
+            throw NetworkError.invalidResponse(message: "文件时间验证失败")
         }
         
         print("✅ 配置文件保存成功")
