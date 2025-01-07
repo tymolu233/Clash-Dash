@@ -22,6 +22,64 @@ struct ClashStatusResponse: Codable {
     let error: String?
 }
 
+// 添加 ListResponse 结构体
+struct ListResponse: Codable {
+    let id: Int?
+    let result: String
+    let error: String?
+}
+
+// 添加文件系统 RPC 响应的结构体
+struct FSGlobResponse: Codable {
+    let id: Int?
+    let result: ([String], Int)  // [文件路径数组, 文件数量]
+    let error: String?
+    
+    enum CodingKeys: String, CodingKey {
+        case id
+        case result
+        case error
+    }
+    
+    // 自定义解码方法来处理元组类型
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decodeIfPresent(Int.self, forKey: .id)
+        error = try container.decodeIfPresent(String.self, forKey: .error)
+        
+        // 解码 result 数组
+        var resultContainer = try container.nestedUnkeyedContainer(forKey: .result)
+        let fileList = try resultContainer.decode([String].self)
+        let count = try resultContainer.decode(Int.self)
+        result = (fileList, count)
+    }
+    
+    // 自定义编码方法
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encodeIfPresent(id, forKey: .id)
+        try container.encodeIfPresent(error, forKey: .error)
+        
+        // 编码 result 元组
+        var resultContainer = container.nestedUnkeyedContainer(forKey: .result)
+        try resultContainer.encode(result.0)  // 文件列表
+        try resultContainer.encode(result.1)  // 文件数量
+    }
+}
+
+struct FSStatResponse: Codable {
+    let id: Int?
+    let result: FSStatResult
+    let error: String?
+}
+
+struct FSStatResult: Codable {
+    let type: String
+    let mtime: Int
+    let size: Int
+    let modestr: String
+}
+
 @MainActor
 class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessionTaskDelegate {
     @Published var servers: [ClashServer] = []
@@ -665,11 +723,11 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
     func fetchOpenClashConfigs(_ server: ClashServer) async throws -> [OpenClashConfig] {
         let scheme = server.useSSL ? "https" : "http"
         let baseURL = "\(scheme)://\(server.openWRTUrl ?? server.url):\(server.openWRTPort ?? "80")"
-        let message = "🔍 开始获取配置列表: \(baseURL)"
-        print(message)
-        logger.log(message)
         
-        // 1. 获取或重用 token
+        print("🔍 开始获取配置列表: \(baseURL)")
+        logger.log("🔍 开始获取配置列表: \(baseURL)")
+        
+        // 1. 获取认证 token
         guard let username = server.openWRTUsername,
               let password = server.openWRTPassword else {
             print("❌ 未找到认证信息")
@@ -677,130 +735,105 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             throw NetworkError.unauthorized(message: "未设置 OpenWRT 用户名或密码")
         }
         
-        print("🔑 获取认证令牌...") 
-        logger.log("🔑 获取认证令牌...")
+        // print("🔑 获取认证令牌...")
+        // logger.log("🔑 获取认证令牌...")
         let token = try await getAuthToken(server, username: username, password: password)
-        print("✅ 获取令牌成功: \(token)")
-        logger.log("✅ 获取令牌成功: \(token)")
+        // print("✅ 获取令牌成功: \(token)")
+        // logger.log("✅ 获取令牌成功: \(token)")
         
-        // 创建 session
         let session = makeURLSession(for: server)
         
-        // 3. 获取配置文件列表
-        guard let listURL = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
-            print("❌ 无效的列表 URL")
+        // 2. 获取配置文件列表
+        guard let fsURL = URL(string: "\(baseURL)/cgi-bin/luci/rpc/fs?auth=\(token)") else {
             throw NetworkError.invalidURL
         }
         
-        print("📤 发送获取文件列表请求...")
-        var listRequest = URLRequest(url: listURL)
-        listRequest.httpMethod = "POST"
-        listRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        var fsRequest = URLRequest(url: fsURL)
+        fsRequest.httpMethod = "POST"
+        fsRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        fsRequest.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
         
-        let listCommand: [String: Any] = [
-            "method": "exec",
-            "params": ["ls -la --full-time /etc/openclash/config/"]
+        let fsCommand: [String: Any] = [
+            "method": "glob",
+            "params": ["/etc/openclash/config/*"]
         ]
-        listRequest.httpBody = try JSONSerialization.data(withJSONObject: listCommand)
+        fsRequest.httpBody = try JSONSerialization.data(withJSONObject: fsCommand)
         
-        let (listData, listResponse) = try await session.data(for: listRequest)
+        print("📤 获取文件列表...")
+        logger.log("📤 获取文件列表...")
+        let (fsData, _) = try await session.data(for: fsRequest)
         
-        if let httpResponse = listResponse as? HTTPURLResponse {
-            print("📥 文件列表响应状态码: \(httpResponse.statusCode)")
+        // 解析 glob 响应
+        let fsResponse = try JSONDecoder().decode(FSGlobResponse.self, from: fsData)
+        let (fileList, fileCount) = fsResponse.result
+        
+        print("📝 找到 \(fileCount) 个配置文件")
+        logger.log("📝 找到 \(fileCount) 个配置文件")
+        
+        // 3. 获取当前启用的配置
+        guard let sysURL = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
+            throw NetworkError.invalidURL
         }
+        var sysRequest = URLRequest(url: sysURL)
+        sysRequest.httpMethod = "POST"
+        sysRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        sysRequest.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
         
-        if let responseStr = String(data: listData, encoding: .utf8) {
-            print("📥 文件列表响应: \(responseStr)")
-        }
-        
-        struct ListResponse: Codable {
-            let id: Int?
-            let result: String
-            let error: String?
-        }
-        
-        let listResult = try JSONDecoder().decode(ListResponse.self, from: listData)
-        let fileList = listResult.result
-        
-        print("📝 文件列表内容:\n\(fileList)")
-        
-        // 4. 获取当前启用的配置
-        print("📤 获取当前启用的配置...")
-        logger.log("📤 获取当前启用的配置...")
-        var currentRequest = URLRequest(url: listURL)
-        currentRequest.httpMethod = "POST"
-        currentRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        
-        let currentCommand: [String: Any] = [
+        let sysCommand: [String: Any] = [
             "method": "exec",
             "params": ["uci get openclash.config.config_path"]
         ]
-        currentRequest.httpBody = try JSONSerialization.data(withJSONObject: currentCommand)
+        sysRequest.httpBody = try JSONSerialization.data(withJSONObject: sysCommand)
         
-        let (currentData, currentResponse) = try await session.data(for: currentRequest)
+        let (sysData, _) = try await session.data(for: sysRequest)
+        let sysResult = try JSONDecoder().decode(ListResponse.self, from: sysData)
+        let currentConfig = sysResult.result.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).components(separatedBy: "/").last ?? ""
         
-        if let httpResponse = currentResponse as? HTTPURLResponse {
-            print("📥 当前配置响应状态码: \(httpResponse.statusCode)")
-            logger.log("📥 当前配置响应状态码: \(httpResponse.statusCode)")
-        }
+        print("📝 当前启用的配置: \(currentConfig)")
+        logger.log("📝 当前启用的配置: \(currentConfig)")
         
-        if let responseStr = String(data: currentData, encoding: .utf8) {
-            print("📥 当前配置响应: \(responseStr)")
-            logger.log("📥 当前配置响应: \(responseStr)")
-        }
-        
-        let currentResult = try JSONDecoder().decode(ListResponse.self, from: currentData)
-        let currentConfig = currentResult.result.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).components(separatedBy: "/").last ?? ""
-        print("📝 当前用的配置: \(currentConfig)")
-        logger.log("📝 当前用的配置: \(currentConfig)")
-        // 5. 解析文件列表
+        // 4. 处理每个配置文件
         var configs: [OpenClashConfig] = []
-        let dateFormatter = DateFormatter()
-        dateFormatter.locale = Locale(identifier: "en_US_POSIX")
-        dateFormatter.timeZone = TimeZone.current  // 使用当前时区
-        dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss Z"  // 修改日期匹配 --full-time 输出
-        
-        let lines = fileList.components(separatedBy: CharacterSet.newlines)
-        print("🔍 开始解析 \(lines.count) 行文件列表")
-        
-        for line in lines {
-            let components = line.split(separator: " ").filter { !$0.isEmpty }
-            guard components.count >= 9,
-                  let fileName = components.last?.description,
-                  fileName.hasSuffix(".yaml") || fileName.hasSuffix(".yml"),
-                  let fileSize = Int64(components[4]) else {  // 获取文件大小
-                continue
-            }
+        for filePath in fileList {
+            let fileName = filePath.components(separatedBy: "/").last ?? ""
+            guard fileName.hasSuffix(".yaml") || fileName.hasSuffix(".yml") else { continue }
             
-            print("📄 处理配置文件: \(fileName), 大小: \(fileSize) 字节")
+            print("📄 处理配置文件: \(fileName)")
+            logger.log("📄 处理配置文件: \(fileName)")
             
-            // 解析日期
-            let dateString = "\(components[5]) \(components[6]) \(components[7])"  // 2024-12-09 21:34:04 +0800
-            let date = dateFormatter.date(from: dateString) ?? Date()
+            // 获取文件元数据
+            var statRequest = URLRequest(url: fsURL)
+            statRequest.httpMethod = "POST"
+            statRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            statRequest.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
+            
+            let statCommand: [String: Any] = [
+                "method": "stat",
+                "params": [filePath]
+            ]
+            statRequest.httpBody = try JSONSerialization.data(withJSONObject: statCommand)
+            
+            let (statData, _) = try await session.data(for: statRequest)
+            let statResponse = try JSONDecoder().decode(FSStatResponse.self, from: statData)
             
             // 检查配置文件语法
             print("🔍 检查配置文件语法: \(fileName)")
             logger.log("🔍 检查配置文件语法: \(fileName)")
-            var checkRequest = URLRequest(url: listURL)
+            var checkRequest = URLRequest(url: sysURL)
             checkRequest.httpMethod = "POST"
             checkRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            checkRequest.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
             
             let checkCommand: [String: Any] = [
                 "method": "exec",
-                "params": ["ruby -ryaml -rYAML -I \"/usr/share/openclash\" -E UTF-8 -e \"puts YAML.load_file('/etc/openclash/config/\(fileName)')\" 2>/dev/null"]
+                "params": ["ruby -ryaml -rYAML -I \"/usr/share/openclash\" -E UTF-8 -e \"puts YAML.load_file('\(filePath)')\" 2>/dev/null"]
             ]
             checkRequest.httpBody = try JSONSerialization.data(withJSONObject: checkCommand)
             
             let (checkData, _) = try await session.data(for: checkRequest)
-            // if let responseStr = String(data: checkData, encoding: .utf8) {
-            //     print("📥 配置语法检查响应: \(responseStr)")
-            // }
-            
             let checkResult = try JSONDecoder().decode(ListResponse.self, from: checkData)
             let check: OpenClashConfig.ConfigCheck = checkResult.result != "false\n" && !checkResult.result.isEmpty ? .normal : .abnormal
             
-            print("📝 配置语法检查结果: \(check)")
-            logger.log("📝 配置语法检查结果: \(check)") 
             // 获取订阅信息
             print("获取订阅信息: \(fileName)")
             logger.log("获取订阅信息: \(fileName)")
@@ -820,10 +853,10 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             let config = OpenClashConfig(
                 name: fileName,
                 state: fileName == currentConfig ? .enabled : .disabled,
-                mtime: date,
+                mtime: Date(timeIntervalSince1970: TimeInterval(statResponse.result.mtime)),
                 check: check,
                 subscription: subscription,
-                fileSize: fileSize
+                fileSize: Int64(statResponse.result.size)
             )
             
             configs.append(config)
