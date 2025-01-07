@@ -24,6 +24,10 @@ Clash Dash 是一款原生 SwiftUI 开发的 OpenClash 管理工具。
 - 一键测试全部节点延迟
 - 本地网络访问
 
+## 使用帮助
+
+请查阅：[Clash 控制器的使用说明](HOWTOUSE.md)
+
 ## 故障排除
 
 如果你在使用过程中遇到问题，请查看我们的 [故障排除指南](TROUBLESHOOTING.md)。常见问题包括：
