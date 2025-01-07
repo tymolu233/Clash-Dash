@@ -331,21 +331,11 @@ struct ProvidersListRepresentable: UIViewRepresentable {
                 provider.vehicleType.localizedCaseInsensitiveContains(searchText)
             }
         
-        return Dictionary(grouping: filtered) { provider in
-            let firstChar = String(provider.name.prefix(1)).uppercased()
-            return firstChar.first?.isLetter == true ? firstChar : "#"
-        }
+        return ["规则提供者": filtered]
     }
     
     private var sections: [String] {
-        allSections.map(String.init).filter { section in
-            filteredProviders[section]?.isEmpty == false
-        }
-    }
-    
-    // 添加计算属性获取所有可能的段
-    private var allSectionsArray: [String] {
-        allSections.map { String($0) }
+        ["规则提供者"]
     }
     
     func makeUIView(context: Context) -> UITableView {
@@ -353,8 +343,6 @@ struct ProvidersListRepresentable: UIViewRepresentable {
         tableView.delegate = context.coordinator
         tableView.dataSource = context.coordinator
         tableView.register(ProviderCell.self, forCellReuseIdentifier: "ProviderCell")
-        tableView.sectionIndexColor = .systemBlue
-        tableView.sectionIndexBackgroundColor = .clear
         tableView.showsVerticalScrollIndicator = false
         tableView.estimatedRowHeight = 88
         tableView.estimatedSectionHeaderHeight = 28
@@ -366,7 +354,6 @@ struct ProvidersListRepresentable: UIViewRepresentable {
         context.coordinator.providers = providers
         context.coordinator.filteredProviders = filteredProviders
         context.coordinator.sections = sections
-        context.coordinator.allSections = allSectionsArray
         
         DispatchQueue.main.async {
             UIView.performWithoutAnimation {
@@ -380,7 +367,6 @@ struct ProvidersListRepresentable: UIViewRepresentable {
             providers: providers,
             filteredProviders: filteredProviders,
             sections: sections,
-            allSections: allSectionsArray,
             onRefresh: onRefresh
         )
     }
@@ -389,18 +375,15 @@ struct ProvidersListRepresentable: UIViewRepresentable {
         var providers: [RulesViewModel.RuleProvider]
         var filteredProviders: [String: [RulesViewModel.RuleProvider]]
         var sections: [String]
-        var allSections: [String]
         let onRefresh: (RulesViewModel.RuleProvider) -> Void
         
         init(providers: [RulesViewModel.RuleProvider],
              filteredProviders: [String: [RulesViewModel.RuleProvider]],
              sections: [String],
-             allSections: [String],
              onRefresh: @escaping (RulesViewModel.RuleProvider) -> Void) {
             self.providers = providers
             self.filteredProviders = filteredProviders
             self.sections = sections
-            self.allSections = allSections
             self.onRefresh = onRefresh
         }
         
@@ -426,7 +409,7 @@ struct ProvidersListRepresentable: UIViewRepresentable {
         }
         
         func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
-            return sections[section]
+            return nil
         }
     }
 }
