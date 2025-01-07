@@ -7,6 +7,7 @@ private let logger = LogManager.shared
 class LogViewModel: ObservableObject {
     @Published var logs: [LogMessage] = []
     @Published var isConnected = false
+    @Published var isUserPaused = false
     private var logLevel: String = "info"
     
     private var webSocketTask: URLSessionWebSocketTask?
@@ -15,6 +16,7 @@ class LogViewModel: ObservableObject {
     private var isReconnecting = false
     private var connectionRetryCount = 0
     private let maxRetryCount = 5
+    private var reconnectTask: Task<Void, Never>?
     
     // 添加日志缓冲队列
     private var logBuffer: [LogMessage] = []
@@ -122,6 +124,7 @@ class LogViewModel: ObservableObject {
         request.setValue("Upgrade", forHTTPHeaderField: "Connection")
         request.setValue("13", forHTTPHeaderField: "Sec-WebSocket-Version")
         request.setValue("permessage-deflate; client_max_window_bits", forHTTPHeaderField: "Sec-WebSocket-Extensions")
+        request.setValue("HTTP/1.1", forHTTPHeaderField: "Version") // 添加HTTP版本头
         
         if !server.secret.isEmpty {
             request.setValue("Bearer \(server.secret)", forHTTPHeaderField: "Authorization")
@@ -142,25 +145,23 @@ class LogViewModel: ObservableObject {
     }
     
     func connect(to server: ClashServer) {
-        guard !isReconnecting else {
-            print("⚠️ 正在重连中，跳过连接请求")
-            logger.log("⚠️ 日志 - 正在重连中，跳过连接请求")
+        // 取消现有的重连任务
+        reconnectTask?.cancel()
+        reconnectTask = nil
+        
+        // 如果是用户手动暂停的，不要连接
+        if isUserPaused {
+            return
+        }
+        
+        // 如果已经连接到同一个服务器，不要重复连接
+        if isConnected && currentServer?.id == server.id {
             return
         }
         
         print("📡 开始连接到服务器: \(server.url):\(server.port)")
         logger.log("📡 日志 - 开始连接到服务器: \(server.url):\(server.port)")
-        // 每次主动连接时重置重试计数
-        connectionRetryCount = 0
         
-        if connectionRetryCount >= maxRetryCount {
-            print("⚠️ 达到最大重试次数，停止重连")
-            logger.log("⚠️ 日志 - 达到最大重试次数，停止重连")
-            connectionRetryCount = 0
-            return
-        }
-        
-        connectionRetryCount += 1
         currentServer = server
         
         guard let request = makeWebSocketRequest(server: server) else {
@@ -188,37 +189,36 @@ class LogViewModel: ObservableObject {
         
         print("❌ WebSocket 错误: \(error.localizedDescription)")
         logger.log("❌ 日志 - WebSocket 错误: \(error.localizedDescription)")
-        if let urlError = error as? URLError {
-            switch urlError.code {
-            case .secureConnectionFailed:
-                print("❌ SSL/TLS 连接失败，服务器: \(currentServer?.url ?? ""):\(currentServer?.port ?? "0")")
-                logger.log("❌ 日志 - SSL/TLS 连接失败，服务器: \(currentServer?.url ?? ""):\(currentServer?.port ?? "0")")
-                DispatchQueue.main.async { [weak self] in
-                    self?.isConnected = false
-                    // 不要在 SSL 错误时自动重连
-                    self?.connectionRetryCount = self?.maxRetryCount ?? 5
-                }
-            case .serverCertificateUntrusted:
-                print("❌ 服务器证书不受信任，服务器: \(currentServer?.url ?? ""):\(currentServer?.port ?? "0")")
-                logger.log("❌ 日志 - 服务器证书不受信任，服务器: \(currentServer?.url ?? ""):\(currentServer?.port ?? "0")")
-                DispatchQueue.main.async { [weak self] in
-                    self?.isConnected = false
-                    self?.connectionRetryCount = self?.maxRetryCount ?? 5
-                }
-            default:
-                DispatchQueue.main.async { [weak self] in
-                    self?.isConnected = false
-                    // 其他错误允许重试
-                    if let self = self, self.connectionRetryCount < self.maxRetryCount {
-                        self.reconnect()
+        
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            
+            // 更新连接状态
+            self.isConnected = false
+            
+            // 如果不是用户手动暂停，且未达到最大重试次数，则尝试重连
+            if !self.isUserPaused {
+                if let urlError = error as? URLError {
+                    switch urlError.code {
+                    case .secureConnectionFailed, .serverCertificateUntrusted:
+                        print("❌ SSL/证书错误，停止重连")
+                        logger.log("❌ 日志 - SSL/证书错误，停止重连")
+                        self.connectionRetryCount = self.maxRetryCount
+                    default:
+                        if self.connectionRetryCount < self.maxRetryCount {
+                            self.reconnect()
+                        } else {
+                            print("⚠️ 达到最大重试次数，停止重连")
+                            logger.log("⚠️ 日志 - 达到最大重试次数，停止重连")
+                        }
                     }
-                }
-            }
-        } else {
-            DispatchQueue.main.async { [weak self] in
-                self?.isConnected = false
-                if let self = self, self.connectionRetryCount < self.maxRetryCount {
-                    self.reconnect()
+                } else {
+                    if self.connectionRetryCount < self.maxRetryCount {
+                        self.reconnect()
+                    } else {
+                        print("⚠️ 达到最大重试次数，停止重连")
+                        logger.log("⚠️ 日志 - 达到最大重试次数，停止重连")
+                    }
                 }
             }
         }
@@ -232,7 +232,10 @@ class LogViewModel: ObservableObject {
             case .success(let message):
                 DispatchQueue.main.async {
                     self.isConnected = true
-                    self.connectionRetryCount = 0
+                    // 只有在非重连状态下才重置重试计数
+                    if !self.isReconnecting {
+                        self.connectionRetryCount = 0
+                    }
                 }
                 
                 switch message {
@@ -275,6 +278,10 @@ class LogViewModel: ObservableObject {
     }
     
     func disconnect(clearLogs: Bool = true) {
+        // 取消重连任务
+        reconnectTask?.cancel()
+        reconnectTask = nil
+        
         networkMonitor.cancel()
         webSocketTask?.cancel(with: .goingAway, reason: nil)
         webSocketTask = nil
@@ -298,19 +305,63 @@ class LogViewModel: ObservableObject {
     }
     
     private func reconnect() {
-        guard !isReconnecting else { return }
-        isReconnecting = true
+        // 如果已经有重连任务在进行，不要创建新的
+        guard reconnectTask == nil else { return }
         
-        Task {
+        connectionRetryCount += 1
+        
+        print("🔄 准备重新连接... (第 \(connectionRetryCount) 次重试)")
+        logger.log("🔄 日志 - 准备重新连接... (第 \(connectionRetryCount) 次重试)")
+        
+        reconnectTask = Task { [weak self] in
+            guard let self = self else { return }
+            
+            self.isReconnecting = true
+            
             // 使用指数退避延迟
-            try? await Task.sleep(nanoseconds: getReconnectDelay())
+            let delay = self.getReconnectDelay()
+            print("⏳ 等待 \(delay/1_000_000_000) 秒后重试...")
+            logger.log("⏳ 日志 - 等待 \(delay/1_000_000_000) 秒后重试...")
+            
+            try? await Task.sleep(nanoseconds: delay)
+            
+            // 检查任务是否被取消
+            if Task.isCancelled {
+                await MainActor.run {
+                    self.isReconnecting = false
+                    self.reconnectTask = nil
+                }
+                return
+            }
+            
+            // 重连前再次检查状态
+            if self.isUserPaused {
+                await MainActor.run {
+                    self.isReconnecting = false
+                    self.reconnectTask = nil
+                }
+                return
+            }
             
             await MainActor.run {
                 if let server = self.currentServer {
-                    connect(to: server)
+                    self.connect(to: server)
                 }
-                isReconnecting = false
+                self.isReconnecting = false
+                self.reconnectTask = nil
             }
+        }
+    }
+    
+    // 修改用户手动暂停/继续方法
+    func toggleConnection(to server: ClashServer) {
+        isUserPaused.toggle()  // 直接切换用户暂停状态
+        
+        if isUserPaused {
+            disconnect(clearLogs: false)
+        } else {
+            connectionRetryCount = 0  // 重置重试计数
+            connect(to: server)
         }
     }
 }

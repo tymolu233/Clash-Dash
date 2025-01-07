@@ -55,7 +55,7 @@ struct ContentView: View {
                                     impactFeedback.impactOccurred()
                                     showingAddOpenWRTSheet = true
                                 }) {
-                                    Label("OpenWRT 服务器", systemImage: "wifi.router")
+                                    Label("OpenWRT 控制器", systemImage: "wifi.router")
                                 }
                             } label: {
                                 Text("添加控制器")
@@ -108,6 +108,13 @@ struct ContentView: View {
                             icon: "gearshape.fill",
                             iconColor: .gray,
                             destination: GlobalSettingsView()
+                        )
+                        
+                        SettingsLinkRow(
+                            title: "外观设置",
+                            icon: "paintbrush.fill",
+                            iconColor: .cyan,
+                            destination: AppearanceSettingsView()
                         )
                         
                         SettingsLinkRow(
@@ -178,7 +185,7 @@ struct ContentView: View {
                             impactFeedback.impactOccurred()
                             showingAddOpenWRTSheet = true
                         }) {
-                            Label("OpenWRT 服务器", systemImage: "wifi.router")
+                            Label("OpenWRT 控制器", systemImage: "wifi.router")
                         }
                     } label: {
                         Image(systemName: "plus.circle.fill")

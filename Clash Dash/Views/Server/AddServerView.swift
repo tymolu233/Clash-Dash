@@ -170,12 +170,12 @@ struct AddServerView: View {
             Form {
                 Section {
                     TextField("名称（可选）", text: $name)
-                    TextField("控制面板登录地址", text: $url)
+                    TextField("控制器地址", text: $url)
                         .textInputAutocapitalization(.never)
                         .keyboardType(.URL)
-                    TextField("控制面板登录端口", text: $port)
+                    TextField("控制器端口", text: $port)
                         .keyboardType(.numberPad)
-                    TextField("控制面板登录密钥（可选）", text: $secret)
+                    TextField("控制器密钥（可选）", text: $secret)
                         .textInputAutocapitalization(.never)
                     
                     Toggle(isOn: $useSSL) {

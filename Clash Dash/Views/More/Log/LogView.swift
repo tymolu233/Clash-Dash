@@ -73,14 +73,10 @@ struct LogView: View {
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {
-                    if viewModel.isConnected {
-                        viewModel.disconnect(clearLogs: false)
-                    } else {
-                        viewModel.connect(to: server)
-                    }
+                    viewModel.toggleConnection(to: server)
                 } label: {
-                    Image(systemName: viewModel.isConnected ? "pause.circle.fill" : "play.circle.fill")
-                        .foregroundColor(viewModel.isConnected ? .blue : .green)
+                    Image(systemName: viewModel.isUserPaused ? "play.circle.fill" : "pause.circle.fill")
+                        .foregroundColor(viewModel.isUserPaused ? .green : .blue)
                         .imageScale(.large)
                 }
             }

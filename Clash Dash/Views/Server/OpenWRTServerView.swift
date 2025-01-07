@@ -259,7 +259,7 @@ struct OpenWRTServerView: View {
                             viewModel.deleteServer(server!)
                             dismiss()
                         } label: {
-                            Text("删除服务器")
+                            Text("删除控制器")
                         }
                     }
                 }
@@ -275,7 +275,7 @@ struct OpenWRTServerView: View {
                     }
                 }
             }
-            .navigationTitle(isEditMode ? "编辑服务器" : "添加 OpenWRT 服务器")
+            .navigationTitle(isEditMode ? "编辑控制器" : "添加 OpenWRT 控制器")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

@@ -8,7 +8,6 @@ struct GlobalSettingsView: View {
     @AppStorage("proxyViewStyle") private var proxyViewStyle = ProxyViewStyle.detailed
     @AppStorage("speedTestURL") private var speedTestURL = "https://www.gstatic.com/generate_204"
     @AppStorage("speedTestTimeout") private var speedTestTimeout = 5000
-    @AppStorage("appThemeMode") private var appThemeMode = AppThemeMode.system
     @State private var showClearCacheAlert = false
 
     
@@ -92,7 +91,7 @@ struct GlobalSettingsView: View {
                 SectionHeader(title: "测速设置", systemImage: "speedometer")
             }
 
-             Section {
+            Section {
                 Button {
                     showClearCacheAlert = true
                 } label: {
@@ -105,24 +104,6 @@ struct GlobalSettingsView: View {
                 }
             } header: {
                 SectionHeader(title: "缓存管理", systemImage: "internaldrive")
-            }
-
-            Section {
-                Picker("代理视图样式", selection: $proxyViewStyle) {
-                    ForEach(ProxyViewStyle.allCases) { style in
-                        Text(style.description)
-                            .tag(style)
-                    }
-                }
-                
-                Picker("主题模式", selection: $appThemeMode) {
-                    ForEach(AppThemeMode.allCases) { mode in
-                        Text(mode.description)
-                            .tag(mode)
-                    }
-                }
-            } header: {
-                SectionHeader(title: "外观", systemImage: "paintbrush")
             }
         }
         .navigationTitle("全局配置")
