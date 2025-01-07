@@ -22,7 +22,7 @@ struct RulesView: View {
                 Picker("规则类型", selection: $selectedTab) {
                     Text("规则")
                         .tag(RuleTab.rules)
-                    Text("规则提供者")
+                    Text("规则订阅")
                         .tag(RuleTab.providers)
                 }
                 .pickerStyle(.segmented)
@@ -83,7 +83,7 @@ struct RulesView: View {
                     Image(systemName: "doc.text.magnifyingglass")
                         .font(.system(size: 48))
                         .foregroundColor(.secondary)
-                    Text("没有找到规则提供者")
+                    Text("没有找到规则订阅信息")
                         .font(.headline)
                         .foregroundColor(.secondary)
                 }
@@ -331,11 +331,11 @@ struct ProvidersListRepresentable: UIViewRepresentable {
                 provider.vehicleType.localizedCaseInsensitiveContains(searchText)
             }
         
-        return ["规则提供者": filtered]
+        return ["规则订阅": filtered]
     }
     
     private var sections: [String] {
-        ["规则提供者"]
+        ["规则订阅"]
     }
     
     func makeUIView(context: Context) -> UITableView {

@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import NetworkExtension
 
 // 添加 LogManager
 private let logger = LogManager.shared
@@ -82,10 +83,15 @@ struct FSStatResult: Codable {
 
 @MainActor
 class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessionTaskDelegate {
-    @Published var servers: [ClashServer] = []
+    @Published private(set) var servers: [ClashServer] = []
     @Published var showError = false
     @Published var errorMessage: String?
     @Published var errorDetails: String?
+    
+    private let defaults = UserDefaults.standard
+    private let logger = LogManager.shared
+    private let bindingManager = WiFiBindingManager()
+    private var currentWiFiSSID: String?
     
     private static let saveKey = "SavedClashServers"
     private var activeSessions: [URLSession] = []  // 保持 URLSession 的引用
@@ -306,16 +312,51 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         }
     }
     
-    private func loadServers() {
-        if let data = UserDefaults.standard.data(forKey: Self.saveKey),
-           let decoded = try? JSONDecoder().decode([ClashServer].self, from: data) {
-            servers = decoded
+    @MainActor
+    func loadServers() {
+        // 先尝试从新的存储位置加载
+        if let data = defaults.data(forKey: "servers"),
+           let servers = try? JSONDecoder().decode([ClashServer].self, from: data) {
+            handleLoadedServers(servers)
+        } else {
+            // 如果新的存储位置没有数据，尝试从旧的存储位置加载
+            if let data = defaults.data(forKey: Self.saveKey),
+               let servers = try? JSONDecoder().decode([ClashServer].self, from: data) {
+                // 迁移数据到新的存储位置
+                if let encodedData = try? JSONEncoder().encode(servers) {
+                    defaults.set(encodedData, forKey: "servers")
+                }
+                handleLoadedServers(servers)
+            }
+        }
+    }
+    
+    private func handleLoadedServers(_ servers: [ClashServer]) {
+        // 直接设置服务器列表，不进行过滤
+        self.servers = servers
+    }
+    
+    private func filterServersByWiFi(_ servers: [ClashServer], ssid: String) -> [ClashServer] {
+        // 查找当前 Wi-Fi 的绑定
+        let bindings = bindingManager.bindings.filter { $0.ssid == ssid }
+        
+        // 如果没有找到绑定，返回所有服务器
+        guard !bindings.isEmpty else {
+            return servers
+        }
+        
+        // 获取所有绑定的服务器 ID
+        let boundServerIds = Set(bindings.flatMap { $0.serverIds })
+        
+        // 过滤服务器列表
+        return servers.filter { server in
+            boundServerIds.contains(server.id.uuidString)
         }
     }
     
     private func saveServers() {
         if let encoded = try? JSONEncoder().encode(servers) {
-            UserDefaults.standard.set(encoded, forKey: Self.saveKey)
+            defaults.set(encoded, forKey: "servers")
         }
     }
     
@@ -815,6 +856,8 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             
             let (statData, _) = try await session.data(for: statRequest)
             let statResponse = try JSONDecoder().decode(FSStatResponse.self, from: statData)
+
+            logger.log("配置文件元数据: \(statResponse.result)")
             
             // 检查配置文件语法
             print("🔍 检查配置文件语法: \(fileName)")
@@ -847,8 +890,9 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             subRequest.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
             
             let (subData, _) = try await session.data(for: subRequest)
+            // logger.log("订阅信息: \(subData)")
             let subscription = try? JSONDecoder().decode(OpenClashConfig.SubscriptionInfo.self, from: subData)
-            
+            logger.log("订阅信息解码: \(subscription)")
             // 创建配置对象
             let config = OpenClashConfig(
                 name: fileName,

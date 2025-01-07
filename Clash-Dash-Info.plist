@@ -23,5 +23,18 @@
 		<string>_bonjour._tcp</string>
 		<string>_lnp._tcp.</string>
 	</array>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>需要访问位置信息以获取当前 Wi-Fi 网络名称</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>需要访问位置信息以获取当前 Wi-Fi 网络名称</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>需要访问位置信息以获取当前 Wi-Fi 网络名称</string>
+	<key>NSLocationUsageDescription</key>
+	<string>需要访问位置信息以获取当前 Wi-Fi 网络名称</string>
+	<key>NSLocationTemporaryUsageDescriptionDictionary</key>
+	<dict>
+		<key>WiFiAccess</key>
+		<string>需要访问位置信息以获取当前 Wi-Fi 网络名称</string>
+	</dict>
 </dict>
 </plist>

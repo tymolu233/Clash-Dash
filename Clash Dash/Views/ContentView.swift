@@ -1,31 +1,57 @@
 import SwiftUI
 import UIKit
 import SafariServices
+import Network
+import NetworkExtension
 
 struct ContentView: View {
     @StateObject private var viewModel = ServerViewModel()
+    @StateObject private var settingsViewModel = SettingsViewModel()
     @State private var showingAddSheet = false
     @State private var editingServer: ClashServer?
     @State private var selectedQuickLaunchServer: ClashServer?
     @State private var showQuickLaunchDestination = false
     @State private var showingAddOpenWRTSheet = false
-    @StateObject private var settingsViewModel = SettingsViewModel()
     @State private var showingModeChangeSuccess = false
     @State private var lastChangedMode = ""
     @State private var showingSourceCode = false
+    @State private var currentWiFiSSID: String = ""
+    @State private var forceRefresh: Bool = false  // 添加强制刷新标志
     @AppStorage("appThemeMode") private var appThemeMode = AppThemeMode.system
     @AppStorage("hideDisconnectedServers") private var hideDisconnectedServers = false
+    @AppStorage("enableWiFiBinding") private var enableWiFiBinding = false
     @Environment(\.scenePhase) private var scenePhase
     
+    // 使用 EnvironmentObject 来共享 WiFiBindingManager
+    @EnvironmentObject private var bindingManager: WiFiBindingManager
+
+    private let logger = LogManager.shared
+
     // 添加触觉反馈生成器
     private let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
     
     // 添加过滤后的服务器列表计算属性
     private var filteredServers: [ClashServer] {
-        if hideDisconnectedServers {
-            return viewModel.servers.filter { $0.status == .ok }
+        // 使用 forceRefresh 来强制重新计算，但不使用它的值
+        _ = forceRefresh
+        
+        var servers = viewModel.servers
+        
+        // 只在启用了 Wi-Fi 绑定功能时进行 Wi-Fi 过滤
+        if enableWiFiBinding && !currentWiFiSSID.isEmpty {
+            if let binding = bindingManager.bindings.first(where: { $0.ssid == currentWiFiSSID }) {
+                servers = servers.filter { server in
+                    binding.serverIds.contains(server.id.uuidString)
+                }
+            }
         }
-        return viewModel.servers
+        
+        // 应用离线服务器过滤
+        if hideDisconnectedServers {
+            servers = servers.filter { $0.status == .ok }
+        }
+        
+        return servers
     }
     
     var body: some View {
@@ -33,7 +59,7 @@ struct ContentView: View {
             ScrollView {
                 VStack(spacing: 20) {
                     if viewModel.servers.isEmpty {
-                        // 真正的空状态
+                        // 真正的空状态（没有任何服务器）
                         VStack(spacing: 20) {
                             Spacer()
                                 .frame(height: 60)
@@ -81,8 +107,8 @@ struct ContentView: View {
                             .padding(.top, 20)
                             .padding(.bottom, 40)
                         }
-                    } else if filteredServers.isEmpty {
-                        // 所有控制器都被隐藏的状态
+                    } else if filteredServers.isEmpty && !viewModel.servers.isEmpty {
+                        // 所有服务器都被过滤掉的状态
                         VStack(spacing: 20) {
                             Spacer()
                                 .frame(height: 60)
@@ -92,32 +118,30 @@ struct ContentView: View {
                                 .foregroundColor(.secondary.opacity(0.7))
                                 .padding(.bottom, 10)
                             
-                            Text("所有控制器已被自动隐藏")
-                                .font(.title2)
-                                .fontWeight(.medium)
-                            Text("请在外观设置中关闭“隐藏无法连接的控制器”来显示全部控制器")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal, 32)
-                                .padding(.bottom, 40)
-                            
-                            // Button {
-                            //     impactFeedback.impactOccurred()
-                            //     hideDisconnectedServers.toggle()
-                            // } label: {
-                            //     Text("显示全部控制器")
-                            //         .font(.headline)
-                            //         .foregroundColor(.white)
-                            //         .frame(width: 160, height: 44)
-                            //         .background(Color.blue)
-                            //         .cornerRadius(22)
-                            // }
-                            // .padding(.top, 20)
-                            // .padding(.bottom, 40)
+                            if hideDisconnectedServers {
+                                Text("所有控制器已被自动隐藏")
+                                    .font(.title2)
+                                    .fontWeight(.medium)
+                                Text("请在外观设置中关闭隐藏无法连接的控制器来显示全部控制器")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal, 32)
+                                    .padding(.bottom, 40)
+                            } else {
+                                Text("当前 Wi-Fi 下没有绑定的控制器")
+                                    .font(.title2)
+                                    .fontWeight(.medium)
+                                Text("您可以在 Wi-Fi 绑定设置中添加控制器")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal, 32)
+                                    .padding(.bottom, 40)
+                            }
                         }
                     } else {
-                        // 服务器卡片列表
+                        // 显示过滤后的服务器列表
                         ForEach(filteredServers) { server in
                             NavigationLink {
                                 ServerDetailView(server: server)
@@ -202,7 +226,7 @@ struct ContentView: View {
                     .cornerRadius(16)
                     
                     // 版本信息
-                    Text("Ver: 1.2.9 (TF Build 10)")
+                    Text("Ver: 1.2.9 (TF Build 11)")
                         .foregroundColor(.secondary)
                         .font(.footnote)
                         .padding(.top, 8)
@@ -295,6 +319,23 @@ struct ContentView: View {
         }
         .preferredColorScheme(colorScheme)
         .onAppear {
+            print("🎬 ContentView 出现")
+            // 获取当前 Wi-Fi SSID
+            if enableWiFiBinding {
+                NEHotspotNetwork.fetchCurrent { network in
+                    if let network = network {
+                        logger.log("检测到 Wi-Fi: \(network.ssid)")
+                        currentWiFiSSID = network.ssid
+                    } else {
+                        logger.log("未检测到 Wi-Fi 连接")
+                        currentWiFiSSID = ""
+                    }
+                }
+            } else {
+                logger.log("Wi-Fi 绑定功能未启用，跳过获取 Wi-Fi 信息")
+                currentWiFiSSID = ""
+            }
+            
             // 首次打开时刷新服务器列表
             Task {
                 await viewModel.checkAllServersStatus()
@@ -307,10 +348,61 @@ struct ContentView: View {
         }
         .onChange(of: scenePhase) { newPhase in
             if newPhase == .active {
-                // 从后台返回前台时刷新服务器列表
+                // print("🔄 应用进入活动状态")
+                // 从后台返回前台时刷新服务器列表和 Wi-Fi 状态
                 Task {
                     await viewModel.checkAllServersStatus()
                 }
+                
+                // 更新当前 Wi-Fi SSID
+                if enableWiFiBinding {
+                    NEHotspotNetwork.fetchCurrent { network in
+                        if let network = network {
+                            // print("📡 检测到 Wi-Fi (后台恢复): \(network.ssid)")
+                            currentWiFiSSID = network.ssid
+                        } else {
+                            // print("❌ 未检测到 Wi-Fi 连接 (后台恢复)")
+                            currentWiFiSSID = ""
+                        }
+                    }
+                } else {
+                    // print("⚠️ Wi-Fi 绑定功能未启用，跳过获取 Wi-Fi 信息")
+                    currentWiFiSSID = ""
+                }
+            }
+        }
+        // 添加对 enableWiFiBinding 变化的监听
+        .onChange(of: enableWiFiBinding) { newValue in
+            if newValue {
+                // 功能启用时获取 Wi-Fi 信息
+                NEHotspotNetwork.fetchCurrent { network in
+                    if let network = network {
+                        // print("📡 检测到 Wi-Fi (功能启用): \(network.ssid)")
+                        currentWiFiSSID = network.ssid
+                    } else {
+                        // print("❌ 未检测到 Wi-Fi 连接 (功能启用)")
+                        currentWiFiSSID = ""
+                    }
+                }
+            } else {
+                print("⚠️ Wi-Fi 绑定功能已禁用，清空 Wi-Fi 信息")
+                currentWiFiSSID = ""
+            }
+        }
+        // 添加对 WiFiBindingManager 变化的监听
+        .onChange(of: bindingManager.bindings) { newBindings in
+            print("📝 Wi-Fi 绑定发生变化，新的绑定数量: \(newBindings.count)")
+            logger.log("Wi-Fi 绑定发生变化，新的绑定数量: \(newBindings.count)")
+            // 强制刷新 filteredServers
+            withAnimation {
+                // print("🔄 触发强制刷新")
+                forceRefresh.toggle()  // 切换强制刷新标志
+            }
+            // 刷新服务器状态
+            Task {
+                // print("🔄 开始刷新服务器状态")
+                await viewModel.checkAllServersStatus()
+                // print("✅ 服务器状态刷新完成")
             }
         }
     }
@@ -434,5 +526,6 @@ struct SettingsLinkRow<Destination: View>: View {
 
 #Preview {
     ContentView()
+        .environmentObject(WiFiBindingManager())  // 为预览提供一个环境对象
 }
 

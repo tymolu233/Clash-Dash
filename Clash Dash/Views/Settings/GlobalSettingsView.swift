@@ -1,15 +1,14 @@
 import SwiftUI
 import CoreHaptics
+import CoreLocation
 
 struct GlobalSettingsView: View {
     @AppStorage("autoDisconnectOldProxy") private var autoDisconnectOldProxy = false
     @AppStorage("hideUnavailableProxies") private var hideUnavailableProxies = false
     @AppStorage("proxyGroupSortOrder") private var proxyGroupSortOrder = ProxyGroupSortOrder.default
-    @AppStorage("proxyViewStyle") private var proxyViewStyle = ProxyViewStyle.detailed
     @AppStorage("speedTestURL") private var speedTestURL = "https://www.gstatic.com/generate_204"
     @AppStorage("speedTestTimeout") private var speedTestTimeout = 5000
     @State private var showClearCacheAlert = false
-
     
     var body: some View {
         Form {
@@ -90,7 +89,7 @@ struct GlobalSettingsView: View {
             } header: {
                 SectionHeader(title: "测速设置", systemImage: "speedometer")
             }
-
+            
             Section {
                 Button {
                     showClearCacheAlert = true
@@ -112,165 +111,11 @@ struct GlobalSettingsView: View {
             Button("取消", role: .cancel) { }
             Button("清除", role: .destructive) {
                 ImageCache.shared.removeAll()
-                // 添加触觉反馈
                 let generator = UINotificationFeedbackGenerator()
                 generator.notificationOccurred(.success)
             }
         } message: {
             Text("确定要清除所有已缓存的图标吗？")
-        }
-    }
-}
-
-// 辅助视图组件
-struct SettingToggleRow: View {
-    let title: String
-    let subtitle: String
-    @Binding var isOn: Bool
-    
-    var body: some View {
-        Toggle(isOn: $isOn) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                Text(subtitle)
-                    .caption()
-            }
-        }
-    }
-}
-
-struct SettingRow: View {
-    let title: String
-    let value: String
-    
-    var body: some View {
-        HStack {
-            Text(title)
-            Spacer()
-            Text(value)
-                .foregroundColor(.secondary)
-        }
-    }
-}
-
-struct SectionHeader: View {
-    let title: String
-    let systemImage: String
-    
-    var body: some View {
-        Label(title, systemImage: systemImage)
-            .foregroundColor(.secondary)
-            .textCase(nil)
-    }
-}
-
-// 扩展便捷修饰符
-extension View {
-    func caption() -> some View {
-        self.font(.caption)
-            .foregroundColor(.secondary)
-    }
-}
-
-// 单独的排序设置视图
-struct ProxyGroupSortOrderView: View {
-    @Binding var selection: ProxyGroupSortOrder
-    
-    var body: some View {
-        List {
-            ForEach(ProxyGroupSortOrder.allCases) { order in
-                Button {
-                    selection = order
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                } label: {
-                    HStack {
-                        Text(order.description)
-                        Spacer()
-                        if order == selection {
-                            Image(systemName: "checkmark")
-                                .foregroundColor(.accentColor)
-                        }
-                    }
-                }
-                .foregroundColor(.primary)
-            }
-        }
-        .navigationTitle("排序方式")
-        .navigationBarTitleDisplayMode(.inline)
-    }
-}
-
-enum ProxyGroupSortOrder: String, CaseIterable, Identifiable {
-    case `default` = "default"
-    case latencyAsc = "latencyAsc"
-    case latencyDesc = "latencyDesc"
-    case nameAsc = "nameAsc"
-    case nameDesc = "nameDesc"
-    
-    var id: String { self.rawValue }
-    
-    var description: String {
-        switch self {
-        case .default: return "原 config 文件中的排序"
-        case .latencyAsc: return "按延迟从小到大"
-        case .latencyDesc: return "按延迟从大到小"
-        case .nameAsc: return "按名称字母排序 (A-Z)"
-        case .nameDesc: return "按名称字母排序 (Z-A)"
-        }
-    }
-}
-
-struct SettingsInfoRow: View {
-    let icon: String
-    let text: String
-    var message: String? = nil
-    
-    var body: some View {
-        Label {
-            HStack {
-                Text(text)
-                    .foregroundColor(.secondary)
-                if let message = message {
-                    Text(message)
-                        .foregroundColor(.secondary)
-                        .font(.caption)
-                }
-            }
-        } icon: {
-            Image(systemName: icon)
-                .foregroundColor(.secondary)
-        }
-        .padding(.vertical, 4)
-    }
-}
-
-// 添加代理视图样式枚举
-enum ProxyViewStyle: String, CaseIterable, Identifiable {
-    case detailed = "detailed"
-    case compact = "compact"
-    
-    var id: String { self.rawValue }
-    
-    var description: String {
-        switch self {
-        case .detailed: return "详细"
-        case .compact: return "简洁"
-        }
-    }
-}
-
-enum AppThemeMode: String, CaseIterable, Identifiable {
-    case system = "system"
-    case light = "light"
-    case dark = "dark"
-    
-    var id: String { self.rawValue }
-    
-    var description: String {
-        switch self {
-        case .system: return "跟随系统"
-        case .light: return "浅色"
-        case .dark: return "深色"
         }
     }
 }
