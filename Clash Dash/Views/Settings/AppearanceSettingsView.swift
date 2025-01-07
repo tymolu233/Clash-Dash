@@ -3,6 +3,7 @@ import SwiftUI
 struct AppearanceSettingsView: View {
     @AppStorage("appThemeMode") private var appThemeMode = AppThemeMode.system
     @AppStorage("proxyViewStyle") private var proxyViewStyle = ProxyViewStyle.detailed
+    @AppStorage("hideDisconnectedServers") private var hideDisconnectedServers = false
     
     var body: some View {
         Form {
@@ -20,6 +21,8 @@ struct AppearanceSettingsView: View {
                             .tag(mode)
                     }
                 }
+                
+                Toggle("隐藏无法连接的控制器", isOn: $hideDisconnectedServers)
             } header: {
                 SectionHeader(title: "外观设置", systemImage: "paintbrush")
             }

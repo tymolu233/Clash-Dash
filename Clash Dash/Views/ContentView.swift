@@ -14,16 +14,26 @@ struct ContentView: View {
     @State private var lastChangedMode = ""
     @State private var showingSourceCode = false
     @AppStorage("appThemeMode") private var appThemeMode = AppThemeMode.system
+    @AppStorage("hideDisconnectedServers") private var hideDisconnectedServers = false
     @Environment(\.scenePhase) private var scenePhase
     
     // 添加触觉反馈生成器
     private let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+    
+    // 添加过滤后的服务器列表计算属性
+    private var filteredServers: [ClashServer] {
+        if hideDisconnectedServers {
+            return viewModel.servers.filter { $0.status == .ok }
+        }
+        return viewModel.servers
+    }
     
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
                     if viewModel.servers.isEmpty {
+                        // 真正的空状态
                         VStack(spacing: 20) {
                             Spacer()
                                 .frame(height: 60)
@@ -71,9 +81,44 @@ struct ContentView: View {
                             .padding(.top, 20)
                             .padding(.bottom, 40)
                         }
+                    } else if filteredServers.isEmpty {
+                        // 所有控制器都被隐藏的状态
+                        VStack(spacing: 20) {
+                            Spacer()
+                                .frame(height: 60)
+                            
+                            Image(systemName: "server.rack")
+                                .font(.system(size: 50))
+                                .foregroundColor(.secondary.opacity(0.7))
+                                .padding(.bottom, 10)
+                            
+                            Text("所有控制器已被自动隐藏")
+                                .font(.title2)
+                                .fontWeight(.medium)
+                            Text("请在外观设置中关闭“隐藏无法连接的控制器”来显示全部控制器")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 32)
+                                .padding(.bottom, 40)
+                            
+                            // Button {
+                            //     impactFeedback.impactOccurred()
+                            //     hideDisconnectedServers.toggle()
+                            // } label: {
+                            //     Text("显示全部控制器")
+                            //         .font(.headline)
+                            //         .foregroundColor(.white)
+                            //         .frame(width: 160, height: 44)
+                            //         .background(Color.blue)
+                            //         .cornerRadius(22)
+                            // }
+                            // .padding(.top, 20)
+                            // .padding(.bottom, 40)
+                        }
                     } else {
                         // 服务器卡片列表
-                        ForEach(viewModel.servers) { server in
+                        ForEach(filteredServers) { server in
                             NavigationLink {
                                 ServerDetailView(server: server)
                                     .onAppear {
