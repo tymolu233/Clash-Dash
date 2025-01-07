@@ -29,7 +29,7 @@ struct EditServerView: View {
         self._url = State(initialValue: server.url)
         self._port = State(initialValue: server.port)
         self._secret = State(initialValue: server.secret)
-        self._useSSL = State(initialValue: server.useSSL)
+        self._useSSL = State(initialValue: server.clashUseSSL)
     }
     
     var body: some View {
@@ -103,7 +103,7 @@ struct EditServerView: View {
                             secret: secret,
                             status: server.status,
                             version: server.version,
-                            useSSL: useSSL,
+                            clashUseSSL: useSSL,
                             isQuickLaunch: server.isQuickLaunch
                         )
                         viewModel.updateServer(updatedServer)

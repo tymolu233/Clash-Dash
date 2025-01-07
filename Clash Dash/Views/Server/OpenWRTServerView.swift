@@ -192,12 +192,12 @@ struct OpenWRTServerView: View {
         
         if let server = server {
             _name = State(initialValue: server.name)
-            _host = State(initialValue: server.openWRTUrl ?? server.url)
+            _host = State(initialValue: server.openWRTUrl ?? "")
             _port = State(initialValue: server.openWRTPort ?? "")
-            _useSSL = State(initialValue: server.useSSL)
+            _useSSL = State(initialValue: server.openWRTUseSSL)
             _username = State(initialValue: server.openWRTUsername ?? "")
             _password = State(initialValue: server.openWRTPassword ?? "")
-            _hasOpenClash = State(initialValue: true) // 编辑模式下默认为 true
+            _hasOpenClash = State(initialValue: true)
         }
     }
     
@@ -216,6 +216,7 @@ struct OpenWRTServerView: View {
                         .keyboardType(.numberPad)
                     
                     Toggle("使用 HTTPS", isOn: $useSSL)
+                        .help("是否使用 HTTPS 访问 OpenWRT 管理页面")
                 }
                 
                 Section(header: Text("登录信息")) {
@@ -366,7 +367,7 @@ struct OpenWRTServerView: View {
                     secret: "",
                     status: .unknown,
                     version: nil,
-                    useSSL: useSSL,
+                    clashUseSSL: false,
                     source: .openWRT
                 )
                 
@@ -375,6 +376,7 @@ struct OpenWRTServerView: View {
                 testServer.openWRTUsername = username
                 testServer.openWRTPassword = password
                 testServer.openWRTPort = port
+                testServer.openWRTUseSSL = useSSL
                 
                 // 验证连接并获取 Clash 信息
                 let status = try await viewModel.validateOpenWRTServer(testServer, username: username, password: password)
@@ -389,7 +391,7 @@ struct OpenWRTServerView: View {
                         // 使用外部控制配置
                         testServer.url = domain
                         testServer.port = port
-                        testServer.useSSL = ssl == "1"
+                        testServer.clashUseSSL = ssl == "1"
                         logger.log("外部控制器使用公网地址 \(domain) 和端口 \(port) 连接")
                     } else {
                         throw NetworkError.invalidResponse(message: "未在 OpenClash 中启用公网外部控制，请查看\"使用帮助\"")

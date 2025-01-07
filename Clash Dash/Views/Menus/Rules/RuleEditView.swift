@@ -35,7 +35,7 @@ struct RuleEditView: View {
     
     private func fetchProxyGroups() {
         isLoadingProxies = true
-        let scheme = server.useSSL ? "https" : "http"
+        let scheme = server.clashUseSSL ? "https" : "http"
         guard let url = URL(string: "\(scheme)://\(server.url):\(server.port)/proxies") else {
             proxyGroups = ["获取失败"]
             isLoadingProxies = false

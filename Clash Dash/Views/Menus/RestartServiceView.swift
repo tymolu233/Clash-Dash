@@ -105,8 +105,8 @@ struct RestartServiceView: View {
             let stream = try await viewModel.restartOpenClash(server)
             
             // 2. 开始轮询日志
-            let scheme = server.useSSL ? "https" : "http"
-            let baseURL = "\(scheme)://\(server.url):\(server.openWRTPort ?? "80")"
+            let scheme = server.openWRTUseSSL ? "https" : "http"
+            let baseURL = "\(scheme)://\(server.openWRTUrl):\(server.openWRTPort ?? "80")"
             
             guard let username = server.openWRTUsername,
                   let password = server.openWRTPassword else {

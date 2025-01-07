@@ -221,7 +221,7 @@ struct AddServerView: View {
                             url: url,
                             port: port,
                             secret: secret,
-                            useSSL: useSSL
+                            clashUseSSL: useSSL
                         )
                         viewModel.addServer(server)
                         dismiss()

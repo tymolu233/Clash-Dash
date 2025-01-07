@@ -127,7 +127,7 @@ class ProxyViewModel: ObservableObject {
     }
     
     private func makeRequest(path: String) -> URLRequest? {
-        let scheme = server.useSSL ? "https" : "http"
+        let scheme = server.clashUseSSL ? "https" : "http"
         
         // 处理路径中的特殊字符
         let encodedPath = path.components(separatedBy: "/").map { component in
@@ -307,7 +307,7 @@ class ProxyViewModel: ObservableObject {
                 let (data, response) = try await URLSession.shared.data(for: request)
                 
                 // 检查 HTTPS 响应
-                if server.useSSL,
+                if server.clashUseSSL,
                    let httpsResponse = response as? HTTPURLResponse,
                    httpsResponse.statusCode == 400 {
                     print("SSL 连接失败，服务器可能不支持 HTTPS")
@@ -343,7 +343,7 @@ class ProxyViewModel: ObservableObject {
             case .serverCertificateNotYetValid:
                 print("SSL 错误：服务器证书尚未生效")
             case .cannotConnectToHost:
-                print("无法连接到服务器：\(server.useSSL ? "HTTPS" : "HTTP") 连接失败")
+                print("无法连接到服务器：\(server.clashUseSSL ? "HTTPS" : "HTTP") 连接失败")
             default:
                 print("网络错误：\(urlError.localizedDescription)")
             }
@@ -370,7 +370,7 @@ class ProxyViewModel: ObservableObject {
             let (_, response) = try await URLSession.shared.data(for: request)
             logger.log("✅ 切换请求成功")
             
-            if server.useSSL,
+            if server.clashUseSSL,
                let httpsResponse = response as? HTTPURLResponse,
                httpsResponse.statusCode == 400 {
                 // print("❌ SSL 连接失败")
@@ -474,7 +474,7 @@ class ProxyViewModel: ObservableObject {
             let (data, response) = try await URLSession.shared.data(for: request)
             // print("✅ 收到延迟测试响应")
             
-            if server.useSSL,
+            if server.clashUseSSL,
                let httpsResponse = response as? HTTPURLResponse,
                httpsResponse.statusCode == 400 {
                 // print("❌ SSL 连接失败")
@@ -590,7 +590,7 @@ class ProxyViewModel: ObservableObject {
             let (data, response) = try await URLSession.shared.data(for: request)
             // print("收到服务器响应: \(response)")
             
-            if server.useSSL,
+            if server.clashUseSSL,
                let httpsResponse = response as? HTTPURLResponse,
                httpsResponse.statusCode == 400 {
                 print("SSL 连接失败，服务器可能不支持 HTTPS")
@@ -670,7 +670,7 @@ class ProxyViewModel: ObservableObject {
         do {
             let (_, response) = try await URLSession.shared.data(for: request)
             
-            if server.useSSL,
+            if server.clashUseSSL,
                let httpsResponse = response as? HTTPURLResponse,
                httpsResponse.statusCode == 400 {
                 print("SSL 连接失败，服务器可能不支持 HTTPS")
@@ -715,7 +715,7 @@ class ProxyViewModel: ObservableObject {
         do {
             let (_, response) = try await URLSession.shared.data(for: request)
             
-            if server.useSSL,
+            if server.clashUseSSL,
                let httpsResponse = response as? HTTPURLResponse,
                httpsResponse.statusCode == 400 {
                 print("SSL 连接失败，服务器可能不支持 HTTPS")
@@ -770,7 +770,7 @@ class ProxyViewModel: ObservableObject {
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
             
-            if server.useSSL,
+            if server.clashUseSSL,
                let httpsResponse = response as? HTTPURLResponse,
                httpsResponse.statusCode == 400 {
                 print("SSL 连接失败，服务器可能不支持 HTTPS")

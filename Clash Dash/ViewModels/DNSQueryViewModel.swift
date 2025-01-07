@@ -18,7 +18,7 @@ class DNSQueryViewModel: ObservableObject {
             return nil
         }
         
-        let scheme = server.useSSL ? "https" : "http"
+        let scheme = server.clashUseSSL ? "https" : "http"
         guard let url = URL(string: "\(scheme)://\(server.url):\(server.port)/dns/query?name=\(encodedDomain)&type=\(type)") else {
             return nil
         }
@@ -31,7 +31,7 @@ class DNSQueryViewModel: ObservableObject {
     
     private func makeSession(server: ClashServer) -> URLSession {
         let config = URLSessionConfiguration.default
-        if server.useSSL {
+        if server.clashUseSSL {
             config.urlCache = nil
             config.requestCachePolicy = .reloadIgnoringLocalAndRemoteCacheData
             config.tlsMinimumSupportedProtocolVersion = .TLSv12

@@ -152,7 +152,7 @@ class ConnectionsViewModel: ObservableObject {
         reconnectTask = nil
         
         // 构建 WebSocket URL，支持 SSL
-        let scheme = server.useSSL ? "wss" : "ws"
+        let scheme = server.clashUseSSL ? "wss" : "ws"
         guard let url = URL(string: "\(scheme)://\(server.url):\(server.port)/connections") else {
             log("❌ URL 构建失败")
             DispatchQueue.main.async { [weak self] in
@@ -162,7 +162,7 @@ class ConnectionsViewModel: ObservableObject {
         }
         
         // 先测试 HTTP 连接
-        let httpScheme = server.useSSL ? "https" : "http"
+        let httpScheme = server.clashUseSSL ? "https" : "http"
         var testRequest = URLRequest(url: URL(string: "\(httpScheme)://\(server.url):\(server.port)")!)
         if !server.secret.isEmpty {
             testRequest.setValue("Bearer \(server.secret)", forHTTPHeaderField: "Authorization")
@@ -170,7 +170,7 @@ class ConnectionsViewModel: ObservableObject {
         
         // 如果使用 SSL，添加额外的配置
         let sessionConfig = URLSessionConfiguration.default
-        if server.useSSL {
+        if server.clashUseSSL {
             sessionConfig.urlCache = nil // 禁用缓存
             sessionConfig.requestCachePolicy = .reloadIgnoringLocalAndRemoteCacheData
             // 允许自签名证书
@@ -508,7 +508,7 @@ class ConnectionsViewModel: ObservableObject {
     }
     
     private func makeRequest(path: String, method: String = "GET") -> URLRequest? {
-        let scheme = server?.useSSL == true ? "https" : "http"
+        let scheme = server?.clashUseSSL == true ? "https" : "http"
         guard let server = server,
               let url = URL(string: "\(scheme)://\(server.url):\(server.port)/\(path)") else {
             return nil
@@ -528,7 +528,7 @@ class ConnectionsViewModel: ObservableObject {
     
     private func makeSession() -> URLSession {
         let config = URLSessionConfiguration.default
-        if server?.useSSL == true {
+        if server?.clashUseSSL == true {
             config.urlCache = nil
             config.requestCachePolicy = .reloadIgnoringLocalAndRemoteCacheData
             config.tlsMinimumSupportedProtocolVersion = .TLSv12

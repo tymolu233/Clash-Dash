@@ -105,7 +105,7 @@ class LogViewModel: ObservableObject {
     
     private func makeWebSocketRequest(server: ClashServer) -> URLRequest? {
         var components = URLComponents()
-        components.scheme = server.useSSL ? "wss" : "ws"
+        components.scheme = server.clashUseSSL ? "wss" : "ws"
         components.host = server.url
         components.port = Int(server.port)
         components.path = "/logs"
@@ -135,7 +135,7 @@ class LogViewModel: ObservableObject {
     
     private func makeSession(server: ClashServer) -> URLSession {
         let config = URLSessionConfiguration.default
-        if server.useSSL {
+        if server.clashUseSSL {
             config.urlCache = nil
             config.requestCachePolicy = .reloadIgnoringLocalAndRemoteCacheData
             config.tlsMinimumSupportedProtocolVersion = .TLSv12

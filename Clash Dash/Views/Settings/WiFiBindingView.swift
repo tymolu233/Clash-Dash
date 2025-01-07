@@ -44,7 +44,7 @@ struct WiFiBindingView: View {
                             let boundServers = serverViewModel.servers.filter { server in
                                 binding.serverIds.contains(server.id.uuidString)
                             }
-                            Text("已绑定 \(boundServers.count) 个服务器")
+                            Text("已绑定 \(boundServers.count) 个控制器")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
@@ -110,7 +110,7 @@ struct AddWiFiBindingView: View {
             
             if serverViewModel.servers.isEmpty {
                 Section {
-                    Text("没有可用的服务器")
+                    Text("没有可用的控制器")
                         .foregroundColor(.secondary)
                 }
             } else {
@@ -119,7 +119,9 @@ struct AddWiFiBindingView: View {
                         HStack {
                             VStack(alignment: .leading) {
                                 Text(server.name)
-                                Text(server.url)
+                                let displayUrl = (server.openWRTUrl ?? "").isEmpty ? server.url : server.openWRTUrl ?? ""
+                                let displayPort = (server.openWRTUrl ?? "").isEmpty ? server.port : server.openWRTPort ?? ""
+                                Text("\(displayUrl):\(displayPort)")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
@@ -142,7 +144,7 @@ struct AddWiFiBindingView: View {
                         }
                     }
                 } header: {
-                    Text("选择服务器")
+                    Text("选择控制器")
                 }
             }
         }
@@ -199,7 +201,7 @@ struct EditWiFiBindingView: View {
             
             if serverViewModel.servers.isEmpty {
                 Section {
-                    Text("没有可用的服务器")
+                    Text("没有可用的控制器")
                         .foregroundColor(.secondary)
                 }
             } else {
@@ -208,7 +210,9 @@ struct EditWiFiBindingView: View {
                         HStack {
                             VStack(alignment: .leading) {
                                 Text(server.name)
-                                Text(server.url)
+                                let displayUrl = (server.openWRTUrl ?? "").isEmpty ? server.url : server.openWRTUrl ?? ""
+                                let displayPort = (server.openWRTUrl ?? "").isEmpty ? server.port : server.openWRTPort ?? ""
+                                Text("\(displayUrl):\(displayPort)")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }

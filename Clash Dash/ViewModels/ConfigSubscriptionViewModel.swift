@@ -60,8 +60,8 @@ class ConfigSubscriptionViewModel: ObservableObject {
         let token = try await getAuthToken()
         
         // 构建请求
-        let scheme = server.useSSL ? "https" : "http"
-        let baseURL = "\(scheme)://\(server.url):\(server.openWRTPort ?? "80")"
+        let scheme = server.openWRTUseSSL ? "https" : "http"
+        let baseURL = "\(scheme)://\(server.openWRTUrl):\(server.openWRTPort ?? "80")"
         guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
             throw NetworkError.invalidURL
         }
@@ -175,8 +175,8 @@ class ConfigSubscriptionViewModel: ObservableObject {
             throw NetworkError.unauthorized(message: "获取 Token 错误")
         }
         
-        let scheme = server.useSSL ? "https" : "http"
-        let baseURL = "\(scheme)://\(server.url):\(server.openWRTPort ?? "80")"
+        let scheme = server.openWRTUseSSL ? "https" : "http"
+        let baseURL = "\(scheme)://\(server.openWRTUrl):\(server.openWRTPort ?? "80")"
         guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/auth") else {
             throw NetworkError.invalidURL
         }
@@ -221,8 +221,8 @@ class ConfigSubscriptionViewModel: ObservableObject {
             let token = try await getAuthToken()
             
             // 构建请求
-            let scheme = server.useSSL ? "https" : "http"
-            let baseURL = "\(scheme)://\(server.url):\(server.openWRTPort ?? "80")"
+            let scheme = server.openWRTUseSSL ? "https" : "http"
+            let baseURL = "\(scheme)://\(server.openWRTUrl):\(server.openWRTPort ?? "80")"
             guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
                 throw NetworkError.invalidURL
             }
@@ -497,8 +497,8 @@ class ConfigSubscriptionViewModel: ObservableObject {
                 }
                 
                 // 构建请求
-                let scheme = server.useSSL ? "https" : "http"
-                let baseURL = "\(scheme)://\(server.url):\(server.openWRTPort ?? "80")"
+                let scheme = server.openWRTUseSSL ? "https" : "http"
+                let baseURL = "\(scheme)://\(server.openWRTUrl):\(server.openWRTPort ?? "80")"
                 guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
                     throw NetworkError.invalidURL
                 }
@@ -561,8 +561,8 @@ class ConfigSubscriptionViewModel: ObservableObject {
             let token = try await getAuthToken()
             
             // 构建请求
-            let scheme = server.useSSL ? "https" : "http"
-            let baseURL = "\(scheme)://\(server.url):\(server.openWRTPort ?? "80")"
+            let scheme = server.openWRTUseSSL ? "https" : "http"
+            let baseURL = "\(scheme)://\(server.openWRTUrl):\(server.openWRTPort ?? "80")"
             guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
                 throw NetworkError.invalidURL
             }
@@ -617,8 +617,8 @@ class ConfigSubscriptionViewModel: ObservableObject {
     }
     
     private func commitChanges(token: String) async throws {
-        let scheme = server.useSSL ? "https" : "http"
-        let baseURL = "\(scheme)://\(server.url):\(server.openWRTPort ?? "80")"
+        let scheme = server.openWRTUseSSL ? "https" : "http"
+        let baseURL = "\(scheme)://\(server.openWRTUrl):\(server.openWRTPort ?? "80")"
         guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
             throw NetworkError.invalidURL
         }
@@ -718,8 +718,8 @@ class ConfigSubscriptionViewModel: ObservableObject {
         do {
             let token = try await getAuthToken()
             
-            let scheme = server.useSSL ? "https" : "http"
-            let baseURL = "\(scheme)://\(server.url):\(server.openWRTPort ?? "80")"
+            let scheme = server.openWRTUseSSL ? "https" : "http"
+            let baseURL = "\(scheme)://\(server.openWRTUrl):\(server.openWRTPort ?? "80")"
             guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
                 throw NetworkError.invalidURL
             }
@@ -771,8 +771,8 @@ class ConfigSubscriptionViewModel: ObservableObject {
             let token = try await getAuthToken()
             
             // 构建请求
-            let scheme = server.useSSL ? "https" : "http"
-            let baseURL = "\(scheme)://\(server.url):\(server.openWRTPort ?? "80")"
+            let scheme = server.openWRTUseSSL ? "https" : "http"
+            let baseURL = "\(scheme)://\(server.openWRTUrl):\(server.openWRTPort ?? "80")"
             guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
                 throw NetworkError.invalidURL
             }
@@ -831,8 +831,8 @@ class ConfigSubscriptionViewModel: ObservableObject {
         
         let token = try await getAuthToken()
         
-        let scheme = server.useSSL ? "https" : "http"
-        let baseURL = "\(scheme)://\(server.url):\(server.openWRTPort ?? "80")"
+        let scheme = server.openWRTUseSSL ? "https" : "http"
+        let baseURL = "\(scheme)://\(server.openWRTUrl):\(server.openWRTPort ?? "80")"
         guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
             throw NetworkError.invalidURL
         }

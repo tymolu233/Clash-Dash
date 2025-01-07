@@ -13,7 +13,7 @@ struct ClashServer: Identifiable, Codable {
     var secret: String
     var status: ServerStatus
     var version: String?
-    var useSSL: Bool
+    var clashUseSSL: Bool
     var errorMessage: String?
     var serverType: ServerType?
     var isQuickLaunch: Bool = false
@@ -22,6 +22,7 @@ struct ClashServer: Identifiable, Codable {
     var openWRTPassword: String?
     var openWRTPort: String?
     var openWRTUrl: String?
+    var openWRTUseSSL: Bool = false
     
     enum ServerType: String, Codable {
         case unknown = "Unknown"
@@ -37,7 +38,7 @@ struct ClashServer: Identifiable, Codable {
          secret: String = "", 
          status: ServerStatus = .unknown, 
          version: String? = nil,
-         useSSL: Bool = false,
+         clashUseSSL: Bool = false,
          source: ServerSource = .clashController,
          isQuickLaunch: Bool = false) {
         self.id = id
@@ -47,7 +48,7 @@ struct ClashServer: Identifiable, Codable {
         self.secret = secret
         self.status = status
         self.version = version
-        self.useSSL = useSSL
+        self.clashUseSSL = clashUseSSL
         self.source = source
         self.isQuickLaunch = isQuickLaunch
     }
@@ -65,7 +66,7 @@ struct ClashServer: Identifiable, Codable {
     
     var baseURL: URL? {
         let cleanURL = url.replacingOccurrences(of: "^https?://", with: "", options: .regularExpression)
-        let scheme = useSSL ? "https" : "http"
+        let scheme = source == .clashController ? (clashUseSSL ? "https" : "http") : (openWRTUseSSL ? "https" : "http")
         return URL(string: "\(scheme)://\(cleanURL):\(port)")
     }
     
