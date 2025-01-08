@@ -113,7 +113,8 @@ struct ModeSwitchCard: View {
     
     private func fetchCurrentMode() async {
         do {
-            let url = URL(string: "http://\(server.url):\(server.port)/configs")!
+            let scheme = server.clashUseSSL ? "https" : "http"
+            let url = URL(string: "\(scheme)://\(server.url):\(server.port)/configs")!
             var request = URLRequest(url: url)
             request.setValue("Bearer \(server.secret)", forHTTPHeaderField: "Authorization")
             
@@ -132,7 +133,8 @@ struct ModeSwitchCard: View {
     private func updateMode(_ mode: String) {
         Task {
             do {
-                let url = URL(string: "http://\(server.url):\(server.port)/configs")!
+                let scheme = server.clashUseSSL ? "https" : "http"
+                let url = URL(string: "\(scheme)://\(server.url):\(server.port)/configs")!
                 var request = URLRequest(url: url)
                 request.httpMethod = "PATCH"
                 request.setValue("application/json", forHTTPHeaderField: "Content-Type")
