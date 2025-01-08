@@ -1378,11 +1378,11 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         
         let deleteCommand = """
         rm -f /tmp/Proxy_Group && \
-        rm -f /etc/openclash/backup/\(configName) && \
-        rm -f /etc/openclash/history/\(configName) && \
-        rm -f /etc/openclash/history/\(configName).db && \
-        rm -f /etc/openclash/\(configName) && \
-        rm -f /etc/openclash/config/\(configName)
+        rm -f \"/etc/openclash/backup/\(configName)\" && \
+        rm -f \"/etc/openclash/history/\(configName)\" && \
+        rm -f \"/etc/openclash/history/\(configName).db\" && \
+        rm -f \"/etc/openclash/\(configName)\" && \
+        rm -f \"/etc/openclash/config/\(configName)\"
         """
         
         var request = URLRequest(url: url)
