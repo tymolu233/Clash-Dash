@@ -38,10 +38,18 @@ struct ContentView: View {
         var servers = viewModel.servers
         
         // 只在启用了 Wi-Fi 绑定功能时进行 Wi-Fi 过滤
-        if enableWiFiBinding && !currentWiFiSSID.isEmpty {
-            if let binding = bindingManager.bindings.first(where: { $0.ssid == currentWiFiSSID }) {
+        if enableWiFiBinding {
+            if !currentWiFiSSID.isEmpty {
+                // 如果连接了 Wi-Fi，检查是否有绑定
+                if let binding = bindingManager.bindings.first(where: { $0.ssid == currentWiFiSSID }) {
+                    servers = servers.filter { server in
+                        binding.serverIds.contains(server.id.uuidString)
+                    }
+                }
+            } else {
+                // 如果没有连接 Wi-Fi（例如使用数据流量），显示默认控制器
                 servers = servers.filter { server in
-                    binding.serverIds.contains(server.id.uuidString)
+                    bindingManager.defaultServerIds.contains(server.id.uuidString)
                 }
             }
         }

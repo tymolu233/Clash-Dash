@@ -66,6 +66,15 @@ struct AppearanceSettingsView: View {
                             value: ""
                         )
                     }
+                    
+                    NavigationLink {
+                        DefaultServersView()
+                    } label: {
+                        SettingRow(
+                            title: "默认显示控制器",
+                            value: ""
+                        )
+                    }
                 }
             } header: {
                 SectionHeader(title: "Wi-Fi 绑定", systemImage: "wifi")
