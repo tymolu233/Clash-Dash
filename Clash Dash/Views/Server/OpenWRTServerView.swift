@@ -182,7 +182,7 @@ struct OpenWRTServerView: View {
     @State private var showError = false
     @State private var errorMessage: String = ""
     @State private var isPasswordVisible = false  // 添加密码可见性状态
-    @State private var hasOpenClash: Bool = false // 添加 OpenClash 确认状态
+    @State private var luciPackage: LuCIPackage = .openClash // 添加 LuCI 软件包选择状态
     
     private var isEditMode: Bool { server != nil }
     
@@ -197,7 +197,7 @@ struct OpenWRTServerView: View {
             _useSSL = State(initialValue: server.openWRTUseSSL)
             _username = State(initialValue: server.openWRTUsername ?? "")
             _password = State(initialValue: server.openWRTPassword ?? "")
-            _hasOpenClash = State(initialValue: true)
+            _luciPackage = State(initialValue: server.luciPackage)
         }
     }
     
@@ -243,15 +243,15 @@ struct OpenWRTServerView: View {
                 }
                 
                 Section {
-                    Toggle(isOn: $hasOpenClash) {
-                        VStack(alignment: .leading) {
-                            Text("已安装 OpenClash")
-                                .font(.body)
-                            Text("请确认 OpenWRT 中已安装 OpenClash")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
+                    Picker("LuCI 软件包", selection: $luciPackage) {
+                        Text("OpenClash").tag(LuCIPackage.openClash)
+                        Text("MihomoTProxy").tag(LuCIPackage.mihomoTProxy)
                     }
+                    .pickerStyle(.segmented)
+                    
+                    Text("请选择已安装的 LuCI 软件包")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
                 
                 if isEditMode {
@@ -311,8 +311,7 @@ struct OpenWRTServerView: View {
     
     private var isValid: Bool {
         !host.isEmpty && !port.isEmpty &&
-        !username.isEmpty && !password.isEmpty &&
-        hasOpenClash // 添加 OpenClash 确认检查
+        !username.isEmpty && !password.isEmpty
     }
     
     private func isPrivateIP(_ ipString: String) -> Bool {
@@ -377,6 +376,7 @@ struct OpenWRTServerView: View {
                 testServer.openWRTPassword = password
                 testServer.openWRTPort = port
                 testServer.openWRTUseSSL = useSSL
+                testServer.luciPackage = luciPackage
                 
                 // 验证连接并获取 Clash 信息
                 let status = try await viewModel.validateOpenWRTServer(testServer, username: username, password: password)

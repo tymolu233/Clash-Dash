@@ -5,6 +5,11 @@ enum ServerSource: String, Codable {
     case openWRT = "openwrt"
 }
 
+enum LuCIPackage: String, Codable {
+    case openClash = "openclash"
+    case mihomoTProxy = "mihomo_tproxy"
+}
+
 struct ClashServer: Identifiable, Codable {
     let id: UUID
     var name: String
@@ -23,6 +28,7 @@ struct ClashServer: Identifiable, Codable {
     var openWRTPort: String?
     var openWRTUrl: String?
     var openWRTUseSSL: Bool = false
+    var luciPackage: LuCIPackage = .openClash // 默认为 OpenClash，保持向后兼容
     
     enum ServerType: String, Codable {
         case unknown = "Unknown"
