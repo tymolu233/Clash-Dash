@@ -1,12 +1,10 @@
-import Foundation
+import SwiftUI
 
 @MainActor
 class ServerDetailViewModel: ObservableObject {
-    @Published var serverViewModel: ServerViewModel
+    let serverViewModel: ServerViewModel
     
     init() {
         self.serverViewModel = ServerViewModel()
     }
-    
-    // 可以在这里添加更多的属性和方法
 } 
