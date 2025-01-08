@@ -282,6 +282,7 @@ struct SpeedChartView: View {
 struct OverviewTab: View {
     let server: ClashServer
     @StateObject private var monitor = NetworkMonitor()
+    @StateObject private var settings = OverviewCardSettings()
     @Environment(\.colorScheme) var colorScheme
     
     private var cardBackgroundColor: Color {
@@ -295,92 +296,104 @@ struct OverviewTab: View {
             VStack(spacing: 16) {
                 Color.clear
                     .frame(height: 8)
-                // 速度卡片
-                HStack(spacing: 16) {
-                    StatusCard(
-                        title: "下载",
-                        value: monitor.downloadSpeed,
-                        icon: "arrow.down.circle",
-                        color: .blue
-                    )
-                    StatusCard(
-                        title: "上传",
-                        value: monitor.uploadSpeed,
-                        icon: "arrow.up.circle",
-                        color: .green
-                    )
-                }
                 
-                // 总流量卡片
-                HStack(spacing: 16) {
-                    StatusCard(
-                        title: "下载总量",
-                        value: monitor.totalDownload,
-                        icon: "arrow.down.circle.fill",
-                        color: .blue
-                    )
-                    StatusCard(
-                        title: "上传总量",
-                        value: monitor.totalUpload,
-                        icon: "arrow.up.circle.fill",
-                        color: .green
-                    )
-                }
-                
-                // 状态卡片
-                HStack(spacing: 16) {
-                    StatusCard(
-                        title: "活动连接",
-                        value: "\(monitor.activeConnections)",
-                        icon: "link.circle.fill",
-                        color: .orange
-                    )
-                    StatusCard(
-                        title: "内存使用",
-                        value: monitor.memoryUsage,
-                        icon: "memorychip",
-                        color: .purple
-                    )
-                }
-                
-                // 速率图表
-                SpeedChartView(speedHistory: monitor.speedHistory)
-                    .padding()
-                    .background(cardBackgroundColor)
-                    .cornerRadius(12)
-                    .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
-                
-                // 只在 Meta 服务器上显示内存图表
-                if server.serverType != .premium {
-                    ChartCard(title: "内存使用", icon: "memorychip") {
-                        Chart(monitor.memoryHistory) { record in
-                            AreaMark(
-                                x: .value("Time", record.timestamp),
-                                y: .value("Memory", record.usage)
-                            )
-                            .foregroundStyle(.purple.opacity(0.3))
+                ForEach(settings.cardOrder) { card in
+                    if settings.cardVisibility[card] ?? true {
+                        switch card {
+                        case .speed:
+                            // 速度卡片
+                            HStack(spacing: 16) {
+                                StatusCard(
+                                    title: "下载",
+                                    value: monitor.downloadSpeed,
+                                    icon: "arrow.down.circle",
+                                    color: .blue
+                                )
+                                StatusCard(
+                                    title: "上传",
+                                    value: monitor.uploadSpeed,
+                                    icon: "arrow.up.circle",
+                                    color: .green
+                                )
+                            }
                             
-                            LineMark(
-                                x: .value("Time", record.timestamp),
-                                y: .value("Memory", record.usage)
-                            )
-                            .foregroundStyle(.purple)
-                        }
-                        .frame(height: 200)
-                        .chartYAxis {
-                            AxisMarks(position: .leading) { value in
-                                if let memory = value.as(Double.self) {
-                                    AxisGridLine()
-                                    AxisValueLabel {
-                                        Text("\(Int(memory)) MB")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
+                        case .totalTraffic:
+                            // 总流量卡片
+                            HStack(spacing: 16) {
+                                StatusCard(
+                                    title: "下载总量",
+                                    value: monitor.totalDownload,
+                                    icon: "arrow.down.circle.fill",
+                                    color: .blue
+                                )
+                                StatusCard(
+                                    title: "上传总量",
+                                    value: monitor.totalUpload,
+                                    icon: "arrow.up.circle.fill",
+                                    color: .green
+                                )
+                            }
+                            
+                        case .status:
+                            // 状态卡片
+                            HStack(spacing: 16) {
+                                StatusCard(
+                                    title: "活动连接",
+                                    value: "\(monitor.activeConnections)",
+                                    icon: "link.circle.fill",
+                                    color: .orange
+                                )
+                                StatusCard(
+                                    title: "内存使用",
+                                    value: monitor.memoryUsage,
+                                    icon: "memorychip",
+                                    color: .purple
+                                )
+                            }
+                            
+                        case .speedChart:
+                            // 速率图表
+                            SpeedChartView(speedHistory: monitor.speedHistory)
+                                .padding()
+                                .background(cardBackgroundColor)
+                                .cornerRadius(12)
+                                .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
+                            
+                        case .memoryChart:
+                            // 只在 Meta 服务器上显示内存图表
+                            if server.serverType != .premium {
+                                ChartCard(title: "内存使用", icon: "memorychip") {
+                                    Chart(monitor.memoryHistory) { record in
+                                        AreaMark(
+                                            x: .value("Time", record.timestamp),
+                                            y: .value("Memory", record.usage)
+                                        )
+                                        .foregroundStyle(.purple.opacity(0.3))
+                                        
+                                        LineMark(
+                                            x: .value("Time", record.timestamp),
+                                            y: .value("Memory", record.usage)
+                                        )
+                                        .foregroundStyle(.purple)
+                                    }
+                                    .frame(height: 200)
+                                    .chartYAxis {
+                                        AxisMarks(position: .leading) { value in
+                                            if let memory = value.as(Double.self) {
+                                                AxisGridLine()
+                                                AxisValueLabel {
+                                                    Text("\(Int(memory)) MB")
+                                                        .font(.caption)
+                                                        .foregroundColor(.secondary)
+                                                }
+                                            }
+                                        }
+                                    }
+                                    .chartXAxis {
+                                        AxisMarks(values: .automatic(desiredCount: 3))
                                     }
                                 }
                             }
-                        }
-                        .chartXAxis {
-                            AxisMarks(values: .automatic(desiredCount: 3))
                         }
                     }
                 }

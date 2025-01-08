@@ -11,6 +11,15 @@ struct AppearanceSettingsView: View {
     var body: some View {
         Form {
             Section {
+                NavigationLink {
+                    OverviewCardSettingsView()
+                } label: {
+                    SettingRow(
+                        title: "概览页面设置",
+                        value: ""
+                    )
+                }
+                
                 Picker("代理视图样式", selection: $proxyViewStyle) {
                     ForEach(ProxyViewStyle.allCases) { style in
                         Text(style.description)
@@ -25,13 +34,11 @@ struct AppearanceSettingsView: View {
                     }
                 }
                 
-                Toggle("隐藏无法连接的控制器", isOn: $hideDisconnectedServers)
             } header: {
                 SectionHeader(title: "外观设置", systemImage: "paintbrush")
             }
-
+            
             Section {
-                
                 Toggle("隐藏无法连接的控制器", isOn: $hideDisconnectedServers)
             } header: {
                 SectionHeader(title: "超时隐藏", systemImage: "eye.slash")
