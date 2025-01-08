@@ -266,7 +266,6 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             case 401:
                 updateServerStatus(server, status: .unauthorized, message: "认证失败，请检查密钥")
                 logger.log("服务器地址：\(server.url):\(server.port) ：认证失败，请检查密钥")
-                throw NetworkError.unauthorized(message: "认证失败: 服务器返回 401 未授权")
             case 404:
                 updateServerStatus(server, status: .error, message: "API 路径不存在")
                 logger.log("服务器地址：\(server.url):\(server.port) ：API 路径不存在")

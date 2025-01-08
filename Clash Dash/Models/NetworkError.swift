@@ -11,7 +11,7 @@ enum NetworkError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidURL:
-            return "无效的 URL"
+            return "无效的 URL，请检查控制器的配置"
         case .invalidResponse(let message):
             return message
         case .unauthorized(let message):
