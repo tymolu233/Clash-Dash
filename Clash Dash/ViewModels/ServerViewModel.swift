@@ -583,11 +583,11 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                 
             case 404:
                 print("❌ OpenWRT 缺少必要的依赖")
-                logger.log("❌ OpenWRT 缺少必要的依赖")
+                logger.log("❌ OpenWRT 缺少必要的依赖或信息错误")
                 throw NetworkError.missingDependencies("""
-                    OpenWRT 路由器缺少必要的依赖
-                    
-                    请确保已经安装以下软件包：
+                    请求 404 错误
+
+                    请确保信息正确，并已经安装以下软件包：
                     1. luci-mod-rpc
                     2. luci-lib-ipkg
                     3. luci-compat

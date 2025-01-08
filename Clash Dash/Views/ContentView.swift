@@ -92,14 +92,7 @@ struct ContentView: View {
                                     impactFeedback.impactOccurred()
                                     showingAddSheet = true
                                 }) {
-                                    Label("Clash 控制器", systemImage: "server.rack")
-                                }
-                                
-                                Button(action: {
-                                    impactFeedback.impactOccurred()
-                                    showingAddOpenWRTSheet = true
-                                }) {
-                                    Label("OpenWRT 控制器", systemImage: "wifi.router")
+                                    Label("添加控制器", systemImage: "plus.circle")
                                 }
                             } label: {
                                 Text("添加控制器")
@@ -250,27 +243,13 @@ struct ContentView: View {
             }
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
-                    Menu {
-                        Button(action: {
-                            impactFeedback.impactOccurred()
-                            showingAddSheet = true
-                        }) {
-                            Label("Clash 控制器", systemImage: "server.rack")
-                        }
-                        
-                        Button(action: {
-                            impactFeedback.impactOccurred()
-                            showingAddOpenWRTSheet = true
-                        }) {
-                            Label("OpenWRT 控制器", systemImage: "wifi.router")
-                        }
-                    } label: {
+                    Button(action: {
+                        impactFeedback.impactOccurred()
+                        showingAddSheet = true
+                    }) {
                         Image(systemName: "plus.circle.fill")
                             .font(.title2)
                             .foregroundColor(.blue)
-                            .onTapGesture {
-                                impactFeedback.impactOccurred()
-                            }
                     }
                 }
             }
@@ -278,14 +257,7 @@ struct ContentView: View {
                 AddServerView(viewModel: viewModel)
             }
             .sheet(item: $editingServer) { server in
-                if server.source == .clashController {
-                    EditServerView(viewModel: viewModel, server: server)
-                } else {
-                    OpenWRTServerView(viewModel: viewModel, server: server)
-                }
-            }
-            .sheet(isPresented: $showingAddOpenWRTSheet) {
-                OpenWRTServerView(viewModel: viewModel)
+                EditServerView(viewModel: viewModel, server: server)
             }
             .sheet(isPresented: $showingSourceCode) {
                 if let url = URL(string: "https://github.com/bin64/Clash-Dash") {
