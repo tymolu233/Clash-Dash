@@ -69,9 +69,9 @@ struct MoreView: View {
                 }
             }
             
-            // OpenWRT 功能组
-            if server.source == .openWRT {
-                Section("OpenWRT 功能") {
+            // OpenClash 功能组
+            if server.luciPackage == .openClash {
+                Section("OpenClash 功能") {
                     Button {
                         impactFeedback.impactOccurred()
                         showingConfigSubscription = true
