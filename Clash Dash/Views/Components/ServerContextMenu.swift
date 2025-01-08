@@ -97,7 +97,7 @@ struct ServerContextMenu: ViewModifier {
                     impactFeedback.impactOccurred()
                     onShowCustomRules()
                 } label: {
-                    Label("覆写规则", systemImage: "list.bullet.rectangle")
+                    Label("附加规则", systemImage: "list.bullet.rectangle")
                 }
                 
                 Button {

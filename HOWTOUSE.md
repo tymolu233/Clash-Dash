@@ -20,7 +20,7 @@ Clash Dash 可调用遵循 [Clash RESTful API](https://wiki.metacubex.one/api/) 
 - 切换代理模式：可对选中的控制器快速切换直连、规则或全局的代理模式。
 - 订阅管理（使用 OpenWRT 登录方式可用）：调用 OpenClash 添加订阅地址、启用或禁用以及筛选节点等功能。
 - 切换配置（使用 OpenWRT 登录方式可用）：调用 OpenClash 切换配置、删除或编辑配置文件。
-- 覆写规则（使用 OpenWRT 登录方式可用）：调用 OpenClash 添加自定义规则。
+- 附加规则（使用 OpenWRT 登录方式可用）：调用 OpenClash 添加自定义规则。
 - 重启服务（使用 OpenWRT 登录方式可用）：调用 OpenClash 重启内核。
 
 点击已添加的控制器可进入该控制器的主界面，其中包括：

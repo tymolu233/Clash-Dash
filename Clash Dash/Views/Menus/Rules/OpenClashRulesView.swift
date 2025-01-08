@@ -117,7 +117,7 @@ struct OpenClashRulesView: View {
                             .listStyle(.insetGrouped)
                         }
                     }
-                    .navigationTitle("覆写规则")
+                    .navigationTitle("附加规则")
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .navigationBarLeading) {

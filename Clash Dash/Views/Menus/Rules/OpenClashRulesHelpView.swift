@@ -9,7 +9,7 @@ struct OpenClashRulesHelpView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("功能说明")
                         .font(.headline)
-                    Text("覆写规则启用后将把自定义规则增加到配置文件")
+                    Text("附加规则启用后将把自定义规则增加到配置文件")
                         .foregroundColor(.secondary)
                 }
                 

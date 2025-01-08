@@ -7,6 +7,15 @@ struct ServerDetailView: View {
     @StateObject private var networkMonitor = NetworkMonitor()
     @State private var selectedTab = 0
     @Environment(\.dismiss) private var dismiss
+    @StateObject private var viewModel = ServerDetailViewModel()
+    @StateObject private var settingsViewModel = SettingsViewModel()
+    @State private var showingModeChangeSuccess = false
+    @State private var lastChangedMode = ""
+    @State private var showingConfigSubscription = false
+    @State private var showingSwitchConfig = false
+    @State private var showingCustomRules = false
+    @State private var showingRestartService = false
+    
     // 添加触觉反馈生成器
     private let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
     
@@ -97,6 +106,33 @@ struct ServerDetailView: View {
             }
             .onDisappear {
                 networkMonitor.stopMonitoring()
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationTitle(server.name ?? server.url)
+            .sheet(isPresented: $showingConfigSubscription) {
+                ConfigSubscriptionView(server: server)
+            }
+            .sheet(isPresented: $showingSwitchConfig) {
+                OpenClashConfigView(viewModel: viewModel.serverViewModel, server: server)
+            }
+            .sheet(isPresented: $showingCustomRules) {
+                OpenClashRulesView(server: server)
+            }
+            .sheet(isPresented: $showingRestartService) {
+                RestartServiceView(viewModel: viewModel.serverViewModel, server: server)
+            }
+        }
+    }
+    
+    private func showModeChangeSuccess(mode: String) {
+        lastChangedMode = mode
+        withAnimation {
+            showingModeChangeSuccess = true
+        }
+        // 2 秒后隐藏提示
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            withAnimation {
+                showingModeChangeSuccess = false
             }
         }
     }
@@ -523,6 +559,14 @@ struct ChartCard<Content: View>: View {
 struct MoreView: View {
     let server: ClashServer
     @Environment(\.colorScheme) var colorScheme
+    @StateObject private var viewModel = ServerDetailViewModel()
+    @State private var showingConfigSubscription = false
+    @State private var showingSwitchConfig = false
+    @State private var showingCustomRules = false
+    @State private var showingRestartService = false
+    
+    // 添加触觉反馈生成器
+    private let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
     
     private var cardBackgroundColor: Color {
         colorScheme == .dark ? 
@@ -550,23 +594,119 @@ struct MoreView: View {
             NavigationLink {
                 SettingsView(server: server)
             } label: {
-                Label("配置", systemImage: "gearshape")
+                HStack {
+                    Image(systemName: "gearshape")
+                        .foregroundColor(.blue)
+                        .frame(width: 25)
+                    Text("配置")
+                }
             }
             
             NavigationLink {
                 LogView(server: server)
             } label: {
-                Label("日志", systemImage: "doc.text")
+                HStack {
+                    Image(systemName: "doc.text")
+                        .foregroundColor(.blue)
+                        .frame(width: 25)
+                    Text("日志")
+                }
             }
             
             // 添加域名查询工具
             NavigationLink {
                 DNSQueryView(server: server)
             } label: {
-                Label("解析", systemImage: "magnifyingglass")
+                HStack {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundColor(.blue)
+                        .frame(width: 25)
+                    Text("解析")
+                }
+            }
+            
+            // OpenWRT 功能组
+            if server.source == .openWRT {
+                Section("OpenWRT 功能") {
+                    Button {
+                        impactFeedback.impactOccurred()
+                        showingConfigSubscription = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "cloud.fill")
+                                .foregroundColor(.blue)
+                                .frame(width: 25)
+                            Text("订阅管理")
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    
+                    Button {
+                        impactFeedback.impactOccurred()
+                        showingSwitchConfig = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "arrow.2.circlepath")
+                                .foregroundColor(.blue)
+                                .frame(width: 25)
+                            Text("切换配置")
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    
+                    Button {
+                        impactFeedback.impactOccurred()
+                        showingCustomRules = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "list.bullet.rectangle")
+                                .foregroundColor(.blue)
+                                .frame(width: 25)
+                            Text("附加规则")
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    
+                    Button {
+                        impactFeedback.impactOccurred()
+                        showingRestartService = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "arrow.clockwise.circle")
+                                .foregroundColor(.blue)
+                                .frame(width: 25)
+                            Text("重启服务")
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
             }
         }
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showingConfigSubscription) {
+            ConfigSubscriptionView(server: server)
+        }
+        .sheet(isPresented: $showingSwitchConfig) {
+            OpenClashConfigView(viewModel: viewModel.serverViewModel, server: server)
+        }
+        .sheet(isPresented: $showingCustomRules) {
+            OpenClashRulesView(server: server)
+        }
+        .sheet(isPresented: $showingRestartService) {
+            RestartServiceView(viewModel: viewModel.serverViewModel, server: server)
+        }
         .overlay(alignment: .bottom) {
             if server.status == .ok {
                 VStack(spacing: 4) {

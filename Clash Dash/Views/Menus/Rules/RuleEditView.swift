@@ -52,7 +52,7 @@ struct RuleEditView: View {
                 defer { isLoadingProxies = false }
                 
                 if let error = error {
-                    logger.log("覆写规则 - 获取代理列表失败: \(error)")
+                    logger.log("附加规则 - 获取代理列表失败: \(error)")
                     proxyGroups = ["获取失败"]
                     return
                 }
@@ -72,7 +72,7 @@ struct RuleEditView: View {
                         proxyGroups = ["获取失败"]
                     }
                 } catch {
-                    logger.log("覆写规则 - 解析代理列表失败: \(error)")
+                    logger.log("附加规则 - 解析代理列表失败: \(error)")
                     proxyGroups = ["获取失败"]
                 }
             }
