@@ -155,6 +155,15 @@ struct AddServerView: View {
     @State private var useSSL = false
     @State private var showingHelp = false
     
+    // OpenWRT 相关状态
+    @State private var isOpenWRT = false
+    @State private var openWRTUrl = ""
+    @State private var openWRTPort = ""
+    @State private var openWRTUseSSL = false
+    @State private var openWRTUsername = ""
+    @State private var openWRTPassword = ""
+    @State private var luciPackage: LuCIPackage = .openClash
+    
     // 添加触觉反馈生成器
     private let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
     
@@ -170,6 +179,11 @@ struct AddServerView: View {
             Form {
                 Section {
                     TextField("名称（可选）", text: $name)
+                } header: {
+                    Text("基本信息")
+                }
+                
+                Section {
                     TextField("控制器地址", text: $url)
                         .textInputAutocapitalization(.never)
                         .keyboardType(.URL)
@@ -195,6 +209,44 @@ struct AddServerView: View {
                 }
                 
                 Section {
+                    Toggle("添加 OpenWRT 控制", isOn: $isOpenWRT)
+                        .onChange(of: isOpenWRT) { newValue in
+                            impactFeedback.impactOccurred()
+                        }
+                    
+                    if isOpenWRT {
+                        TextField("OpenWRT地址（192.168.1.1）", text: $openWRTUrl)
+                            .textContentType(.URL)
+                            .autocapitalization(.none)
+                        
+                        TextField("网页端口（80）", text: $openWRTPort)
+                            .keyboardType(.numberPad)
+                        
+                        Toggle("使用 HTTPS", isOn: $openWRTUseSSL)
+                            .help("是否使用 HTTPS 访问 OpenWRT 管理页面")
+                        
+                        TextField("用户名（root）", text: $openWRTUsername)
+                            .textContentType(.username)
+                            .autocapitalization(.none)
+                        
+                        SecureField("密码", text: $openWRTPassword)
+                            .textContentType(.password)
+                        
+                        Picker("LuCI 软件包", selection: $luciPackage) {
+                            Text("OpenClash").tag(LuCIPackage.openClash)
+                            Text("MihomoTProxy").tag(LuCIPackage.mihomoTProxy)
+                        }
+                        .pickerStyle(.segmented)
+                    }
+                } header: {
+                    Text("OpenWRT 控制")
+                } footer: {
+                    if isOpenWRT {
+                        Text("添加 OpenWRT 控制后，可以直接在 App 中管理 OpenWRT 上的代理服务")
+                    }
+                }
+                
+                Section {
                     Button {
                         showingHelp = true
                     } label: {
@@ -205,7 +257,7 @@ struct AddServerView: View {
                     }
                 }
             }
-            .navigationTitle("添加外部控制器")
+            .navigationTitle("添加控制器")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -216,17 +268,49 @@ struct AddServerView: View {
                 
                 ToolbarItem(placement: .confirmationAction) {
                     Button("添加") {
-                        let server = ClashServer(
-                            name: name,
-                            url: url,
-                            port: port,
-                            secret: secret,
-                            clashUseSSL: useSSL
-                        )
-                        viewModel.addServer(server)
+                        if isOpenWRT {
+                            // 创建 OpenWRT 控制器
+                            let cleanHost = openWRTUrl.replacingOccurrences(of: "^https?://", with: "", options: .regularExpression)
+                            var server = ClashServer(
+                                name: name.trimmingCharacters(in: .whitespacesAndNewlines),
+                                url: cleanHost,
+                                port: "",
+                                secret: "",
+                                status: .unknown,
+                                version: nil,
+                                clashUseSSL: false,
+                                source: .openWRT
+                            )
+                            
+                            // 设置 OpenWRT 相关信息
+                            server.openWRTUrl = cleanHost
+                            server.openWRTUsername = openWRTUsername
+                            server.openWRTPassword = openWRTPassword
+                            server.openWRTPort = openWRTPort
+                            server.openWRTUseSSL = openWRTUseSSL
+                            server.luciPackage = luciPackage
+                            
+                            // 设置外部控制器信息
+                            server.url = url
+                            server.port = port
+                            server.secret = secret
+                            server.clashUseSSL = useSSL
+                            
+                            viewModel.addServer(server)
+                        } else {
+                            // 创建 Clash 控制器
+                            let server = ClashServer(
+                                name: name,
+                                url: url,
+                                port: port,
+                                secret: secret,
+                                clashUseSSL: useSSL
+                            )
+                            viewModel.addServer(server)
+                        }
                         dismiss()
                     }
-                    .disabled(url.isEmpty || port.isEmpty)
+                    .disabled(url.isEmpty || port.isEmpty || (isOpenWRT && (openWRTUrl.isEmpty || openWRTPort.isEmpty || openWRTUsername.isEmpty || openWRTPassword.isEmpty)))
                 }
             }
             .sheet(isPresented: $showingHelp) {
