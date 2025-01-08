@@ -155,6 +155,11 @@ struct AddServerView: View {
     @State private var useSSL = false
     @State private var showingHelp = false
     
+    // 添加错误处理相关状态
+    @State private var isLoading = false
+    @State private var showError = false
+    @State private var errorMessage = ""
+    
     // OpenWRT 相关状态
     @State private var isOpenWRT = false
     @State private var openWRTUrl = ""
@@ -268,53 +273,93 @@ struct AddServerView: View {
                 
                 ToolbarItem(placement: .confirmationAction) {
                     Button("添加") {
-                        if isOpenWRT {
-                            // 创建 OpenWRT 控制器
-                            let cleanHost = openWRTUrl.replacingOccurrences(of: "^https?://", with: "", options: .regularExpression)
-                            var server = ClashServer(
-                                name: name.trimmingCharacters(in: .whitespacesAndNewlines),
-                                url: cleanHost,
-                                port: "",
-                                secret: "",
-                                status: .unknown,
-                                version: nil,
-                                clashUseSSL: false,
-                                source: .openWRT
-                            )
-                            
-                            // 设置 OpenWRT 相关信息
-                            server.openWRTUrl = cleanHost
-                            server.openWRTUsername = openWRTUsername
-                            server.openWRTPassword = openWRTPassword
-                            server.openWRTPort = openWRTPort
-                            server.openWRTUseSSL = openWRTUseSSL
-                            server.luciPackage = luciPackage
-                            
-                            // 设置外部控制器信息
-                            server.url = url
-                            server.port = port
-                            server.secret = secret
-                            server.clashUseSSL = useSSL
-                            
-                            viewModel.addServer(server)
-                        } else {
-                            // 创建 Clash 控制器
-                            let server = ClashServer(
-                                name: name,
-                                url: url,
-                                port: port,
-                                secret: secret,
-                                clashUseSSL: useSSL
-                            )
-                            viewModel.addServer(server)
+                        Task {
+                            isLoading = true
+                            do {
+                                if isOpenWRT {
+                                    // 创建 OpenWRT 服务器
+                                    let cleanHost = openWRTUrl.replacingOccurrences(of: "^https?://", with: "", options: .regularExpression)
+                                    var server = ClashServer(
+                                        name: name.trimmingCharacters(in: .whitespacesAndNewlines),
+                                        url: cleanHost,
+                                        port: "",
+                                        secret: "",
+                                        status: .unknown,
+                                        version: nil,
+                                        clashUseSSL: false,
+                                        source: .openWRT
+                                    )
+                                    
+                                    // 设置 OpenWRT 相关信息
+                                    server.openWRTUrl = cleanHost
+                                    server.openWRTUsername = openWRTUsername
+                                    server.openWRTPassword = openWRTPassword
+                                    server.openWRTPort = openWRTPort
+                                    server.openWRTUseSSL = openWRTUseSSL
+                                    server.luciPackage = luciPackage
+                                    
+                                    // 设置外部控制器信息
+                                    server.url = url
+                                    server.port = port
+                                    server.secret = secret
+                                    server.clashUseSSL = useSSL
+                                    
+                                    // 验证 OpenWRT 服务器
+                                    _ = try await viewModel.validateOpenWRTServer(server, username: openWRTUsername, password: openWRTPassword)
+                                    
+                                    // 验证成功后添加服务器
+                                    viewModel.addServer(server)
+                                    await MainActor.run {
+                                        dismiss()
+                                    }
+                                } else {
+                                    // 创建普通服务器
+                                    let server = ClashServer(
+                                        name: name,
+                                        url: url,
+                                        port: port,
+                                        secret: secret,
+                                        clashUseSSL: useSSL
+                                    )
+                                    viewModel.addServer(server)
+                                    await MainActor.run {
+                                        dismiss()
+                                    }
+                                }
+                            } catch {
+                                await MainActor.run {
+                                    if let networkError = error as? NetworkError {
+                                        errorMessage = networkError.localizedDescription
+                                    } else {
+                                        errorMessage = error.localizedDescription
+                                    }
+                                    showError = true
+                                    isLoading = false
+                                }
+                            }
+                            await MainActor.run {
+                                if !showError {
+                                    isLoading = false
+                                }
+                            }
                         }
-                        dismiss()
                     }
                     .disabled(url.isEmpty || port.isEmpty || (isOpenWRT && (openWRTUrl.isEmpty || openWRTPort.isEmpty || openWRTUsername.isEmpty || openWRTPassword.isEmpty)))
                 }
             }
             .sheet(isPresented: $showingHelp) {
                 AddServerHelpView()
+            }
+            .alert("错误", isPresented: $showError) {
+                Button("确定", role: .cancel) { }
+            } message: {
+                Text(errorMessage)
+            }
+            .disabled(isLoading)
+            .overlay {
+                if isLoading {
+                    ProgressView()
+                }
             }
         }
     }

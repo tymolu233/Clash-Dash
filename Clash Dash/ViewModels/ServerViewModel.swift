@@ -280,14 +280,14 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             print("🚫 URLError: \(urlError.localizedDescription)")
             logger.log("服务器地址：\(server.url):\(server.port) ：URLError: \(urlError.localizedDescription)")
             switch urlError.code {
+            case .timedOut:
+                updateServerStatus(server, status: .error, message: "请求超时，请检查输入的 OpenWRT 地址与端口能否访问")
             case .cancelled:
                 updateServerStatus(server, status: .error, message: "请求被取消")
             case .secureConnectionFailed:
                 updateServerStatus(server, status: .error, message: "SSL/TLS 连接失败")
             case .serverCertificateUntrusted:
                 updateServerStatus(server, status: .error, message: "证书不信任")
-            case .timedOut:
-                updateServerStatus(server, status: .error, message: "连接超时")
             case .cannotConnectToHost:
                 updateServerStatus(server, status: .error, message: "无法连接到服务器")
             case .notConnectedToInternet:
@@ -423,14 +423,14 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
     }
     
     // 验证 OpenWRT 服务器
-    func validateOpenWRTServer(_ server: ClashServer, username: String, password: String) async throws -> OpenWRTStatus {
+    func validateOpenWRTServer(_ server: ClashServer, username: String, password: String) async throws -> Bool {
         let scheme = server.openWRTUseSSL ? "https" : "http"
         guard let openWRTUrl = server.openWRTUrl else {
             throw NetworkError.invalidURL
         }
         let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
         print("第一步：开始验证 OpenwrT 服务器: \(baseURL)")
-        logger.log("第一步：开始验证 OpenwrT 服务器: \(baseURL)")
+        logger.log("开始验证 OpenwrT 服务器: \(baseURL)")
         
         // 1. 使用 JSON-RPC 登录
         guard let loginURL = URL(string: "\(baseURL)/cgi-bin/luci/rpc/auth") else {
@@ -441,6 +441,8 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         
         // 创建一个新的 URLSession 配置
         let config = URLSessionConfiguration.ephemeral
+        config.timeoutIntervalForRequest = 10  // 设置超时时间为 10 秒
+        config.timeoutIntervalForResource = 10  // 设置资源超时时间为 10 秒
         let session = URLSession(configuration: config, delegate: self, delegateQueue: nil)
         activeSessions.append(session)
         
@@ -459,9 +461,21 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             
             loginRequest.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
             
-            print("第二步：发送 JSON-RPC 登录请求")
-            logger.log("第二步：发送 JSON-RPC 登录请求")
-            let (loginData, loginResponse) = try await session.data(for: loginRequest)
+            
+            let (loginData, loginResponse) = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<(Data, URLResponse), Error>) in
+                let task = session.dataTask(with: loginRequest) { data, response, error in
+                    if let error = error as? URLError, error.code == .timedOut {
+                        continuation.resume(throwing: NetworkError.timeout(message: "请求超时，请检查输入的 OpenWRT 地址与端口能否访问"))
+                    } else if let error = error {
+                        continuation.resume(throwing: error)
+                    } else if let data = data, let response = response {
+                        continuation.resume(returning: (data, response))
+                    } else {
+                        continuation.resume(throwing: URLError(.unknown))
+                    }
+                }
+                task.resume()
+            }
             
             guard let httpResponse = loginResponse as? HTTPURLResponse else {
                 print("❌ 无效的响应类型")
@@ -478,7 +492,14 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             switch httpResponse.statusCode {
             case 200:
                 // 解析 JSON-RPC 响应
-                let authResponse = try JSONDecoder().decode(OpenWRTAuthResponse.self, from: loginData)
+                let authResponse: OpenWRTAuthResponse
+                do {
+                    authResponse = try JSONDecoder().decode(OpenWRTAuthResponse.self, from: loginData)
+                } catch {
+                    print("❌ JSON-RPC 响应解析失败")
+                    logger.log("❌ JSON-RPC 响应解析失败")
+                    throw NetworkError.invalidResponse(message: "验证 OpenWRT 信息失败，请确认输入的信息是否正确")
+                }
                 
                 guard let token = authResponse.result, !token.isEmpty else {
                     if authResponse.result == nil && authResponse.error == nil {
@@ -486,7 +507,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                         if let responseStr = String(data: loginData, encoding: .utf8) {
                             print("📥 原始响应内容: \(responseStr)")
                             logger.log("📥 原始响应内容: \(responseStr)")
-                            throw NetworkError.unauthorized(message: "认证失败: \(responseStr)") 
+                            throw NetworkError.unauthorized(message: "认证失败: 请检查用户名或密码是否正确") 
                         } else {
                             logger.log("❌ 认证响应异常: result 和 error 都为 nil")
                             throw NetworkError.unauthorized(message: "认证失败: 响应内容为空")
@@ -495,7 +516,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                     if let error = authResponse.error {
                         print("❌ JSON-RPC 错误: \(error)")
                         logger.log("❌ JSON-RPC 错误: \(error)")
-                        throw NetworkError.unauthorized(message: "认证失败: \(error)")
+                        throw NetworkError.invalidResponse(message: "JSON-RPC 获取错误，请确认 OpenWRT 信息是否正确")
                     }
                     print("❌ 无效的响应结果")
                     logger.log("❌ 无效的响应结果")
@@ -508,197 +529,56 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                 // 根据不同的 LuCI 软件包类型调用不同的 API
                 switch server.luciPackage {
                 case .openClash:
-                    // 获取 OpenClash 状态
-                    let timestamp = Int(Date().timeIntervalSince1970 * 1000)
-                    guard let statusURL = URL(string: "\(baseURL)/cgi-bin/luci/admin/services/openclash/status?\(timestamp)") else {
-                        print("❌ 状态 URL 无效")
+                    // 检查 OpenClash 进程状态
+                    guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
                         throw NetworkError.invalidURL
                     }
-                    
-                    print("第四步：发送状态请求: \(statusURL)")
-                    logger.log("第四步：发送状态请求: \(statusURL)")
-                    var statusRequest = URLRequest(url: statusURL)
+                    var statusRequest = URLRequest(url: url)
+                    statusRequest.httpMethod = "POST"
+                    statusRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
                     statusRequest.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
                     
-                    let (statusData, statusResponse) = try await session.data(for: statusRequest)
+                    let statusCommand: [String: Any] = [
+                        "method": "exec",
+                        "params": ["pidof clash >/dev/null && echo 'running' || echo 'stopped'"]
+                    ]
+                    statusRequest.httpBody = try JSONSerialization.data(withJSONObject: statusCommand)
                     
-                    guard let statusHttpResponse = statusResponse as? HTTPURLResponse else {
-                        print("❌ 无效的状态响应类型")
-                        logger.log("❌ 无效的状态响应类型")
-                        throw NetworkError.invalidResponse(message: "无效的状态响应类型")
+                    let (statusData, _) = try await session.data(for: statusRequest)
+                    let statusResponse = try JSONDecoder().decode(ClashStatusResponse.self, from: statusData)
+                    
+                    if statusResponse.result.contains("stopped") {
+                        throw NetworkError.unauthorized(message: "OpenClash 未在运行，请先启用 OpenClash 再添加")
                     }
                     
-                    let message = "📥 状态响应状态码: \(statusHttpResponse.statusCode)"
-                    print(message)
-                    logger.log(message)
-                    
-                    if let responseStr = String(data: statusData, encoding: .utf8) {
-                        print("📥 OpenClash 状态响应: \(responseStr)")
-                        logger.log("📥 OpenClash 状态响应: \(responseStr)")
-                    }
-                    
-                    switch statusHttpResponse.statusCode {
-                    case 200:
-                        print("✅ 获取状态成功，开始解析")
-                        print("📥 原始响应容：")
-                        logger.log("📥 原始响应容：")
-                        if let jsonString = String(data: statusData, encoding: .utf8) {
-                            print("""
-                            {
-                                解析到的 JSON 内容：
-                                \(jsonString.replacingOccurrences(of: ",", with: ",\n    "))
-                            }
-                            """)
-                            logger.log("""
-                            {
-                                解析到的 JSON 内容：
-                                \(jsonString.replacingOccurrences(of: ",", with: ",\n    "))
-                            }
-                            """)
-                        }
-                        
-                        do {
-                            let status = try JSONDecoder().decode(OpenWRTStatus.self, from: statusData)
-                            print("✅ 解析成功: \(status)")
-                            return status
-                        } catch {
-                            print("❌ 解析错误: \(error)")
-                            if let decodingError = error as? DecodingError {
-                                switch decodingError {
-                                case .keyNotFound(let key, _):
-                                    print("缺少必需的字段: \(key)")
-                                case .typeMismatch(let type, let context):
-                                    print("类型不匹配: 期望 \(type) 路径: \(context.codingPath)")
-                                case .valueNotFound(let type, let context):
-                                    print("值为空: 期望 \(type) 在路径: \(context.codingPath)")
-                                default:
-                                    print("其他解码错误: \(decodingError)")
-                                }
-                            }
-                            throw NetworkError.invalidResponse(message: "解析错误")
-                        }
-                    case 403:
-                        print("🔒 使用 OpenClash API 获取状态失败，尝试使用 exec 命令获取")
-                        logger.log("🔒 使用 OpenClash API 获取状态失败，尝试使用 exec 命令获取")
-                        
-                        // 构建 exec 命令获取状态
-                        let statusCommand = """
-                        echo "clash: $( pidof clash > /dev/null && echo "true" || echo "false" )"; \
-                        echo "watchdog: $( ps | grep openclash_watchdog.sh | grep -v grep > /dev/null && echo "true" || echo "false" )"; \
-                        echo "daip: $( daip=$( uci -q get network.lan.ipaddr |awk -F '/' '{print $1}' 2>/dev/null ); \
-                            if [ -z "$daip" ]; then \
-                                daip=$( ip address show $(uci -q -p /tmp/state get network.lan.ifname || uci -q -p /tmp/state get network.lan.device) | grep -w 'inet' | grep -Eo 'inet [0-9\\.]+' | awk '{print $2}' ); \
-                            fi; \
-                            if [ -z "$daip" ]; then \
-                                daip=$( ip addr show | grep -w 'inet' | grep 'global' | grep 'brd' | grep -Eo 'inet [0-9\\.]+' | awk '{print $2}' | head -n 1 ); \
-                            fi; \
-                            echo "$daip" )"; \
-                        echo "dase: $( uci -q get openclash.config.dashboard_password )"; \
-                        echo "db_foward_port: $( uci -q get openclash.config.dashboard_forward_port )"; \
-                        echo "db_foward_domain: $( uci -q get openclash.config.dashboard_forward_domain )"; \
-                        echo "db_forward_ssl: $( uci -q get openclash.config.dashboard_forward_ssl )"; \
-                        echo "web: $( pidof clash > /dev/null && echo "true" || echo "false" )"; \
-                        echo "cn_port: $( uci -q get openclash.config.cn_port )"; \
-                        echo "core_type: $( uci -q get openclash.config.core_type || echo "Meta" )"
-                        """
-                        
-                        guard let execURL = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
-                            throw NetworkError.invalidURL
-                        }
-                        
-                        var execRequest = URLRequest(url: execURL)
-                        execRequest.httpMethod = "POST"
-                        execRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                        execRequest.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
-                        
-                        let execBody: [String: Any] = [
-                            "method": "exec",
-                            "params": [statusCommand]
-                        ]
-                        execRequest.httpBody = try JSONSerialization.data(withJSONObject: execBody)
-                        
-                        let (execData, execResponse) = try await session.data(for: execRequest)
-                        
-                        guard let execHttpResponse = execResponse as? HTTPURLResponse,
-                              execHttpResponse.statusCode == 200 else {
-                            throw NetworkError.serverError((execResponse as? HTTPURLResponse)?.statusCode ?? 500)
-                        }
-                        
-                        // 解析 exec 命令返回的结果
-                        struct ExecResponse: Codable {
-                            let result: String
-                            let error: String?
-                        }
-                        
-                        let execResult = try JSONDecoder().decode(ExecResponse.self, from: execData)
-                        
-                        // 将命令输出转换为字典
-                        var statusDict: [String: Any] = [:]
-                        let lines = execResult.result.components(separatedBy: "\n")
-                        for line in lines {
-                            let parts = line.components(separatedBy: ": ")
-                            if parts.count == 2 {
-                                let key = parts[0].trimmingCharacters(in: .whitespaces)
-                                let value = parts[1].trimmingCharacters(in: .whitespaces)
-                                // 修改这里的逻辑，使用 if-else 来处理不同类型
-                                if value == "true" || value == "false" {
-                                    statusDict[key] = value == "true"
-                                } else {
-                                    statusDict[key] = value
-                                }
-                            }
-                        }
-                        
-                        // 检查必要字段是否存在
-                        guard let daip = statusDict["daip"] as? String,
-                              let dase = statusDict["dase"] as? String,
-                              let cnPort = statusDict["cn_port"] as? String else {
-                            print("❌ 缺少必要的状态信息")
-                            logger.log("❌ 缺少必要的状态信息")
-                            logger.log("statusDict: \(statusDict)")
-                            throw NetworkError.invalidResponse(message: "缺少必要的状态信息")
-                        }
-                        
-                        // 转换为 JSON 数据
-                        let jsonData = try JSONSerialization.data(withJSONObject: [
-                            "web": statusDict["web"] as? Bool ?? false,
-                            "clash": statusDict["clash"] as? Bool ?? false,
-                            "daip": daip,
-                            "cn_port": cnPort,
-                            "dase": dase,
-                            "core_type": statusDict["core_type"] as? String ?? "Meta",
-                            "db_forward_ssl": statusDict["db_forward_ssl"] as? String,
-                            "restricted_mode": statusDict["restricted_mode"] as? String,
-                            "watchdog": statusDict["watchdog"] as? Bool ?? false
-                        ])
-                        
-                        // 解析为 OpenWRTStatus
-                        let status = try JSONDecoder().decode(OpenWRTStatus.self, from: jsonData)
-                        print("✅ 使用 exec 命令成功获取状态")
-                        logger.log("✅ 使用 exec 命令成功获取状态")
-                        logger.log("status: \(status)")
-                        return status
-                    default:
-                        print("❌ 状态请求失败: \(statusHttpResponse.statusCode)")
-                        throw NetworkError.serverError(statusHttpResponse.statusCode)
-                    }
+                    // OpenClash 正在运行，返回 true
+                    return true
                     
                 case .mihomoTProxy:
-                    // 获取 MihomoTProxy 状态
-                    // TODO: 实现 MihomoTProxy 的状态检查
-                    // 临时返回一个基本状态
-                    return OpenWRTStatus(
-                        clash: true,
-                        web: true,
-                        daip: openWRTUrl,
-                        dase: "",
-                        cnPort: server.port,
-                        coreType: "Meta",
-                        dbForwardPort: nil,
-                        dbForwardDomain: nil,
-                        dbForwardSsl: nil,
-                        watchdog: false
-                    )
+                    // 检查 MihomoTProxy 进程状态
+                    guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
+                        throw NetworkError.invalidURL
+                    }
+                    var statusRequest = URLRequest(url: url)
+                    statusRequest.httpMethod = "POST"
+                    statusRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                    statusRequest.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
+                    
+                    let statusCommand: [String: Any] = [
+                        "method": "exec",
+                        "params": ["pidof mihomo >/dev/null && echo 'running' || echo 'stopped'"]
+                    ]
+                    statusRequest.httpBody = try JSONSerialization.data(withJSONObject: statusCommand)
+                    
+                    let (statusData, _) = try await session.data(for: statusRequest)
+                    let statusResponse = try JSONDecoder().decode(ClashStatusResponse.self, from: statusData)
+                    
+                    if statusResponse.result.contains("stopped") {
+                        throw NetworkError.unauthorized(message: "MihomoTProxy 未在运行，请先启用 MihomoTProxy 再添加")
+                    }
+                    
+                    // MihomoTProxy 正在运行，返回 true
+                    return true
                 }
                 
             case 404:
@@ -719,9 +599,11 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                 print("❌ 登录失败：状态码 \(httpResponse.statusCode)")
                 throw NetworkError.serverError(httpResponse.statusCode)
             }
-        } catch {
-            print("❌ 请求错误: \(error)")
-            throw ClashServer.handleNetworkError(error)
+        } catch let urlError as URLError {
+            if urlError.code == .timedOut {
+                throw NetworkError.timeout(message: "请求超时，请检查输入的 OpenWRT 地址与端口能否访问")
+            }
+            throw urlError
         }
     }
     
@@ -1095,7 +977,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         }
         let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
         
-        print("📝 开始保存配置文件: \(configName)")
+        print("开始保存配置文件: \(configName)")
         logger.log("📝 开始保存配置文件: \(configName)")
         guard let username = server.openWRTUsername,
               let password = server.openWRTPassword else {
@@ -1200,7 +1082,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         }
         let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
         
-        print("🔄 开始重启 OpenClash")
+        print("开始重启 OpenClash")
 
         guard let username = server.openWRTUsername,
               let password = server.openWRTPassword else {
@@ -1374,7 +1256,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
         
         print("🗑 开始删除配置文件: \(configName)")
-        logger.log("🗑 开始删除配置文件: \(configName)")
+        logger.log("开始删除配置文件: \(configName)")
         
         guard let username = server.openWRTUsername,
               let password = server.openWRTPassword else {

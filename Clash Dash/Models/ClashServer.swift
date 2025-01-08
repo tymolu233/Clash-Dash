@@ -157,29 +157,26 @@ struct ClashServer: Identifiable, Codable {
     }
     
     static func handleNetworkError(_ error: Error) -> NetworkError {
-        if let urlError = error as? URLError {
-            switch urlError.code {
-            case .notConnectedToInternet, .networkConnectionLost, .cannotConnectToHost:
-                return .serverError(0)  // 使用状态码 0 表示连接问题
-            case .secureConnectionFailed, .serverCertificateHasBadDate,
-                 .serverCertificateUntrusted, .serverCertificateHasUnknownRoot,
-                 .serverCertificateNotYetValid, .clientCertificateRejected,
-                 .clientCertificateRequired:
-                return .serverError(-1)  // 使用状态码 -1 表示 SSL 问题
-            case .userAuthenticationRequired:
-                return .unauthorized(message: "认证失败")
-            case .badServerResponse, .cannotParseResponse:
-                return .invalidResponse(message: "无效的服务器响应，请检查服务器配置")
-            default:
-                return .unknown(error)
-            }
-        }
-        
         if let networkError = error as? NetworkError {
             return networkError
+        } else if let urlError = error as? URLError {
+            switch urlError.code {
+            case .timedOut:
+                return .timeout(message: "请求超时，请检查输入的地址与端口能否访问")
+            case .notConnectedToInternet:
+                return .invalidResponse(message: "网络未连接")
+            case .cannotConnectToHost:
+                return .invalidResponse(message: "无法连接到服务器")
+            case .secureConnectionFailed:
+                return .invalidResponse(message: "SSL/TLS 连接失败")
+            case .serverCertificateUntrusted:
+                return .invalidResponse(message: "证书不信任")
+            default:
+                return .invalidResponse(message: error.localizedDescription)
+            }
+        } else {
+            return .invalidResponse(message: error.localizedDescription)
         }
-        
-        return .unknown(error)
     }
 }
 

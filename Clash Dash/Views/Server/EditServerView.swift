@@ -12,6 +12,11 @@ struct EditServerView: View {
     @State private var useSSL: Bool
     @State private var showingHelp = false
     
+    // 添加错误处理相关状态
+    @State private var isLoading = false
+    @State private var showError = false
+    @State private var errorMessage = ""
+    
     // OpenWRT 相关状态
     @State private var isOpenWRT: Bool
     @State private var openWRTUrl: String
@@ -153,54 +158,94 @@ struct EditServerView: View {
                 
                 ToolbarItem(placement: .confirmationAction) {
                     Button("保存") {
-                        if isOpenWRT {
-                            // 更新 OpenWRT 服务器
-                            let cleanHost = openWRTUrl.replacingOccurrences(of: "^https?://", with: "", options: .regularExpression)
-                            var updatedServer = server
-                            updatedServer.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
-                            
-                            // 更新 OpenWRT 相关信息
-                            updatedServer.openWRTUrl = cleanHost
-                            updatedServer.openWRTUsername = openWRTUsername
-                            updatedServer.openWRTPassword = openWRTPassword
-                            updatedServer.openWRTPort = openWRTPort
-                            updatedServer.openWRTUseSSL = openWRTUseSSL
-                            updatedServer.luciPackage = luciPackage
-                            updatedServer.source = .openWRT
-                            
-                            // 更新外部控制器信息
-                            updatedServer.url = url
-                            updatedServer.port = port
-                            updatedServer.secret = secret
-                            updatedServer.clashUseSSL = useSSL
-                            
-                            viewModel.updateServer(updatedServer)
-                        } else {
-                            // 更新普通服务器
-                            var updatedServer = server
-                            updatedServer.name = name
-                            updatedServer.url = url
-                            updatedServer.port = port
-                            updatedServer.secret = secret
-                            updatedServer.clashUseSSL = useSSL
-                            updatedServer.source = .clashController
-                            
-                            // 清除 OpenWRT 相关信息
-                            updatedServer.openWRTUrl = nil
-                            updatedServer.openWRTUsername = nil
-                            updatedServer.openWRTPassword = nil
-                            updatedServer.openWRTPort = nil
-                            updatedServer.openWRTUseSSL = false
-                            
-                            viewModel.updateServer(updatedServer)
+                        Task {
+                            isLoading = true
+                            do {
+                                if isOpenWRT {
+                                    // 更新 OpenWRT 服务器
+                                    let cleanHost = openWRTUrl.replacingOccurrences(of: "^https?://", with: "", options: .regularExpression)
+                                    var updatedServer = server
+                                    updatedServer.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+                                    
+                                    // 更新 OpenWRT 相关信息
+                                    updatedServer.openWRTUrl = cleanHost
+                                    updatedServer.openWRTUsername = openWRTUsername
+                                    updatedServer.openWRTPassword = openWRTPassword
+                                    updatedServer.openWRTPort = openWRTPort
+                                    updatedServer.openWRTUseSSL = openWRTUseSSL
+                                    updatedServer.luciPackage = luciPackage
+                                    updatedServer.source = .openWRT
+                                    
+                                    // 更新外部控制器信息
+                                    updatedServer.url = url
+                                    updatedServer.port = port
+                                    updatedServer.secret = secret
+                                    updatedServer.clashUseSSL = useSSL
+                                    
+                                    // 验证 OpenWRT 服务器
+                                    _ = try await viewModel.validateOpenWRTServer(updatedServer, username: openWRTUsername, password: openWRTPassword)
+                                    
+                                    // 验证成功后更新服务器
+                                    viewModel.updateServer(updatedServer)
+                                    await MainActor.run {
+                                        dismiss()
+                                    }
+                                } else {
+                                    // 更新普通服务器
+                                    var updatedServer = server
+                                    updatedServer.name = name
+                                    updatedServer.url = url
+                                    updatedServer.port = port
+                                    updatedServer.secret = secret
+                                    updatedServer.clashUseSSL = useSSL
+                                    updatedServer.source = .clashController
+                                    
+                                    // 清除 OpenWRT 相关信息
+                                    updatedServer.openWRTUrl = nil
+                                    updatedServer.openWRTUsername = nil
+                                    updatedServer.openWRTPassword = nil
+                                    updatedServer.openWRTPort = nil
+                                    updatedServer.openWRTUseSSL = false
+                                    
+                                    viewModel.updateServer(updatedServer)
+                                    await MainActor.run {
+                                        dismiss()
+                                    }
+                                }
+                            } catch {
+                                await MainActor.run {
+                                    if let networkError = error as? NetworkError {
+                                        errorMessage = networkError.localizedDescription
+                                    } else {
+                                        errorMessage = error.localizedDescription
+                                    }
+                                    showError = true
+                                    isLoading = false
+                                }
+                            }
+                            await MainActor.run {
+                                if !showError {
+                                    isLoading = false
+                                }
+                            }
                         }
-                        dismiss()
                     }
                     .disabled(url.isEmpty || port.isEmpty || (isOpenWRT && (openWRTUrl.isEmpty || openWRTPort.isEmpty || openWRTUsername.isEmpty || openWRTPassword.isEmpty)))
                 }
             }
             .sheet(isPresented: $showingHelp) {
                 AddServerHelpView()
+            }
+            .alert("错误", isPresented: $showError) {
+                Button("确定", role: .cancel) { }
+            } message: {
+                Text(errorMessage)
+            }
+            .disabled(isLoading)
+            .overlay {
+                if isLoading {
+                    ProgressView()
+                }
             }
         }
     }

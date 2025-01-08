@@ -287,7 +287,8 @@ struct OpenWRTServerView: View {
                 
                 ToolbarItem(placement: .confirmationAction) {
                     Button(isEditMode ? "保存" : "添加") {
-                        saveServer()
+                        print("saveServer")
+                        // saveServer()
                     }
                     .disabled(!isValid)
                 }
@@ -351,81 +352,81 @@ struct OpenWRTServerView: View {
         return false
     }
     
-    private func saveServer() {
-        isLoading = true
+    // private func saveServer() {
+    //     isLoading = true
         
-        Task {
-            do {
-                let cleanHost = host.replacingOccurrences(of: "^https?://", with: "", options: .regularExpression)
+    //     Task {
+    //         do {
+    //             let cleanHost = host.replacingOccurrences(of: "^https?://", with: "", options: .regularExpression)
                 
-                var testServer = ClashServer(
-                    id: server?.id ?? UUID(),
-                    name: name.trimmingCharacters(in: .whitespacesAndNewlines),
-                    url: cleanHost,
-                    port: "",
-                    secret: "",
-                    status: .unknown,
-                    version: nil,
-                    clashUseSSL: false,
-                    source: .openWRT
-                )
+    //             var testServer = ClashServer(
+    //                 id: server?.id ?? UUID(),
+    //                 name: name.trimmingCharacters(in: .whitespacesAndNewlines),
+    //                 url: cleanHost,
+    //                 port: "",
+    //                 secret: "",
+    //                 status: .unknown,
+    //                 version: nil,
+    //                 clashUseSSL: false,
+    //                 source: .openWRT
+    //             )
                 
-                // 设置 OpenWRT 相关信息
-                testServer.openWRTUrl = cleanHost
-                testServer.openWRTUsername = username
-                testServer.openWRTPassword = password
-                testServer.openWRTPort = port
-                testServer.openWRTUseSSL = useSSL
-                testServer.luciPackage = luciPackage
+    //             // 设置 OpenWRT 相关信息
+    //             testServer.openWRTUrl = cleanHost
+    //             testServer.openWRTUsername = username
+    //             testServer.openWRTPassword = password
+    //             testServer.openWRTPort = port
+    //             testServer.openWRTUseSSL = useSSL
+    //             testServer.luciPackage = luciPackage
                 
-                // 验证连接并获取 Clash 信息
-                let status = try await viewModel.validateOpenWRTServer(testServer, username: username, password: password)
+    //             // 验证连接并获取 Clash 信息
+    //             let status = try await viewModel.validateOpenWRTServer(testServer, username: username, password: password)
                 
-                // 检查是否是内网 IP
-                if !isPrivateIP(cleanHost) {
-                    // 检查是否配置了外部控制
-                    if let domain = status.dbForwardDomain,
-                       let port = status.dbForwardPort,
-                       let ssl = status.dbForwardSsl,
-                       !domain.isEmpty && !port.isEmpty {
-                        // 使用外部控制配置
-                        testServer.url = domain
-                        testServer.port = port
-                        testServer.clashUseSSL = ssl == "1"
-                        logger.log("外部控制器使用公网地址 \(domain) 和端口 \(port) 连接")
-                    } else {
-                        throw NetworkError.invalidResponse(message: "未在 OpenClash 中启用公网外部控制，请查看\"使用帮助\"")
-                    }
-                } else {
-                    logger.log("外部控制器使用局域网地址 \(status.daip) 和端口 \(status.cnPort) 连接")
-                    // 使用本地地址
-                    testServer.url = status.daip
-                    testServer.port = status.cnPort
-                }
+    //             // 检查是否是内网 IP
+    //             if !isPrivateIP(cleanHost) {
+    //                 // 检查是否配置了外部控制
+    //                 if let domain = status.dbForwardDomain,
+    //                    let port = status.dbForwardPort,
+    //                    let ssl = status.dbForwardSsl,
+    //                    !domain.isEmpty && !port.isEmpty {
+    //                     // 使用外部控制配置
+    //                     testServer.url = domain
+    //                     testServer.port = port
+    //                     testServer.clashUseSSL = ssl == "1"
+    //                     logger.log("外部控制器使用公网地址 \(domain) 和端口 \(port) 连接")
+    //                 } else {
+    //                     throw NetworkError.invalidResponse(message: "未在 OpenClash 中启用公网外部控制，请查看\"使用帮助\"")
+    //                 }
+    //             } else {
+    //                 logger.log("外部控制器使用局域网地址 \(status.daip) 和端口 \(status.cnPort) 连接")
+    //                 // 使用本地地址
+    //                 testServer.url = status.daip
+    //                 testServer.port = status.cnPort
+    //             }
                 
-                // 设置密钥
-                testServer.secret = status.dase ?? ""
+    //             // 设置密钥
+    //             testServer.secret = status.dase ?? ""
                 
-                if isEditMode {
-                    viewModel.updateServer(testServer)
-                } else {
-                    viewModel.addServer(testServer)
-                }
+    //             if isEditMode {
+    //                 viewModel.updateServer(testServer)
+    //             } else {
+    //                 viewModel.addServer(testServer)
+    //             }
                 
-                await MainActor.run {
-                    dismiss()
-                }
-            } catch {
-                await MainActor.run {
-                    if let networkError = error as? NetworkError {
-                        errorMessage = networkError.localizedDescription
-                    } else {
-                        errorMessage = error.localizedDescription
-                    }
-                    showError = true
-                    isLoading = false
-                }
-            }
-        }
-    }
+    //             await MainActor.run {
+    //                 dismiss()
+    //             }
+    //         } catch {
+    //             await MainActor.run {
+    //                 if let networkError = error as? NetworkError {
+    //                     errorMessage = networkError.localizedDescription
+    //                 } else {
+    //                     errorMessage = error.localizedDescription
+    //                 }
+    //                 showError = true
+    //                 isLoading = false
+    //             }
+    //         }
+    //     }
+    // }
 } 
