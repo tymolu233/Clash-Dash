@@ -210,7 +210,10 @@ struct OpenClashRulesView: View {
             print("✅ 成功获取 token")
             
             let scheme = server.openWRTUseSSL ? "https" : "http"
-            let baseURL = "\(scheme)://\(server.openWRTUrl):\(server.openWRTPort ?? "80")"
+            guard let openWRTUrl = server.openWRTUrl else {
+                throw NetworkError.invalidURL
+            }
+            let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
             
             // 获取自定义规则启用状态
             guard let statusUrl = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
@@ -348,7 +351,10 @@ struct OpenClashRulesView: View {
         }
         
         let scheme = server.openWRTUseSSL ? "https" : "http"
-        let baseURL = "\(scheme)://\(server.openWRTUrl):\(server.openWRTPort ?? "80")"
+        guard let openWRTUrl = server.openWRTUrl else {
+            throw NetworkError.invalidURL
+        }
+        let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
         
         // 使用 viewModel 获取 token
         let token = try await viewModel.getAuthToken(server, username: username, password: password)
@@ -536,7 +542,10 @@ struct OpenClashRulesView: View {
         do {
             let token = try await viewModel.getAuthToken(server, username: username, password: password)
             let scheme = server.openWRTUseSSL ? "https" : "http"
-            let baseURL = "\(scheme)://\(server.openWRTUrl):\(server.openWRTPort ?? "80")"
+            guard let openWRTUrl = server.openWRTUrl else {
+                throw NetworkError.invalidURL
+            }
+            let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
             
             guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
                 throw NetworkError.invalidURL

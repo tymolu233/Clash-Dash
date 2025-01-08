@@ -106,7 +106,10 @@ struct RestartServiceView: View {
             
             // 2. 开始轮询日志
             let scheme = server.openWRTUseSSL ? "https" : "http"
-            let baseURL = "\(scheme)://\(server.openWRTUrl):\(server.openWRTPort ?? "80")"
+            guard let openWRTUrl = server.openWRTUrl else {
+                throw NetworkError.invalidURL
+            }
+            let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
             
             guard let username = server.openWRTUsername,
                   let password = server.openWRTPassword else {
@@ -167,7 +170,7 @@ struct RestartServiceView: View {
             
             // 如果超时，添加提示信息
             withAnimation {
-                logs.append("⚠️ 获取日志超时，请检查服务状态")
+                logs.append("⚠️ 获取日志超时，请自行检查服务状态")
             }
             
         } catch {

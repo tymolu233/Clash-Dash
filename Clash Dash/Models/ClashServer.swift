@@ -31,6 +31,68 @@ struct ClashServer: Identifiable, Codable {
         case singbox = "Sing-Box"
     }
     
+    private enum CodingKeys: String, CodingKey {
+        case id, name, url, port, secret, status, version
+        case useSSL // 旧版本的字段
+        case clashUseSSL, openWRTUseSSL
+        case errorMessage, serverType, isQuickLaunch, source
+        case openWRTUsername, openWRTPassword, openWRTPort, openWRTUrl
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        
+        // 解码基本字段
+        id = try container.decode(UUID.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        url = try container.decode(String.self, forKey: .url)
+        port = try container.decode(String.self, forKey: .port)
+        secret = try container.decode(String.self, forKey: .secret)
+        status = try container.decode(ServerStatus.self, forKey: .status)
+        version = try container.decodeIfPresent(String.self, forKey: .version)
+        errorMessage = try container.decodeIfPresent(String.self, forKey: .errorMessage)
+        serverType = try container.decodeIfPresent(ServerType.self, forKey: .serverType)
+        isQuickLaunch = try container.decodeIfPresent(Bool.self, forKey: .isQuickLaunch) ?? false
+        source = try container.decode(ServerSource.self, forKey: .source)
+        openWRTUsername = try container.decodeIfPresent(String.self, forKey: .openWRTUsername)
+        openWRTPassword = try container.decodeIfPresent(String.self, forKey: .openWRTPassword)
+        openWRTPort = try container.decodeIfPresent(String.self, forKey: .openWRTPort)
+        openWRTUrl = try container.decodeIfPresent(String.self, forKey: .openWRTUrl)
+        
+        // 处理 SSL 字段迁移
+        if let oldUseSSL = try container.decodeIfPresent(Bool.self, forKey: .useSSL) {
+            // 如果存在旧的 useSSL 字段，使用它的值
+            clashUseSSL = oldUseSSL
+            openWRTUseSSL = oldUseSSL
+        } else {
+            // 否则尝试读取新字段，如果不存在则使用默认值
+            clashUseSSL = try container.decodeIfPresent(Bool.self, forKey: .clashUseSSL) ?? false
+            openWRTUseSSL = try container.decodeIfPresent(Bool.self, forKey: .openWRTUseSSL) ?? false
+        }
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encode(url, forKey: .url)
+        try container.encode(port, forKey: .port)
+        try container.encode(secret, forKey: .secret)
+        try container.encode(status, forKey: .status)
+        try container.encode(version, forKey: .version)
+        try container.encode(clashUseSSL, forKey: .clashUseSSL)
+        try container.encode(openWRTUseSSL, forKey: .openWRTUseSSL)
+        try container.encode(errorMessage, forKey: .errorMessage)
+        try container.encode(serverType, forKey: .serverType)
+        try container.encode(isQuickLaunch, forKey: .isQuickLaunch)
+        try container.encode(source, forKey: .source)
+        try container.encode(openWRTUsername, forKey: .openWRTUsername)
+        try container.encode(openWRTPassword, forKey: .openWRTPassword)
+        try container.encode(openWRTPort, forKey: .openWRTPort)
+        try container.encode(openWRTUrl, forKey: .openWRTUrl)
+    }
+    
     init(id: UUID = UUID(), 
          name: String = "", 
          url: String = "", 
@@ -66,7 +128,9 @@ struct ClashServer: Identifiable, Codable {
     
     var baseURL: URL? {
         let cleanURL = url.replacingOccurrences(of: "^https?://", with: "", options: .regularExpression)
-        let scheme = source == .clashController ? (clashUseSSL ? "https" : "http") : (openWRTUseSSL ? "https" : "http")
+        let scheme = source == .clashController ? 
+            (clashUseSSL ? "https" : "http") : 
+            (openWRTUseSSL ? "https" : "http")
         return URL(string: "\(scheme)://\(cleanURL):\(port)")
     }
     

@@ -426,9 +426,12 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
     // 修改验证方法
     func validateOpenWRTServer(_ server: ClashServer, username: String, password: String) async throws -> OpenWRTStatus {
         let scheme = server.openWRTUseSSL ? "https" : "http"
-        let baseURL = "\(scheme)://\(server.openWRTUrl ?? server.url):\(server.openWRTPort ?? "80")"
-        print("第一步：开始验证 OpenWRT 服务器: \(baseURL)")
-        logger.log("第一步：开始验证 OpenWRT 服务器: \(baseURL)")
+        guard let openWRTUrl = server.openWRTUrl else {
+            throw NetworkError.invalidURL
+        }
+        let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
+        print("第一步：开始验证 OpenwrT 服务器: \(baseURL)")
+        logger.log("第一步：开始验证 OpenwrT 服务器: \(baseURL)")
         
         // 1. 使用 JSON-RPC 登录
         guard let loginURL = URL(string: "\(baseURL)/cgi-bin/luci/rpc/auth") else {
@@ -712,7 +715,11 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
 //        }
 //        
 //        let scheme = server.openWRTUseSSL ? "https" : "http"
-//        guard let url = URL(string: "\(scheme)://\(server.openWRTUrl):\(server.openWRTPort)/cgi-bin/luci/admin/services/openclash/config") else {
+//        guard let openWRTUrl = server.openWRTUrl else {
+//            throw NetworkError.invalidURL
+//        }
+//        let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
+//        guard let url = URL(string: "\(baseURL)/cgi-bin/luci/admin/services/openclash/config") else {
 //            throw NetworkError.invalidURL
 //        }
 //        
@@ -763,7 +770,10 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
     
     func fetchOpenClashConfigs(_ server: ClashServer) async throws -> [OpenClashConfig] {
         let scheme = server.openWRTUseSSL ? "https" : "http"
-        let baseURL = "\(scheme)://\(server.openWRTUrl):\(server.openWRTPort ?? "80")"
+        guard let openWRTUrl = server.openWRTUrl else {
+            throw NetworkError.invalidURL
+        }
+        let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
         
         print("🔍 开始获取配置列表: \(baseURL)")
         logger.log("🔍 开始获取配置列表: \(baseURL)")
@@ -892,6 +902,11 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             let (subData, _) = try await session.data(for: subRequest)
             // logger.log("订阅信息: \(subData)")
             let subscription = try? JSONDecoder().decode(OpenClashConfig.SubscriptionInfo.self, from: subData)
+            guard let subscription = subscription else {
+                print("❌ 订阅信息解码失败")
+                logger.log("❌ 未获取到订阅信息")
+                continue
+            }
             logger.log("订阅信息解码: \(subscription)")
             // 创建配置对象
             let config = OpenClashConfig(
@@ -915,7 +930,10 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
     
     func switchOpenClashConfig(_ server: ClashServer, configName: String) async throws -> AsyncStream<String> {
         let scheme = server.openWRTUseSSL ? "https" : "http"
-        let baseURL = "\(scheme)://\(server.openWRTUrl):\(server.openWRTPort ?? "80")"
+        guard let openWRTUrl = server.openWRTUrl else { 
+            throw NetworkError.invalidURL
+        }
+        let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
         print("🔄 开始切换配置: \(configName)")
         logger.log("🔄 开始切换配置: \(configName)")
         // 获取认证 token
@@ -968,7 +986,10 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
     // 将 getAuthToken 改为 public
     public func getAuthToken(_ server: ClashServer, username: String, password: String) async throws -> String {
         let scheme = server.openWRTUseSSL ? "https" : "http"
-        let baseURL = "\(scheme)://\(server.openWRTUrl):\(server.openWRTPort ?? "80")"
+        guard let openWRTUrl = server.openWRTUrl else {
+            throw NetworkError.invalidURL
+        }
+        let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
         
         guard let loginURL = URL(string: "\(baseURL)/cgi-bin/luci/rpc/auth") else {
             throw NetworkError.invalidURL
@@ -1002,7 +1023,10 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
     
     func fetchConfigContent(_ server: ClashServer, configName: String) async throws -> String {
         let scheme = server.openWRTUseSSL ? "https" : "http"
-        let baseURL = "\(scheme)://\(server.openWRTUrl):\(server.openWRTPort ?? "80")"
+        guard let openWRTUrl = server.openWRTUrl else {
+            throw NetworkError.invalidURL
+        }
+        let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
         
         // 获取认证 token
         guard let username = server.openWRTUsername,
@@ -1048,7 +1072,10 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
     
     func saveConfigContent(_ server: ClashServer, configName: String, content: String) async throws {
         let scheme = server.openWRTUseSSL ? "https" : "http"
-        let baseURL = "\(scheme)://\(server.openWRTUrl):\(server.openWRTPort ?? "80")"
+        guard let openWRTUrl = server.openWRTUrl else {
+            throw NetworkError.invalidURL
+        }
+        let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
         
         print("📝 开始保存配置文件: \(configName)")
         logger.log("📝 开始保存配置文件: \(configName)")
@@ -1150,7 +1177,10 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
     
     func restartOpenClash(_ server: ClashServer) async throws -> AsyncThrowingStream<String, Error> {
         let scheme = server.openWRTUseSSL ? "https" : "http"
-        let baseURL = "\(scheme)://\(server.openWRTUrl):\(server.openWRTPort ?? "80")"
+        guard let openWRTUrl = server.openWRTUrl else {
+            throw NetworkError.invalidURL
+        }
+        let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
         
         print("🔄 开始重启 OpenClash")
 
@@ -1280,7 +1310,10 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
     
     private func getOpenClashStatus(_ server: ClashServer) async throws -> ClashStatusResponse {
         let scheme = server.openWRTUseSSL ? "https" : "http"
-        let baseURL = "\(scheme)://\(server.openWRTUrl):\(server.openWRTPort ?? "80")"
+        guard let openWRTUrl = server.openWRTUrl else {
+            throw NetworkError.invalidURL
+        }
+        let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
         
         guard let username = server.openWRTUsername,
               let password = server.openWRTPassword else {
@@ -1317,7 +1350,10 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
     
     func deleteOpenClashConfig(_ server: ClashServer, configName: String) async throws {
         let scheme = server.openWRTUseSSL ? "https" : "http"
-        let baseURL = "\(scheme)://\(server.openWRTUrl):\(server.openWRTPort ?? "80")"
+        guard let openWRTUrl = server.openWRTUrl else {
+            throw NetworkError.invalidURL
+        }
+        let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
         
         print("🗑 开始删除配置文件: \(configName)")
         logger.log("🗑 开始删除配置文件: \(configName)")
