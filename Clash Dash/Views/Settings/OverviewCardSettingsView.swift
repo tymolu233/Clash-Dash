@@ -8,8 +8,12 @@ struct OverviewCardSettingsView: View {
             Section {
                 ForEach(settings.cardOrder) { card in
                     HStack {
+                        Image(systemName: "line.3.horizontal")
+                            .foregroundColor(.gray)
+                            .font(.system(size: 14))
+                        
                         Image(systemName: card.icon)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.accentColor)
                             .frame(width: 24)
                         
                         Text(card.description)
@@ -28,7 +32,7 @@ struct OverviewCardSettingsView: View {
             } header: {
                 SectionHeader(title: "卡片设置", systemImage: "rectangle.on.rectangle")
             } footer: {
-                Text("拖动卡片可以调整顺序，使用开关可以控制卡片的显示或隐藏")
+                Text("拖动 ≡ 图标可以调整顺序，使用开关可以控制卡片的显示或隐藏")
             }
         }
         .navigationTitle("概览页面设置")

@@ -394,6 +394,9 @@ struct OverviewTab: View {
                                     }
                                 }
                             }
+                            
+                        case .modeSwitch:
+                            ModeSwitchCard(server: server)
                         }
                     }
                 }

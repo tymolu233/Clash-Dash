@@ -7,6 +7,7 @@ enum OverviewCard: String, CaseIterable, Identifiable, Codable {
     case status = "status"
     case speedChart = "speedChart"
     case memoryChart = "memoryChart"
+    case modeSwitch = "modeSwitch"
     
     var id: String { self.rawValue }
     
@@ -17,6 +18,7 @@ enum OverviewCard: String, CaseIterable, Identifiable, Codable {
         case .status: return "状态信息"
         case .speedChart: return "速率图表"
         case .memoryChart: return "内存图表"
+        case .modeSwitch: return "代理模式切换"
         }
     }
     
@@ -27,6 +29,7 @@ enum OverviewCard: String, CaseIterable, Identifiable, Codable {
         case .status: return "info.circle"
         case .speedChart: return "chart.line.uptrend.xyaxis"
         case .memoryChart: return "memorychip"
+        case .modeSwitch: return "switch.2"
         }
     }
 }
@@ -35,48 +38,36 @@ class OverviewCardSettings: ObservableObject {
     @AppStorage("overviewCardOrder") private var orderData: Data = Data()
     @AppStorage("overviewCardVisibility") private var visibilityData: Data = Data()
     
-    @Published private(set) var cardOrder: [OverviewCard]
-    @Published private(set) var cardVisibility: [OverviewCard: Bool]
+    @Published var cardOrder: [OverviewCard]
+    @Published var cardVisibility: [OverviewCard: Bool]
     
     init() {
         // 先初始化存储属性
-        self.cardOrder = OverviewCard.allCases.map { $0 }
-        self.cardVisibility = Dictionary(uniqueKeysWithValues: OverviewCard.allCases.map { ($0, true) })
+        cardOrder = OverviewCard.allCases
+        cardVisibility = Dictionary(uniqueKeysWithValues: OverviewCard.allCases.map { ($0, true) })
         
-        // 然后从持久化存储加载数据
-        if let data = try? Data(contentsOf: Self.orderFileURL),
-           let savedOrder = try? JSONDecoder().decode([OverviewCard].self, from: data) {
-            self.cardOrder = savedOrder
+        // 然后从 AppStorage 加载数据
+        if let savedOrder = try? JSONDecoder().decode([OverviewCard].self, from: orderData) {
+            cardOrder = savedOrder
         }
         
-        if let data = try? Data(contentsOf: Self.visibilityFileURL),
-           let savedVisibility = try? JSONDecoder().decode([String: Bool].self, from: data) {
-            self.cardVisibility = Dictionary(uniqueKeysWithValues: OverviewCard.allCases.map { card in
+        if let savedVisibility = try? JSONDecoder().decode([String: Bool].self, from: visibilityData) {
+            cardVisibility = Dictionary(uniqueKeysWithValues: OverviewCard.allCases.map { card in
                 (card, savedVisibility[card.rawValue] ?? true)
             })
         }
     }
     
-    private static var orderFileURL: URL {
-        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("overviewCardOrder.json")
-    }
-    
-    private static var visibilityFileURL: URL {
-        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("overviewCardVisibility.json")
-    }
-    
     func saveOrder() {
         if let encoded = try? JSONEncoder().encode(cardOrder) {
-            try? encoded.write(to: Self.orderFileURL)
+            orderData = encoded
         }
     }
     
     func saveVisibility() {
         let visibilityDict = Dictionary(uniqueKeysWithValues: cardVisibility.map { ($0.key.rawValue, $0.value) })
         if let encoded = try? JSONEncoder().encode(visibilityDict) {
-            try? encoded.write(to: Self.visibilityFileURL)
+            visibilityData = encoded
         }
     }
     
