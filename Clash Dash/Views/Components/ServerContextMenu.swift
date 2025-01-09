@@ -3,6 +3,7 @@ import SwiftUI
 struct ServerContextMenu: ViewModifier {
     @ObservedObject var viewModel: ServerViewModel
     @ObservedObject var settingsViewModel: SettingsViewModel
+    @State private var showingDeleteAlert = false
     let server: ClashServer
     var onEdit: () -> Void
     var onModeChange: (String) -> Void
@@ -18,18 +19,20 @@ struct ServerContextMenu: ViewModifier {
         content.contextMenu {
             // 基础操作组
             Group {
-                Button(role: .destructive) {
-                    impactFeedback.impactOccurred()
-                    viewModel.deleteServer(server)
-                } label: {
-                    Label("删除", systemImage: "trash")
-                }
+                
                 
                 Button {
                     impactFeedback.impactOccurred()
                     onEdit()
                 } label: {
                     Label("编辑", systemImage: "pencil")
+                }
+
+                Button(role: .destructive) {
+                    impactFeedback.impactOccurred()
+                    showingDeleteAlert = true
+                } label: {
+                    Label("删除", systemImage: "trash")
                 }
             }
             
@@ -140,6 +143,14 @@ struct ServerContextMenu: ViewModifier {
                 //     Label("重启服务", systemImage: "arrow.clockwise.circle")
                 // }
             }
+        }
+        .alert("确认删除", isPresented: $showingDeleteAlert) {
+            Button("取消", role: .cancel) { }
+            Button("删除", role: .destructive) {
+                viewModel.deleteServer(server)
+            }
+        } message: {
+            Text("是否确认删除此控制器？此操作不可撤销。")
         }
     }
 }

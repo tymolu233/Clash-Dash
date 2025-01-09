@@ -39,31 +39,10 @@ struct ContentView: View {
         // 使用 forceRefresh 来强制重新计算，但不使用它的值
         _ = forceRefresh
         
-        var servers = viewModel.servers
-        
-        // 只在启用了 Wi-Fi 绑定功能时进行 Wi-Fi 过滤
-        if enableWiFiBinding {
-            if !currentWiFiSSID.isEmpty {
-                // 如果连接了 Wi-Fi，检查是否有绑定
-                if let binding = bindingManager.bindings.first(where: { $0.ssid == currentWiFiSSID }) {
-                    servers = servers.filter { server in
-                        binding.serverIds.contains(server.id.uuidString)
-                    }
-                }
-            } else {
-                // 如果没有连接 Wi-Fi（例如使用数据流量），显示默认控制器
-                servers = servers.filter { server in
-                    bindingManager.defaultServerIds.contains(server.id.uuidString)
-                }
-            }
+        // 使用 isServerHidden 方法来过滤服务器
+        return viewModel.servers.filter { server in
+            !viewModel.isServerHidden(server, currentWiFiSSID: currentWiFiSSID)
         }
-        
-        // 应用离线服务器过滤
-        if hideDisconnectedServers {
-            servers = servers.filter { $0.status == .ok }
-        }
-        
-        return servers
     }
     
     var body: some View {
@@ -231,7 +210,7 @@ struct ContentView: View {
                     .cornerRadius(16)
                     
                     // 版本信息
-                    Text("Ver: 1.3.0 (TF Build 3)")
+                    Text("Ver: 1.3.0 (TF Build 4)")
                         .foregroundColor(.secondary)
                         .font(.footnote)
                         .padding(.top, 8)

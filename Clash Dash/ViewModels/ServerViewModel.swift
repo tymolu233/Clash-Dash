@@ -411,12 +411,50 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         saveServers()
     }
     
+    // 添加一个辅助方法来判断服务器是否应该被隐藏
+    func isServerHidden(_ server: ClashServer, currentWiFiSSID: String = "") -> Bool {
+        let hideDisconnectedServers = UserDefaults.standard.bool(forKey: "hideDisconnectedServers")
+        let enableWiFiBinding = UserDefaults.standard.bool(forKey: "enableWiFiBinding")
+        
+        // 检查是否因为离线状态而隐藏
+        if hideDisconnectedServers && server.status != .ok {
+            return true
+        }
+        
+        // 检查是否因为 WiFi 绑定而隐藏
+        if enableWiFiBinding {
+            if !currentWiFiSSID.isEmpty {
+                // 如果连接了 WiFi，检查是否有绑定
+                if let binding = bindingManager?.bindings.first(where: { $0.ssid == currentWiFiSSID }) {
+                    return !binding.serverIds.contains(server.id.uuidString)
+                }
+                return true // 如果没有找到绑定，隐藏
+            } else {
+                // 如果没有连接 WiFi，检查是否在默认列表中
+                return !(bindingManager?.defaultServerIds.contains(server.id.uuidString) ?? false)
+            }
+        }
+        
+        return false
+    }
+    
     // 添加上移服务器的方法
     func moveServerUp(_ server: ClashServer) {
         guard let currentIndex = servers.firstIndex(where: { $0.id == server.id }),
               currentIndex > 0 else { return }
         
-        servers.swapAt(currentIndex, currentIndex - 1)
+        // 从当前位置向上查找第一个可见的服务器
+        var targetIndex = currentIndex - 1
+        while targetIndex > 0 && isServerHidden(servers[targetIndex]) {
+            targetIndex -= 1
+        }
+        
+        // 如果目标位置的服务器也是隐藏的，不进行移动
+        if isServerHidden(servers[targetIndex]) {
+            return
+        }
+        
+        servers.swapAt(currentIndex, targetIndex)
         saveServers()
     }
     
@@ -425,7 +463,18 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         guard let currentIndex = servers.firstIndex(where: { $0.id == server.id }),
               currentIndex < servers.count - 1 else { return }
         
-        servers.swapAt(currentIndex, currentIndex + 1)
+        // 从当前位置向下查找第一个可见的服务器
+        var targetIndex = currentIndex + 1
+        while targetIndex < servers.count - 1 && isServerHidden(servers[targetIndex]) {
+            targetIndex += 1
+        }
+        
+        // 如果目标位置的服务器也是隐藏的，不进行移动
+        if isServerHidden(servers[targetIndex]) {
+            return
+        }
+        
+        servers.swapAt(currentIndex, targetIndex)
         saveServers()
     }
     
