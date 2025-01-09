@@ -21,6 +21,20 @@ class NetworkMonitor: ObservableObject {
     private var isViewActive = false
     private var activeView: String = ""
     
+    func resetData() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.uploadSpeed = "0 B/s"
+            self.downloadSpeed = "0 B/s"
+            self.totalUpload = "0 MB"
+            self.totalDownload = "0 MB"
+            self.activeConnections = 0
+            self.memoryUsage = "0 MB"
+            self.speedHistory.removeAll()
+            self.memoryHistory.removeAll()
+        }
+    }
+    
     private enum ConnectionType: String {
         case traffic = "Traffic"
         case memory = "Memory"

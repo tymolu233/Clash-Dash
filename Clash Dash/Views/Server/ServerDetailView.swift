@@ -407,8 +407,13 @@ struct OverviewTab: View {
             .padding(.bottom)
         }
         .background(Color(.systemGroupedBackground))
-        .onAppear { monitor.startMonitoring(server: server) }
-        .onDisappear { monitor.stopMonitoring() }
+        .onAppear {
+            monitor.resetData() // 重置监控数据
+            monitor.startMonitoring(server: server)
+        }
+        .onDisappear {
+            monitor.stopMonitoring()
+        }
     }
 }
 

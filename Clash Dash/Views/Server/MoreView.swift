@@ -71,7 +71,7 @@ struct MoreView: View {
             
             // OpenClash 功能组
             if server.luciPackage == .openClash && server.source == .openWRT {
-                Section("OpenClash 功能") {
+                Section("OpenClash 插件控制") {
                     Button {
                         impactFeedback.impactOccurred()
                         showingConfigSubscription = true
@@ -119,6 +119,59 @@ struct MoreView: View {
                             Text("重启服务")
                         }
                     }
+                }
+            }
+
+            // MihomoTProxy 功能组
+            if server.luciPackage == .mihomoTProxy && server.source == .openWRT {
+                Section("MihomoTProxy 插件控制") {
+                    Button {
+                        impactFeedback.impactOccurred()
+                        showingConfigSubscription = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "cloud.fill")
+                                .foregroundColor(.blue)
+                                .frame(width: 25)
+                            Text("订阅管理")
+                        }
+                    }
+                    
+                    // Button {
+                    //     impactFeedback.impactOccurred()
+                    //     showingSwitchConfig = true
+                    // } label: {
+                    //     HStack {
+                    //         Image(systemName: "arrow.2.circlepath")
+                    //             .foregroundColor(.blue)
+                    //             .frame(width: 25)
+                    //         Text("切换配置")
+                    //     }
+                    // }
+                    
+                    // Button {
+                    //     impactFeedback.impactOccurred()
+                    //     showingCustomRules = true
+                    // } label: {
+                    //     HStack {
+                    //         Image(systemName: "list.bullet.rectangle")
+                    //             .foregroundColor(.blue)
+                    //             .frame(width: 25)
+                    //         Text("附加规则")
+                    //     }
+                    // }
+                    
+                    // Button {
+                    //     impactFeedback.impactOccurred()
+                    //     showingRestartService = true
+                    // } label: {
+                    //     HStack {
+                    //         Image(systemName: "arrow.clockwise.circle")
+                    //             .foregroundColor(.blue)
+                    //             .frame(width: 25)
+                    //         Text("重启服务")
+                    //     }
+                    // }
                 }
             }
         }
