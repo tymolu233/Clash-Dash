@@ -760,7 +760,70 @@ class ConfigSubscriptionViewModel: ObservableObject {
             }
         } else {
             do {
+                print("🔄 开始更新 MihomoTProxy 订阅: \(subscription.name)")
+                logger.log("🔄 开始更新 MihomoTProxy 订阅: \(subscription.name)")
                 
+                let token = try await getAuthToken()
+                
+                // 构建请求
+                let scheme = server.openWRTUseSSL ? "https" : "http"
+                guard let openWRTUrl = server.openWRTUrl else {
+                    throw NetworkError.invalidURL
+                }
+                let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
+                guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
+                    throw NetworkError.invalidURL
+                }
+                
+                var request = URLRequest(url: url)
+                request.httpMethod = "POST"
+                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                request.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
+                
+                // 构建更新命令
+                let commands = [
+                    "uci set mihomo.@subscription[\(subscription.id)].name='\(subscription.name)'",
+                    "uci set mihomo.@subscription[\(subscription.id)].url='\(subscription.address)'",
+                    "uci set mihomo.@subscription[\(subscription.id)].user_agent='\(subscription.subUA)'",
+                    "uci set mihomo.@subscription[\(subscription.id)].prefer='\(subscription.remoteFirst ?? true ? "remote" : "local")'",
+                    "uci commit mihomo"
+                ].joined(separator: " && ")
+                
+                print("📤 发送的命令:")
+                print(commands)
+                
+                // 执行更新命令
+                let updateCommand: [String: Any] = [
+                    "method": "exec",
+                    "params": [commands]
+                ]
+                request.httpBody = try JSONSerialization.data(withJSONObject: updateCommand)
+                
+                let (data, response) = try await URLSession.shared.data(for: request)
+                
+                guard let httpResponse = response as? HTTPURLResponse,
+                    httpResponse.statusCode == 200 else {
+                    throw NetworkError.serverError(500)
+                }
+                
+                let uciResponse: UCIResponse = try JSONDecoder().decode(UCIResponse.self, from: data)
+                if let error = uciResponse.error, !error.isEmpty {
+                    throw NetworkError.serverError(500)
+                }
+                
+                print("✅ UCI命令执行成功")
+                logger.log("✅ UCI命令执行成功")
+                
+                // 重新加载订阅列表
+                await loadSubscriptions()
+                print("✅ 订阅列表已刷新")
+                logger.log("✅ 订阅列表已刷新")
+                
+            } catch {
+                print("❌ 更新订阅失败: \(error.localizedDescription)")
+                logger.log("❌ 更新订阅失败: \(error.localizedDescription)")
+                errorMessage = error.localizedDescription
+                showError = true
             }
         }
     }
