@@ -169,7 +169,7 @@ struct AddWiFiBindingView: View {
             }
         }
         .onAppear {
-            // 加载完整的服务器列表
+            serverViewModel.setBingingManager(bindingManager)
             Task { @MainActor in
                 await serverViewModel.loadServers()
             }

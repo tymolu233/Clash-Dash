@@ -2,11 +2,12 @@ import SwiftUI
 
 struct DefaultServersView: View {
     @EnvironmentObject private var bindingManager: WiFiBindingManager
-    @StateObject private var serverViewModel = ServerViewModel()
+    @StateObject private var serverViewModel: ServerViewModel
     @State private var selectedServerIds: Set<String>
     
     init() {
         _selectedServerIds = State(initialValue: Set())
+        _serverViewModel = StateObject(wrappedValue: ServerViewModel())
     }
     
     var body: some View {
@@ -58,6 +59,7 @@ struct DefaultServersView: View {
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             selectedServerIds = bindingManager.defaultServerIds
+            serverViewModel.setBingingManager(bindingManager)
             Task { @MainActor in
                 await serverViewModel.loadServers()
             }

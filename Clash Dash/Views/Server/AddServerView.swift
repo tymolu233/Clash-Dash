@@ -227,8 +227,14 @@ struct AddServerView: View {
                         TextField("网页端口（80）", text: $openWRTPort)
                             .keyboardType(.numberPad)
                         
-                        Toggle("使用 HTTPS", isOn: $openWRTUseSSL)
-                            .help("是否使用 HTTPS 访问 OpenWRT 管理页面")
+                        Toggle(isOn: $openWRTUseSSL) {
+                            Label {
+                                Text("使用 HTTPS")
+                            } icon: {
+                                Image(systemName: "lock.fill")
+                                    .foregroundColor(openWRTUseSSL ? .green : .secondary)
+                            }
+                        }
                         
                         TextField("用户名（root）", text: $openWRTUsername)
                             .textContentType(.username)
@@ -237,17 +243,22 @@ struct AddServerView: View {
                         SecureField("密码", text: $openWRTPassword)
                             .textContentType(.password)
                         
-                        Picker("LuCI 软件包", selection: $luciPackage) {
+                        Text("选择你使用的管理器")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .padding(.top, 8)
+                        
+                        Picker("", selection: $luciPackage) {
                             Text("OpenClash").tag(LuCIPackage.openClash)
                             Text("MihomoTProxy").tag(LuCIPackage.mihomoTProxy)
                         }
                         .pickerStyle(.segmented)
                     }
                 } header: {
-                    Text("OpenWRT 控制")
+                    Text("高级")
                 } footer: {
                     if isOpenWRT {
-                        Text("添加 OpenWRT 控制后，可以直接在 App 中管理 OpenWRT 上的代理服务")
+                        Text("添加 OpenWRT 控制后，可以直接在 App 中所选的管理器中进行订阅管理、切换配置、附加规则、重启服务等操作")
                     }
                 }
                 

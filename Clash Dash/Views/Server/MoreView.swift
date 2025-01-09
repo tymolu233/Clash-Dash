@@ -70,7 +70,7 @@ struct MoreView: View {
             }
             
             // OpenClash 功能组
-            if server.luciPackage == .openClash {
+            if server.luciPackage == .openClash && server.source == .openWRT {
                 Section("OpenClash 功能") {
                     Button {
                         impactFeedback.impactOccurred()

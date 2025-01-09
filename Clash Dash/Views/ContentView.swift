@@ -5,7 +5,7 @@ import Network
 import NetworkExtension
 
 struct ContentView: View {
-    @StateObject private var viewModel = ServerViewModel()
+    @StateObject private var viewModel: ServerViewModel
     @StateObject private var settingsViewModel = SettingsViewModel()
     @State private var showingAddSheet = false
     @State private var editingServer: ClashServer?
@@ -26,6 +26,10 @@ struct ContentView: View {
     @EnvironmentObject private var bindingManager: WiFiBindingManager
 
     private let logger = LogManager.shared
+
+    init() {
+        _viewModel = StateObject(wrappedValue: ServerViewModel())
+    }
 
     // 添加触觉反馈生成器
     private let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
@@ -227,7 +231,7 @@ struct ContentView: View {
                     .cornerRadius(16)
                     
                     // 版本信息
-                    Text("Ver: 1.2.10 (TF Build 1)")
+                    Text("Ver: 1.3.0 (TF Build 1)")
                         .foregroundColor(.secondary)
                         .font(.footnote)
                         .padding(.top, 8)
@@ -325,6 +329,8 @@ struct ContentView: View {
                 selectedQuickLaunchServer = quickLaunchServer
                 showQuickLaunchDestination = true
             }
+            
+            viewModel.setBingingManager(bindingManager)
         }
         .onChange(of: scenePhase) { newPhase in
             if newPhase == .active {

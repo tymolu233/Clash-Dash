@@ -76,7 +76,7 @@ struct ServerContextMenu: ViewModifier {
                             onModeChange: onModeChange)
             
             // OpenClash 特有功能组
-            if server.luciPackage == .openClash {
+            if server.luciPackage == .openClash && server.source == .openWRT {
                 Divider()
                 
                 Button {

@@ -15,6 +15,7 @@ struct ServerDetailView: View {
     @State private var showingSwitchConfig = false
     @State private var showingCustomRules = false
     @State private var showingRestartService = false
+    @EnvironmentObject private var bindingManager: WiFiBindingManager
     
     // 添加触觉反馈生成器
     private let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
@@ -103,6 +104,7 @@ struct ServerDetailView: View {
             .toolbarBackground(Color(.systemBackground), for: .navigationBar)
             .onAppear {
                 networkMonitor.startMonitoring(server: server)
+                viewModel.serverViewModel.setBingingManager(bindingManager)
             }
             .onDisappear {
                 networkMonitor.stopMonitoring()

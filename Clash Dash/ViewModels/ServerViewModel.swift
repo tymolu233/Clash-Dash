@@ -90,17 +90,22 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
     
     private let defaults = UserDefaults.standard
     private let logger = LogManager.shared
-    private let bindingManager = WiFiBindingManager()
+    private weak var bindingManager: WiFiBindingManager?
     private var currentWiFiSSID: String?
     
     private static let saveKey = "SavedClashServers"
     private var activeSessions: [URLSession] = []  // 保持 URLSession 的引用
     
-    override init() {
+    init(bindingManager: WiFiBindingManager? = nil) {
+        self.bindingManager = bindingManager
         super.init()
         loadServers()
     }
-
+    
+    func setBingingManager(_ manager: WiFiBindingManager) {
+        self.bindingManager = manager
+    }
+    
     private func determineServerType(from response: VersionResponse) -> ClashServer.ServerType {
         // 检查是否是 sing-box
         if response.version.lowercased().contains("sing") {
@@ -337,15 +342,13 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
     
     private func filterServersByWiFi(_ servers: [ClashServer], ssid: String) -> [ClashServer] {
         // 查找当前 Wi-Fi 的绑定
-        let bindings = bindingManager.bindings.filter { $0.ssid == ssid }
-        
-        // 如果没有找到绑定，返回所有服务器
-        guard !bindings.isEmpty else {
+        guard let bindingManager = bindingManager,
+              let bindings = bindingManager.bindings.filter({ $0.ssid == ssid }).first else {
             return servers
         }
         
         // 获取所有绑定的服务器 ID
-        let boundServerIds = Set(bindings.flatMap { $0.serverIds })
+        let boundServerIds = Set(bindings.serverIds)
         
         // 过滤服务器列表
         return servers.filter { server in
@@ -362,6 +365,10 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
     func addServer(_ server: ClashServer) {
         servers.append(server)
         saveServers()
+        // 将新服务器添加到默认显示控制器列表中
+        if let bindingManager = bindingManager {
+            bindingManager.updateDefaultServers(bindingManager.defaultServerIds.union([server.id.uuidString]))
+        }
         Task {
             await checkServerStatus(server)
         }
