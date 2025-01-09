@@ -265,6 +265,22 @@ class ConfigSubscriptionViewModel: ObservableObject {
                         subscription.subUA = value.lowercased()
                     case "prefer":
                         subscription.remoteFirst = value == "remote"
+                    case "expire":
+                        subscription.expire = value
+                    case "upload":
+                        subscription.upload = value
+                    case "download":
+                        subscription.download = value
+                    case "total":
+                        subscription.total = value
+                    case "used":
+                        subscription.used = value
+                    case "avaliable":  // 注意：这里是原始数据中的拼写
+                        subscription.available = value
+                    case "update":
+                        subscription.lastUpdate = value
+                    case "success":
+                        subscription.success = value == "1"
                     default:
                         // 忽略其他未知的键
                         break

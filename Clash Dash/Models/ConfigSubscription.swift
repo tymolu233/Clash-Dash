@@ -19,6 +19,16 @@ struct ConfigSubscription: Identifiable, Codable, Equatable {
     var exKeyword: String?
     var remoteFirst: Bool?
     
+    // 订阅详细信息
+    var expire: String?
+    var upload: String?
+    var download: String?
+    var total: String?
+    var used: String?
+    var available: String?
+    var lastUpdate: String?
+    var success: Bool?
+    
     // 转换模板选项
     static let templateOptions = [
         "默认（附带用于Clash的AdGuard DNS）",

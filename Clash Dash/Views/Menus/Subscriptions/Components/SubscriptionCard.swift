@@ -22,14 +22,29 @@ struct SubscriptionCard: View {
             // 标题栏
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(subscription.name)
-                        .font(.headline)
-                        .lineLimit(1)
-                    
+                    HStack {
+                        Text(subscription.name)
+                            .font(.headline)
+                            .lineLimit(1)
+                        
+                        if server.luciPackage == .mihomoTProxy,
+                           let remoteFirst = subscription.remoteFirst {
+                            HStack(spacing: 4) {
+                                Image(systemName: remoteFirst ? "cloud.fill" : "house.fill")
+                                    .foregroundColor(.blue)
+                                    .font(.caption)
+                                Text(remoteFirst ? "远程优先" : "本地优先")
+                                    .font(.caption)
+                                    .foregroundColor(.blue)
+                            }
+                        }
+                    }
+                        
                     Text(subscription.address)
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .lineLimit(1)
+ 
                 }
                 
                 Spacer()
@@ -53,41 +68,69 @@ struct SubscriptionCard: View {
             // 分隔线
             Divider()
             
-            // 过滤信息
-            VStack(alignment: .leading, spacing: 8) {
-                if let keyword = subscription.keyword {
-                    FilterBadge(icon: "text.magnifyingglass", text: "包含: \(keyword)", color: .blue)
+            if server.luciPackage == .mihomoTProxy {
+                // 订阅详细信息
+                VStack(alignment: .leading, spacing: 8) {
+                    // 流量信息
+                    HStack(spacing: 16) {
+                        if let used = subscription.used {
+                            SubscripationDataLabel(title: "已用", value: used)
+                        }
+                        if let available = subscription.available {
+                            SubscripationDataLabel(title: "剩余", value: available)
+                        }
+                        if let total = subscription.total {
+                            SubscripationDataLabel(title: "总量", value: total)
+                        }
+                    }
+                    
+                    // 到期和更新信息
+                    HStack(spacing: 16) {
+                        if let expire = subscription.expire {
+                            SubscripationDataLabel(title: "到期", value: expire)
+                        }
+                        if let lastUpdate = subscription.lastUpdate {
+                            SubscripationDataLabel(title: "更新", value: lastUpdate)
+                        }
+                    }
+                    
+                    // 上传下载信息
+                    HStack(spacing: 16) {
+                        if let upload = subscription.upload {
+                            SubscripationDataLabel(title: "上传", value: upload)
+                        }
+                        if let download = subscription.download {
+                            SubscripationDataLabel(title: "下载", value: download)
+                        }
+                    }
+                }
+                .padding(.top, 4)
+            } else {
+                // 过滤信息
+                VStack(alignment: .leading, spacing: 8) {
+                    if let keyword = subscription.keyword {
+                        FilterBadge(icon: "text.magnifyingglass", text: "包含: \(keyword)", color: .blue)
+                    }
+                    
+                    if let exKeyword = subscription.exKeyword {
+                        FilterBadge(icon: "text.magnifyingglass", text: "排除: \(exKeyword)", color: .red)
+                    }
                 }
                 
-                if let exKeyword = subscription.exKeyword {
-                    FilterBadge(icon: "text.magnifyingglass", text: "排除: \(exKeyword)", color: .red)
+                // 订阅转换状态
+                if subscription.subConvert {
+                    HStack {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                            .foregroundColor(.green)
+                        Text("已启用订阅转换")
+                            .font(.caption)
+                            .foregroundColor(.green)
+                    }
+                    .padding(.top, 4)
                 }
             }
             
-            // 订阅转换状态
-            if subscription.subConvert {
-                HStack {
-                    Image(systemName: "arrow.triangle.2.circlepath")
-                        .foregroundColor(.green)
-                    Text("已启用订阅转换")
-                        .font(.caption)
-                        .foregroundColor(.green)
-                }
-                .padding(.top, 4)
-            }
             
-            // 远程优先状态
-            if server.luciPackage == .mihomoTProxy,
-               let remoteFirst = subscription.remoteFirst {
-                HStack {
-                    Image(systemName: remoteFirst ? "cloud.fill" : "house.fill")
-                        .foregroundColor(.blue)
-                    Text(remoteFirst ? "远程优先" : "本地优先")
-                        .font(.caption)
-                        .foregroundColor(.blue)
-                }
-                .padding(.top, 4)
-            }
         }
         .padding()
         .background(
@@ -136,5 +179,21 @@ struct FilterBadge: View {
             Capsule()
                 .stroke(color.opacity(0.3), lineWidth: 0.5)
         )
+    }
+}
+
+struct SubscripationDataLabel: View {
+    let title: String
+    let value: String
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(.caption2)
+                .foregroundColor(.secondary)
+            Text(value)
+                .font(.caption)
+                .foregroundColor(.primary)
+        }
     }
 } 
