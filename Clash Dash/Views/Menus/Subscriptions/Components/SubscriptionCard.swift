@@ -5,16 +5,25 @@ struct SubscriptionCard: View {
     let server: ClashServer
     let onEdit: () -> Void
     let onToggle: (Bool) -> Void
+    let viewModel: ConfigSubscriptionViewModel
     
     @State private var isEnabled: Bool
+    @State private var isRefreshing = false
+    @State private var currentSubscription: ConfigSubscription
     @Environment(\.colorScheme) private var colorScheme
     
-    init(subscription: ConfigSubscription, server: ClashServer, onEdit: @escaping () -> Void, onToggle: @escaping (Bool) -> Void) {
+    init(subscription: ConfigSubscription, 
+         server: ClashServer, 
+         viewModel: ConfigSubscriptionViewModel,
+         onEdit: @escaping () -> Void, 
+         onToggle: @escaping (Bool) -> Void) {
         self.subscription = subscription
         self.server = server
+        self.viewModel = viewModel
         self.onEdit = onEdit
         self.onToggle = onToggle
         self._isEnabled = State(initialValue: subscription.enabled)
+        self._currentSubscription = State(initialValue: subscription)
     }
     
     var body: some View {
@@ -23,12 +32,12 @@ struct SubscriptionCard: View {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
-                        Text(subscription.name)
+                        Text(currentSubscription.name)
                             .font(.headline)
                             .lineLimit(1)
                         
                         if server.luciPackage == .mihomoTProxy,
-                           let remoteFirst = subscription.remoteFirst {
+                           let remoteFirst = currentSubscription.remoteFirst {
                             HStack(spacing: 4) {
                                 Image(systemName: remoteFirst ? "cloud.fill" : "house.fill")
                                     .foregroundColor(.blue)
@@ -40,7 +49,7 @@ struct SubscriptionCard: View {
                         }
                     }
                         
-                    Text(subscription.address)
+                    Text(currentSubscription.address)
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .lineLimit(1)
@@ -51,14 +60,39 @@ struct SubscriptionCard: View {
                 
                 // 编辑和开关按钮
                 HStack(spacing: 12) {
+                    if server.luciPackage == .mihomoTProxy,
+                       let subscriptionId = currentSubscription.subscriptionId {
+                        Button {
+                            Task {
+                                isRefreshing = true
+                                do {
+                                    if let updatedSubscription = try await viewModel.updateMihomoTProxySubscription(subscriptionId) {
+                                        currentSubscription = updatedSubscription
+                                    }
+                                } catch {
+                                    print("更新失败: \(error)")
+                                }
+                                isRefreshing = false
+                            }
+                        } label: {
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                                .foregroundColor(.blue)
+                                .font(.title3)
+                                .rotationEffect(.degrees(isRefreshing ? 360 : 0))
+                                .animation(isRefreshing ? .linear(duration: 1).repeatForever(autoreverses: false) : .default, value: isRefreshing)
+                        }
+                        .disabled(isRefreshing)
+                    }
+                    
                     Button(action: onEdit) {
                         Image(systemName: "pencil.circle.fill")
                             .foregroundColor(.blue)
                             .font(.title3)
                     }
-                    if server.luciPackage == .openClash{
-                    Toggle("", isOn: $isEnabled)
-                        .labelsHidden()
+                    
+                    if server.luciPackage == .openClash {
+                        Toggle("", isOn: $isEnabled)
+                            .labelsHidden()
                             .onChange(of: isEnabled) { newValue in
                                 onToggle(newValue)
                             }
@@ -74,33 +108,33 @@ struct SubscriptionCard: View {
                 VStack(alignment: .leading, spacing: 8) {
                     // 流量信息
                     HStack(spacing: 16) {
-                        if let used = subscription.used {
+                        if let used = currentSubscription.used {
                             SubscripationDataLabel(title: "已用", value: used)
                         }
-                        if let available = subscription.available {
+                        if let available = currentSubscription.available {
                             SubscripationDataLabel(title: "剩余", value: available)
                         }
-                        if let total = subscription.total {
+                        if let total = currentSubscription.total {
                             SubscripationDataLabel(title: "总量", value: total)
                         }
                     }
                     
                     // 到期和更新信息
                     HStack(spacing: 16) {
-                        if let expire = subscription.expire {
+                        if let expire = currentSubscription.expire {
                             SubscripationDataLabel(title: "到期", value: expire)
                         }
-                        if let lastUpdate = subscription.lastUpdate {
+                        if let lastUpdate = currentSubscription.lastUpdate {
                             SubscripationDataLabel(title: "更新", value: lastUpdate)
                         }
                     }
                     
                     // 上传下载信息
                     HStack(spacing: 16) {
-                        if let upload = subscription.upload {
+                        if let upload = currentSubscription.upload {
                             SubscripationDataLabel(title: "上传", value: upload)
                         }
-                        if let download = subscription.download {
+                        if let download = currentSubscription.download {
                             SubscripationDataLabel(title: "下载", value: download)
                         }
                     }
@@ -109,17 +143,17 @@ struct SubscriptionCard: View {
             } else {
                 // 过滤信息
                 VStack(alignment: .leading, spacing: 8) {
-                    if let keyword = subscription.keyword {
+                    if let keyword = currentSubscription.keyword {
                         FilterBadge(icon: "text.magnifyingglass", text: "包含: \(keyword)", color: .blue)
                     }
                     
-                    if let exKeyword = subscription.exKeyword {
+                    if let exKeyword = currentSubscription.exKeyword {
                         FilterBadge(icon: "text.magnifyingglass", text: "排除: \(exKeyword)", color: .red)
                     }
                 }
                 
                 // 订阅转换状态
-                if subscription.subConvert {
+                if currentSubscription.subConvert {
                     HStack {
                         Image(systemName: "arrow.triangle.2.circlepath")
                             .foregroundColor(.green)

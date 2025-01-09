@@ -24,8 +24,11 @@ struct ConfigSubscriptionView: View {
                     } else {
                         SubscriptionList(
                             subscriptions: viewModel.subscriptions,
-                            server: server,
-                            onEdit: { editingSubscription = $0 },
+                            server: viewModel.currentServer,
+                            viewModel: viewModel,
+                            onEdit: { subscription in
+                                editingSubscription = subscription
+                            },
                             onToggle: { sub, enabled in
                                 Task { await viewModel.toggleSubscription(sub, enabled: enabled) }
                             }

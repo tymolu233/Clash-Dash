@@ -18,6 +18,7 @@ struct ConfigSubscription: Identifiable, Codable, Equatable {
     var keyword: String?
     var exKeyword: String?
     var remoteFirst: Bool?
+    var subscriptionId: String?
     
     // 订阅详细信息
     var expire: String?
@@ -76,7 +77,8 @@ struct ConfigSubscription: Identifiable, Codable, Equatable {
          ruleProvider: Bool? = nil,
          keyword: String? = nil,
          exKeyword: String? = nil,
-         remoteFirst: Bool? = true) {
+         remoteFirst: Bool? = true,
+         subscriptionId: String? = nil) {
         self.id = id
         self.name = name
         self.address = address
@@ -94,6 +96,7 @@ struct ConfigSubscription: Identifiable, Codable, Equatable {
         self.keyword = keyword
         self.exKeyword = exKeyword
         self.remoteFirst = remoteFirst
+        self.subscriptionId = subscriptionId
     }
 }
 

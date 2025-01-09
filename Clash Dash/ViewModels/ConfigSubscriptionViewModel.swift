@@ -208,14 +208,16 @@ class ConfigSubscriptionViewModel: ObservableObject {
             }
             
             // 2. 解析所有订阅配置
-            var subscriptionPaths: [String] = []
+            var subscriptionPaths: [(path: String, id: String)] = []
             let lines = uciResponse.result.components(separatedBy: "\n")
             for line in lines {
                 if line.isEmpty { continue }
                 if line.contains("=subscription") {
-                    let subscriptionPath = line.split(separator: "=")[0].trimmingCharacters(in: .whitespaces)
-                    if !subscriptionPaths.contains(subscriptionPath) {
-                        subscriptionPaths.append(subscriptionPath)
+                    let parts = line.split(separator: "=")
+                    if parts.count == 2 {
+                        let path = String(parts[0]).trimmingCharacters(in: .whitespaces)
+                        let subscriptionId = path.split(separator: ".").last ?? ""
+                        subscriptionPaths.append((path: path, id: String(subscriptionId)))
                     }
                 }
             }
@@ -224,7 +226,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
             var subscriptions: [ConfigSubscription] = []
             var currentId = 0
             
-            for path in subscriptionPaths {
+            for (path, subscriptionId) in subscriptionPaths {
                 let getDetailCommand: [String: Any] = [
                     "method": "exec",
                     "params": ["uci show \(path)"]
@@ -244,7 +246,14 @@ class ConfigSubscriptionViewModel: ObservableObject {
                 
                 // 4. 解析订阅详情
                 var subscription = ConfigSubscription(id: currentId)
+                
+                // 从第一行提取 subscriptionId
                 let detailLines = uciDetailResponse.result.components(separatedBy: "\u{000a}")
+                if let firstLine = detailLines.first,
+                   let fullKey = firstLine.split(separator: "=").first {
+                    let configId = String(fullKey.split(separator: ".").last ?? "")
+                    subscription.subscriptionId = configId
+                }
                 
                 for line in detailLines {
                     if line.isEmpty { continue }
@@ -280,7 +289,6 @@ class ConfigSubscriptionViewModel: ObservableObject {
                     case "success":
                         subscription.success = value == "1"
                     default:
-                        // 忽略其他未知的键
                         break
                     }
                 }
@@ -556,6 +564,8 @@ class ConfigSubscriptionViewModel: ObservableObject {
             }
         }
     }
+
+    
     
     // 修改解析关键词的方法
     func parseKeywordValues(_ input: String?) -> [String] {
@@ -1144,5 +1154,140 @@ class ConfigSubscriptionViewModel: ObservableObject {
         
         // 重新加载订阅列表
         await loadSubscriptions()
+    }
+    
+    // 获取单个订阅的详细信息
+    private func fetchSubscriptionDetail(_ subscriptionId: String) async throws -> ConfigSubscription? {
+        let token = try await getAuthToken()
+        
+        let scheme = server.openWRTUseSSL ? "https" : "http"
+        guard let openWRTUrl = server.openWRTUrl else {
+            throw NetworkError.invalidURL
+        }
+        let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
+        guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
+            throw NetworkError.invalidURL
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
+        
+        // 获取订阅详情
+        let getDetailCommand: [String: Any] = [
+            "method": "exec",
+            "params": ["uci show mihomo.\(subscriptionId)"]
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: getDetailCommand)
+        
+        let (detailData, detailResponse) = try await URLSession.shared.data(for: request)
+        guard let detailHttpResponse = detailResponse as? HTTPURLResponse,
+              detailHttpResponse.statusCode == 200 else {
+            throw NetworkError.serverError(500)
+        }
+        
+        let uciDetailResponse: UCIResponse = try JSONDecoder().decode(UCIResponse.self, from: detailData)
+        if let error = uciDetailResponse.error, !error.isEmpty {
+            throw NetworkError.serverError(500)
+        }
+        
+        // 解析订阅详情
+        var subscription = ConfigSubscription()
+        subscription.subscriptionId = subscriptionId
+        
+        let detailLines = uciDetailResponse.result.components(separatedBy: "\u{000a}")
+        for line in detailLines {
+            if line.isEmpty { continue }
+            let parts = line.split(separator: "=", maxSplits: 1)
+            if parts.count != 2 { continue }
+            
+            let key = String(parts[0].split(separator: ".").last ?? "")
+            let value = String(parts[1]).trimmingCharacters(in: CharacterSet(charactersIn: "'"))
+            
+            switch key {
+            case "name":
+                subscription.name = value
+            case "url":
+                subscription.address = value
+            case "user_agent":
+                subscription.subUA = value.lowercased()
+            case "prefer":
+                subscription.remoteFirst = value == "remote"
+            case "expire":
+                subscription.expire = value
+            case "upload":
+                subscription.upload = value
+            case "download":
+                subscription.download = value
+            case "total":
+                subscription.total = value
+            case "used":
+                subscription.used = value
+            case "avaliable":  // 注意：这里是原始数据中的拼写
+                subscription.available = value
+            case "update":
+                subscription.lastUpdate = value
+            case "success":
+                subscription.success = value == "1"
+            default:
+                break
+            }
+        }
+        
+        // 只有同时有名称和地址的订阅才返回
+        if !subscription.name.isEmpty && !subscription.address.isEmpty {
+            subscription.enabled = true  // mihomo 的订阅默认启用
+            return subscription
+        }
+        
+        return nil
+    }
+    
+    // 更新 MihomoTProxy 订阅
+    func updateMihomoTProxySubscription(_ subscriptionId: String) async throws -> ConfigSubscription? {
+        logger.log("🔄 开始更新 MihomoTProxy 订阅: \(subscriptionId)")
+        
+        let token = try await getAuthToken()
+        
+        let scheme = server.openWRTUseSSL ? "https" : "http"
+        guard let openWRTUrl = server.openWRTUrl else {
+            throw NetworkError.invalidURL
+        }
+        let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
+        guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
+            throw NetworkError.invalidURL
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
+        
+        let command: [String: Any] = [
+            "id": 1,
+            "method": "exec",
+            "params": ["/usr/libexec/mihomo-call subscription update \(subscriptionId)"]
+        ]
+        print(command)
+        request.httpBody = try JSONSerialization.data(withJSONObject: command)
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse,
+              httpResponse.statusCode == 200 else {
+            throw NetworkError.serverError(500)
+        }
+        
+        let uciResponse = try JSONDecoder().decode(UCIResponse.self, from: data)
+        if let error = uciResponse.error, !error.isEmpty {
+            throw NetworkError.serverError(500)
+        }
+        
+        // 等待3秒
+        try await Task.sleep(nanoseconds: 3_000_000_000)
+        
+        // 获取更新后的订阅信息
+        return try await fetchSubscriptionDetail(subscriptionId)
     }
 }

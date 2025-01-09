@@ -3,6 +3,7 @@ import SwiftUI
 struct SubscriptionList: View {
     let subscriptions: [ConfigSubscription]
     let server: ClashServer
+    let viewModel: ConfigSubscriptionViewModel
     let onEdit: (ConfigSubscription) -> Void
     let onToggle: (ConfigSubscription, Bool) -> Void
     
@@ -12,6 +13,7 @@ struct SubscriptionList: View {
                 SubscriptionCard(
                     subscription: subscription,
                     server: server,
+                    viewModel: viewModel,
                     onEdit: { onEdit(subscription) },
                     onToggle: { enabled in onToggle(subscription, enabled) }
                 )
