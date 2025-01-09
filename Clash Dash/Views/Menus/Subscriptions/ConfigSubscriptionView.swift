@@ -47,6 +47,8 @@ struct ConfigSubscriptionView: View {
                 
                 ToolbarItem(placement: .primaryAction) {
                     HStack {
+
+                        if server.luciPackage == .openClash {
                         // 更新按钮
                         Button {
                             Task {
@@ -62,6 +64,7 @@ struct ConfigSubscriptionView: View {
                             Image(systemName: "arrow.triangle.2.circlepath")
                         }
                         .disabled(viewModel.isUpdating)
+                        }
                         
                         // 添加按钮
                         Button {

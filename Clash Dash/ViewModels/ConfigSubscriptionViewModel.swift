@@ -1047,60 +1047,120 @@ class ConfigSubscriptionViewModel: ObservableObject {
     }
     
     func deleteSubscription(_ subscription: ConfigSubscription) async {
-        do {
-            print("🗑️ 开始删除订阅: \(subscription.name)")
-            
-            let token = try await getAuthToken()
-            
-            // 构建请求
-            let scheme = server.openWRTUseSSL ? "https" : "http"
-            guard let openWRTUrl = server.openWRTUrl else {
-                throw NetworkError.invalidURL
+        if packageName == "openclash" {
+            do {
+                print("🗑️ 开始删除订阅: \(subscription.name)")
+                
+                let token = try await getAuthToken()
+                
+                // 构建请求
+                let scheme = server.openWRTUseSSL ? "https" : "http"
+                guard let openWRTUrl = server.openWRTUrl else {
+                    throw NetworkError.invalidURL
+                }
+                
+                let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
+                guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
+                    throw NetworkError.invalidURL
+                }
+                
+                var request = URLRequest(url: url)
+                request.httpMethod = "POST"
+                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                request.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
+                
+                // 删除命令
+                let commands = [
+                    "uci delete openclash.@config_subscribe[\(subscription.id)]",
+                    "uci commit openclash"
+                ]
+                
+                let command: [String: Any] = [
+                    "method": "exec",
+                    "params": [commands.joined(separator: " && ")]
+                ]
+                request.httpBody = try JSONSerialization.data(withJSONObject: command)
+                
+                let (data, response) = try await URLSession.shared.data(for: request)
+                
+                guard let httpResponse = response as? HTTPURLResponse,
+                    httpResponse.statusCode == 200 else {
+                    throw NetworkError.serverError(500)
+                }
+                
+                let uciResponse: UCIResponse = try JSONDecoder().decode(UCIResponse.self, from: data)
+                if let error = uciResponse.error, !error.isEmpty {
+                    throw NetworkError.serverError(500)
+                }
+                
+                print("✅ 删除成功")
+                
+                // 重新加载订阅列表
+                await loadSubscriptions()
+                
+            } catch {
+                print("❌ 删除订阅失败: \(error.localizedDescription)")
+                errorMessage = error.localizedDescription
+                showError = true
             }
-            
-            let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
-            guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
-                throw NetworkError.invalidURL
+        } else {
+            do {
+                print("🗑️ 开始删除 MihomoTProxy 订阅: \(subscription.name)")
+                
+                let token = try await getAuthToken()
+                
+                // 构建请求
+                let scheme = server.openWRTUseSSL ? "https" : "http"
+                guard let openWRTUrl = server.openWRTUrl else {
+                    throw NetworkError.invalidURL
+                }
+                
+                let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
+                guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
+                    throw NetworkError.invalidURL
+                }
+                
+                var request = URLRequest(url: url)
+                request.httpMethod = "POST"
+                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                request.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
+                
+                // 删除命令
+                let commands = [
+                    "uci delete mihomo.\(subscription.subscriptionId ?? "")",
+                    "uci commit mihomo"
+                ]
+                
+                let command: [String: Any] = [
+                    "method": "exec",
+                    "params": [commands.joined(separator: " && ")]
+                ]
+                request.httpBody = try JSONSerialization.data(withJSONObject: command)
+                
+                let (data, response) = try await URLSession.shared.data(for: request)
+                
+                guard let httpResponse = response as? HTTPURLResponse,
+                    httpResponse.statusCode == 200 else {
+                    throw NetworkError.serverError(500)
+                }
+                
+                let uciResponse: UCIResponse = try JSONDecoder().decode(UCIResponse.self, from: data)
+                if let error = uciResponse.error, !error.isEmpty {
+                    throw NetworkError.serverError(500)
+                }
+                
+                print("✅ 删除成功")
+                logger.log("✅ 删除成功")
+                
+                // 重新加载订阅列表
+                await loadSubscriptions()
+                
+            } catch {
+                print("❌ 删除订阅失败: \(error.localizedDescription)")
+                logger.log("❌ 删除订阅失败: \(error.localizedDescription)")
+                errorMessage = error.localizedDescription
+                showError = true
             }
-            
-            var request = URLRequest(url: url)
-            request.httpMethod = "POST"
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
-            
-            // 删除命令
-            let commands = [
-                "uci delete openclash.@config_subscribe[\(subscription.id)]",
-                "uci commit openclash"
-            ]
-            
-            let command: [String: Any] = [
-                "method": "exec",
-                "params": [commands.joined(separator: " && ")]
-            ]
-            request.httpBody = try JSONSerialization.data(withJSONObject: command)
-            
-            let (data, response) = try await URLSession.shared.data(for: request)
-            
-            guard let httpResponse = response as? HTTPURLResponse,
-                  httpResponse.statusCode == 200 else {
-                throw NetworkError.serverError(500)
-            }
-            
-            let uciResponse: UCIResponse = try JSONDecoder().decode(UCIResponse.self, from: data)
-            if let error = uciResponse.error, !error.isEmpty {
-                throw NetworkError.serverError(500)
-            }
-            
-            print("✅ 删除成功")
-            
-            // 重新加载订阅列表
-            await loadSubscriptions()
-            
-        } catch {
-            print("❌ 删除订阅失败: \(error.localizedDescription)")
-            errorMessage = error.localizedDescription
-            showError = true
         }
     }
     

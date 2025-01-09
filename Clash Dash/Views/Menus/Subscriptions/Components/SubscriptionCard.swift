@@ -108,36 +108,36 @@ struct SubscriptionCard: View {
                 VStack(alignment: .leading, spacing: 8) {
                     // 流量信息
                     HStack(spacing: 16) {
-                        if let used = currentSubscription.used {
+                        if let used = currentSubscription.formattedUsed {
                             SubscripationDataLabel(title: "已用", value: used)
                         }
-                        if let available = currentSubscription.available {
+                        if let available = currentSubscription.formattedAvailable {
                             SubscripationDataLabel(title: "剩余", value: available)
                         }
-                        if let total = currentSubscription.total {
+                        if let total = currentSubscription.formattedTotal {
                             SubscripationDataLabel(title: "总量", value: total)
                         }
                     }
                     
                     // 到期和更新信息
                     HStack(spacing: 16) {
-                        if let expire = currentSubscription.expire {
+                        if let expire = currentSubscription.formattedExpire {
                             SubscripationDataLabel(title: "到期", value: expire)
                         }
-                        if let lastUpdate = currentSubscription.lastUpdate {
+                        if let lastUpdate = currentSubscription.lastUpdateRelative {
                             SubscripationDataLabel(title: "更新", value: lastUpdate)
                         }
                     }
                     
                     // 上传下载信息
-                    HStack(spacing: 16) {
-                        if let upload = currentSubscription.upload {
-                            SubscripationDataLabel(title: "上传", value: upload)
-                        }
-                        if let download = currentSubscription.download {
-                            SubscripationDataLabel(title: "下载", value: download)
-                        }
-                    }
+                    // HStack(spacing: 16) {
+                    //     if let upload = currentSubscription.formattedUpload {
+                    //         SubscripationDataLabel(title: "上传", value: upload)
+                    //     }
+                    //     if let download = currentSubscription.formattedDownload {
+                    //         SubscripationDataLabel(title: "下载", value: download)
+                    //     }
+                    // }
                 }
                 .padding(.top, 4)
             } else {

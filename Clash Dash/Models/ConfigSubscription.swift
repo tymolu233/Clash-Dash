@@ -183,4 +183,104 @@ extension ConfigSubscription {
         
         return commands
     }
+    
+    var lastUpdateRelative: String? {
+        guard let lastUpdate = lastUpdate else { return nil }
+        
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        
+        guard let date = dateFormatter.date(from: lastUpdate) else { return lastUpdate }
+        
+        let now = Date()
+        let calendar = Calendar.current
+        let components = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second], from: date, to: now)
+        
+        if let year = components.year, year > 0 {
+            return "\(year)年前"
+        }
+        if let month = components.month, month > 0 {
+            return "\(month)个月前"
+        }
+        if let day = components.day, day > 0 {
+            return "\(day)天前"
+        }
+        if let hour = components.hour, hour > 0 {
+            return "\(hour)小时前"
+        }
+        if let minute = components.minute, minute > 0 {
+            return "\(minute)分钟前"
+        }
+        if let second = components.second, second > 30 {
+            return "\(second)秒前"
+        }
+        return "刚刚"
+    }
+    
+    // 格式化流量数据
+    private func formatTrafficValue(_ value: String?) -> String? {
+        guard let value = value else { return nil }
+        
+        // 移除所有空格
+        let cleanValue = value.trimmingCharacters(in: .whitespaces)
+        
+        // 提取数字和单位
+        let numberFormatter = NumberFormatter()
+        numberFormatter.numberStyle = .decimal
+        numberFormatter.maximumFractionDigits = 2
+        numberFormatter.minimumFractionDigits = 2
+        
+        // 匹配数字（包括小数点）和单位
+        let pattern = "([0-9.]+)\\s*([A-Za-z]+)"
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(in: cleanValue, range: NSRange(cleanValue.startIndex..., in: cleanValue)) else {
+            return value
+        }
+        
+        // 提取数字和单位
+        guard let numberRange = Range(match.range(at: 1), in: cleanValue),
+              let unitRange = Range(match.range(at: 2), in: cleanValue),
+              let number = Double(cleanValue[numberRange]) else {
+            return value
+        }
+        
+        let unit = String(cleanValue[unitRange])
+        let formattedNumber = numberFormatter.string(from: NSNumber(value: number)) ?? String(format: "%.2f", number)
+        
+        return "\(formattedNumber) \(unit)"
+    }
+    
+    var formattedUpload: String? {
+        formatTrafficValue(upload)
+    }
+    
+    var formattedDownload: String? {
+        formatTrafficValue(download)
+    }
+    
+    var formattedTotal: String? {
+        formatTrafficValue(total)
+    }
+    
+    var formattedUsed: String? {
+        formatTrafficValue(used)
+    }
+    
+    var formattedAvailable: String? {
+        formatTrafficValue(available)
+    }
+    
+    var formattedExpire: String? {
+        guard let expire = expire else { return nil }
+        
+        let inputFormatter = DateFormatter()
+        inputFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        
+        guard let date = inputFormatter.date(from: expire) else { return expire }
+        
+        let outputFormatter = DateFormatter()
+        outputFormatter.dateFormat = "yyyy-MM-dd"
+        
+        return outputFormatter.string(from: date)
+    }
 }
