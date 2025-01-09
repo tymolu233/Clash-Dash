@@ -107,6 +107,39 @@ struct ServerContextMenu: ViewModifier {
                     Label("重启服务", systemImage: "arrow.clockwise.circle")
                 }
             }
+
+            // mihomoTProxy 特有功能组
+            if server.luciPackage == .mihomoTProxy && server.source == .openWRT {
+                Divider()
+                
+                Button {
+                    impactFeedback.impactOccurred()
+                    onShowConfigSubscription()
+                } label: {
+                    Label("订阅管理", systemImage: "cloud.fill")
+                }
+                
+                // Button {
+                //     impactFeedback.impactOccurred()
+                //     onShowSwitchConfig()
+                // } label: {
+                //     Label("切换配置", systemImage: "arrow.2.circlepath")
+                // }
+                
+                // Button {
+                //     impactFeedback.impactOccurred()
+                //     onShowCustomRules()
+                // } label: {
+                //     Label("附加规则", systemImage: "list.bullet.rectangle")
+                // }
+                
+                // Button {
+                //     impactFeedback.impactOccurred()
+                //     onShowRestartService()
+                // } label: {
+                //     Label("重启服务", systemImage: "arrow.clockwise.circle")
+                // }
+            }
         }
     }
 }

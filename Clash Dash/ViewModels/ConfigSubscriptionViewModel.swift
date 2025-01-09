@@ -12,6 +12,12 @@ class ConfigSubscriptionViewModel: ObservableObject {
     
     private let server: ClashServer
     
+    var currentServer: ClashServer { server }
+    
+    private var packageName: String {
+        return server.luciPackage == .openClash ? "openclash" : "mihomo"
+    }
+    
     init(server: ClashServer) {
         self.server = server
     }
@@ -70,108 +76,111 @@ class ConfigSubscriptionViewModel: ObservableObject {
         guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
             throw NetworkError.invalidURL
         }
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
-        
-        let command: [String: Any] = [
-            "method": "exec",
-            "params": ["uci show openclash | grep \"config_subscribe\" | sed 's/openclash\\.//g' | sort"]
-        ]
-        request.httpBody = try JSONSerialization.data(withJSONObject: command)
-        
-        let session = URLSession.shared
-        let (data, response) = try await session.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200 else {
-            throw NetworkError.serverError(500)
-        }
-        
-        struct UCIResponse: Codable {
-            let result: String
-            let error: String?
-        }
-        
-        let uciResponse = try JSONDecoder().decode(UCIResponse.self, from: data)
-        if let error = uciResponse.error, !error.isEmpty {
-            throw NetworkError.serverError(500)
-        }
-        
-        // 解析结果
-        var subscriptions: [ConfigSubscription] = []
-        var currentId: Int?
-        var currentSub = ConfigSubscription()
-        
-        let lines = uciResponse.result.components(separatedBy: "\n")
-        for line in lines {
-            guard let (key, value) = parseSubscription(line) else { continue }
+
+        if packageName == "openclash" {
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
             
-            if key.hasPrefix("@config_subscribe[") {
-                if let idStr = key.firstMatch(of: /\[(\d+)\]/)?.1,
-                   let id = Int(idStr) {
-                    if id != currentId {
-                        if currentId != nil {
-                            subscriptions.append(currentSub)
+            let command: [String: Any] = [
+                "method": "exec",
+                "params": ["uci show openclash | grep \"config_subscribe\" | sed 's/openclash\\.//g' | sort"]
+            ]
+            request.httpBody = try JSONSerialization.data(withJSONObject: command)
+            
+            let session = URLSession.shared
+            let (data, response) = try await session.data(for: request)
+            
+            guard let httpResponse = response as? HTTPURLResponse,
+                httpResponse.statusCode == 200 else {
+                throw NetworkError.serverError(500)
+            }
+            
+            struct UCIResponse: Codable {
+                let result: String
+                let error: String?
+            }
+            
+            let uciResponse = try JSONDecoder().decode(UCIResponse.self, from: data)
+            if let error = uciResponse.error, !error.isEmpty {
+                throw NetworkError.serverError(500)
+            }
+            
+            // 解析结果
+            var subscriptions: [ConfigSubscription] = []
+            var currentId: Int?
+            var currentSub = ConfigSubscription()
+            
+            let lines = uciResponse.result.components(separatedBy: "\n")
+            for line in lines {
+                guard let (key, value) = parseSubscription(line) else { continue }
+                
+                if key.hasPrefix("@config_subscribe[") {
+                    if let idStr = key.firstMatch(of: /\[(\d+)\]/)?.1,
+                    let id = Int(idStr) {
+                        if id != currentId {
+                            if currentId != nil {
+                                subscriptions.append(currentSub)
+                            }
+                            currentId = id
+                            currentSub = ConfigSubscription(id: id)
                         }
-                        currentId = id
-                        currentSub = ConfigSubscription(id: id)
-                    }
-                    
-                    if key.contains(".name") {
-                        currentSub.name = value
-                    } else if key.contains(".address") {
-                        currentSub.address = value
-                    } else if key.contains(".enabled") {
-                        currentSub.enabled = value == "1"
-                    } else if key.contains(".sub_ua") {
-                        currentSub.subUA = value
-                    } else if key.contains(".sub_convert") {
-                        currentSub.subConvert = value.trimmingCharacters(in: CharacterSet(charactersIn: "'")) == "1"
-                    } else if key.contains(".convert_address") {
-                        currentSub.convertAddress = value
-                    } else if key.contains(".template") {
-                        currentSub.template = value
-                    } else if key.contains(".emoji") {
-                        currentSub.emoji = value.trimmingCharacters(in: CharacterSet(charactersIn: "'")) == "true"
-                    } else if key.contains(".udp") {
-                        currentSub.udp = value.trimmingCharacters(in: CharacterSet(charactersIn: "'")) == "true"
-                    } else if key.contains(".skip_cert_verify") {
-                        currentSub.skipCertVerify = value.trimmingCharacters(in: CharacterSet(charactersIn: "'")) == "true"
-                    } else if key.contains(".sort") {
-                        currentSub.sort = value.trimmingCharacters(in: CharacterSet(charactersIn: "'")) == "true"
-                    } else if key.contains(".node_type") {
-                        currentSub.nodeType = value.trimmingCharacters(in: CharacterSet(charactersIn: "'")) == "true"
-                    } else if key.contains(".rule_provider") {
-                        currentSub.ruleProvider = value.trimmingCharacters(in: CharacterSet(charactersIn: "'")) == "true"
-                    } else if key.contains(".keyword") {
-                        let cleanValue = value.trimmingCharacters(in: .whitespaces)
-                        if currentSub.keyword == nil {
-                            currentSub.keyword = cleanValue
-                        } else {
-                            currentSub.keyword! += " " + cleanValue
+                        
+                        if key.contains(".name") {
+                            currentSub.name = value
+                        } else if key.contains(".address") {
+                            currentSub.address = value
+                        } else if key.contains(".enabled") {
+                            currentSub.enabled = value == "1"
+                        } else if key.contains(".sub_ua") {
+                            currentSub.subUA = value
+                        } else if key.contains(".sub_convert") {
+                            currentSub.subConvert = value.trimmingCharacters(in: CharacterSet(charactersIn: "'")) == "1"
+                        } else if key.contains(".convert_address") {
+                            currentSub.convertAddress = value
+                        } else if key.contains(".template") {
+                            currentSub.template = value
+                        } else if key.contains(".emoji") {
+                            currentSub.emoji = value.trimmingCharacters(in: CharacterSet(charactersIn: "'")) == "true"
+                        } else if key.contains(".udp") {
+                            currentSub.udp = value.trimmingCharacters(in: CharacterSet(charactersIn: "'")) == "true"
+                        } else if key.contains(".skip_cert_verify") {
+                            currentSub.skipCertVerify = value.trimmingCharacters(in: CharacterSet(charactersIn: "'")) == "true"
+                        } else if key.contains(".sort") {
+                            currentSub.sort = value.trimmingCharacters(in: CharacterSet(charactersIn: "'")) == "true"
+                        } else if key.contains(".node_type") {
+                            currentSub.nodeType = value.trimmingCharacters(in: CharacterSet(charactersIn: "'")) == "true"
+                        } else if key.contains(".rule_provider") {
+                            currentSub.ruleProvider = value.trimmingCharacters(in: CharacterSet(charactersIn: "'")) == "true"
+                        } else if key.contains(".keyword") {
+                            let cleanValue = value.trimmingCharacters(in: .whitespaces)
+                            if currentSub.keyword == nil {
+                                currentSub.keyword = cleanValue
+                            } else {
+                                currentSub.keyword! += " " + cleanValue
+                            }
+                            print("处理关键词: \(cleanValue)") // 添加调试日志
+                        } else if key.contains(".ex_keyword") {
+                            let cleanValue = value.trimmingCharacters(in: .whitespaces)
+                            if currentSub.exKeyword == nil {
+                                currentSub.exKeyword = cleanValue
+                            } else {
+                                currentSub.exKeyword! += " " + cleanValue
+                            }
+                            print("处理排除关键词: \(cleanValue)") // 添加调试日志
                         }
-                        print("处理关键词: \(cleanValue)") // 添加调试日志
-                    } else if key.contains(".ex_keyword") {
-                        let cleanValue = value.trimmingCharacters(in: .whitespaces)
-                        if currentSub.exKeyword == nil {
-                            currentSub.exKeyword = cleanValue
-                        } else {
-                            currentSub.exKeyword! += " " + cleanValue
-                        }
-                        print("处理排除关键词: \(cleanValue)") // 添加调试日志
                     }
                 }
+            } 
+            if currentId != nil {
+                subscriptions.append(currentSub)
             }
-        }
-        
-        if currentId != nil {
-            subscriptions.append(currentSub)
-        }
-        
-        return subscriptions
+
+            return subscriptions
+        } else {
+            throw NetworkError.serverError(500)
+            }
     }
     
     private func getAuthToken() async throws -> String {

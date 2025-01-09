@@ -92,6 +92,7 @@ struct SubscriptionEditView: View {
         NavigationStack {
             Form {
                 BasicInfoSection(
+                    server: viewModel.currentServer,
                     name: $name,
                     address: $address,
                     enabled: $enabled,
@@ -105,24 +106,26 @@ struct SubscriptionEditView: View {
                     ruleProvider: $ruleProvider
                 )
                 
-                FilterSection(
-                    keywords: $keywords,
-                    exKeywords: $exKeywords
-                )
-                
-                if subConvert {
-                    ConvertOptionsSection(
-                        convertAddress: $convertAddress,
-                        customConvertAddress: $customConvertAddress,
-                        template: $template,
-                        emoji: $emoji,
-                        udp: $udp,
-                        skipCertVerify: $skipCertVerify,
-                        sort: $sort,
-                        nodeType: $nodeType,
-                        ruleProvider: $ruleProvider,
-                        viewModel: viewModel
+                if viewModel.currentServer.luciPackage != .mihomoTProxy {
+                    FilterSection(
+                        keywords: $keywords,
+                        exKeywords: $exKeywords
                     )
+                    
+                    if subConvert {
+                        ConvertOptionsSection(
+                            convertAddress: $convertAddress,
+                            customConvertAddress: $customConvertAddress,
+                            template: $template,
+                            emoji: $emoji,
+                            udp: $udp,
+                            skipCertVerify: $skipCertVerify,
+                            sort: $sort,
+                            nodeType: $nodeType,
+                            ruleProvider: $ruleProvider,
+                            viewModel: viewModel
+                        )
+                    }
                 }
                 
                 // 删除订阅按钮

@@ -28,7 +28,7 @@ struct ClashServer: Identifiable, Codable {
     var openWRTPort: String?
     var openWRTUrl: String?
     var openWRTUseSSL: Bool = false
-    var luciPackage: LuCIPackage = .openClash // 默认为 OpenClash，保持向后兼容
+    var luciPackage: LuCIPackage = .openClash
     
     enum ServerType: String, Codable {
         case unknown = "Unknown"
@@ -43,6 +43,7 @@ struct ClashServer: Identifiable, Codable {
         case clashUseSSL, openWRTUseSSL
         case errorMessage, serverType, isQuickLaunch, source
         case openWRTUsername, openWRTPassword, openWRTPort, openWRTUrl
+        case luciPackage
     }
     
     init(from decoder: Decoder) throws {
@@ -64,6 +65,7 @@ struct ClashServer: Identifiable, Codable {
         openWRTPassword = try container.decodeIfPresent(String.self, forKey: .openWRTPassword)
         openWRTPort = try container.decodeIfPresent(String.self, forKey: .openWRTPort)
         openWRTUrl = try container.decodeIfPresent(String.self, forKey: .openWRTUrl)
+        luciPackage = try container.decodeIfPresent(LuCIPackage.self, forKey: .luciPackage) ?? .openClash
         
         // 处理 SSL 字段迁移
         if let oldUseSSL = try container.decodeIfPresent(Bool.self, forKey: .useSSL) {
@@ -97,6 +99,7 @@ struct ClashServer: Identifiable, Codable {
         try container.encode(openWRTPassword, forKey: .openWRTPassword)
         try container.encode(openWRTPort, forKey: .openWRTPort)
         try container.encode(openWRTUrl, forKey: .openWRTUrl)
+        try container.encode(luciPackage, forKey: .luciPackage)
     }
     
     init(id: UUID = UUID(), 

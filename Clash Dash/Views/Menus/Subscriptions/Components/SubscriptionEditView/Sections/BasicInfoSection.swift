@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct BasicInfoSection: View {
+    let server: ClashServer
     @Binding var name: String
     @Binding var address: String
     @Binding var enabled: Bool
@@ -34,17 +35,19 @@ struct BasicInfoSection: View {
                 subUA = newValue.replacingOccurrences(of: "'", with: "").lowercased()
             }
             
-            Toggle("订阅转换", isOn: $subConvert)
-                .onChange(of: subConvert) { newValue in
-                    if !newValue {
-                        emoji = false
-                        udp = false
-                        skipCertVerify = false
-                        sort = false
-                        nodeType = false
-                        ruleProvider = false
+            if server.luciPackage != .mihomoTProxy {
+                Toggle("订阅转换", isOn: $subConvert)
+                    .onChange(of: subConvert) { newValue in
+                        if !newValue {
+                            emoji = false
+                            udp = false
+                            skipCertVerify = false
+                            sort = false
+                            nodeType = false
+                            ruleProvider = false
+                        }
                     }
-                }
+            }
         } header: {
             Text("基本信息")
         }
