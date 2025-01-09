@@ -179,8 +179,108 @@ class ConfigSubscriptionViewModel: ObservableObject {
 
             return subscriptions
         } else {
-            throw NetworkError.serverError(500)
+            // 1. 首先获取所有订阅配置
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
+            
+            let getAllCommand: [String: Any] = [
+                "method": "exec",
+                "params": ["uci show mihomo | grep \"=subscription\""]
+            ]
+            request.httpBody = try JSONSerialization.data(withJSONObject: getAllCommand)
+            
+            let session = URLSession.shared
+            let (data, response) = try await session.data(for: request)
+            
+            guard let httpResponse = response as? HTTPURLResponse,
+                  httpResponse.statusCode == 200 else {
+                throw NetworkError.serverError(500)
             }
+            
+            struct UCIResponse: Codable {
+                let result: String
+                let error: String?
+            }
+            
+            let uciResponse = try JSONDecoder().decode(UCIResponse.self, from: data)
+            if let error = uciResponse.error, !error.isEmpty {
+                throw NetworkError.serverError(500)
+            }
+            
+            // 2. 解析所有订阅配置
+            var subscriptionPaths: [String] = []
+            let lines = uciResponse.result.components(separatedBy: "\n")
+            for line in lines {
+                if line.isEmpty { continue }
+                if line.contains("=subscription") {
+                    let subscriptionPath = line.split(separator: "=")[0].trimmingCharacters(in: .whitespaces)
+                    if !subscriptionPaths.contains(subscriptionPath) {
+                        subscriptionPaths.append(subscriptionPath)
+                    }
+                }
+            }
+            
+            // 3. 获取每个订阅的详细信息
+            var subscriptions: [ConfigSubscription] = []
+            var currentId = 0
+            
+            for path in subscriptionPaths {
+                let getDetailCommand: [String: Any] = [
+                    "method": "exec",
+                    "params": ["uci show \(path)"]
+                ]
+                request.httpBody = try JSONSerialization.data(withJSONObject: getDetailCommand)
+                
+                let (detailData, detailResponse) = try await session.data(for: request)
+                guard let detailHttpResponse = detailResponse as? HTTPURLResponse,
+                      detailHttpResponse.statusCode == 200 else {
+                    continue
+                }
+                
+                let uciDetailResponse = try JSONDecoder().decode(UCIResponse.self, from: detailData)
+                if let error = uciDetailResponse.error, !error.isEmpty {
+                    continue
+                }
+                
+                // 4. 解析订阅详情
+                var subscription = ConfigSubscription(id: currentId)
+                let detailLines = uciDetailResponse.result.components(separatedBy: "\u{000a}")
+                
+                for line in detailLines {
+                    if line.isEmpty { continue }
+                    let parts = line.split(separator: "=", maxSplits: 1)
+                    if parts.count != 2 { continue }
+                    
+                    let key = String(parts[0].split(separator: ".").last ?? "")
+                    let value = String(parts[1]).trimmingCharacters(in: CharacterSet(charactersIn: "'"))
+                    
+                    switch key {
+                    case "name":
+                        subscription.name = value
+                    case "url":
+                        subscription.address = value
+                    case "user_agent":
+                        subscription.subUA = value.lowercased()
+                    case "prefer":
+                        subscription.remoteFirst = value == "remote"
+                    default:
+                        // 忽略其他未知的键
+                        break
+                    }
+                }
+                
+                // 只有同时有名称和地址的订阅才添加到列表中
+                if !subscription.name.isEmpty && !subscription.address.isEmpty {
+                    subscription.enabled = true  // mihomo 的订阅默认启用
+                    subscriptions.append(subscription)
+                    currentId += 1
+                }
+            }
+            
+            return subscriptions
+        }
     }
     
     private func getAuthToken() async throws -> String {
