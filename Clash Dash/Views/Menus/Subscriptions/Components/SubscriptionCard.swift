@@ -56,12 +56,13 @@ struct SubscriptionCard: View {
                             .foregroundColor(.blue)
                             .font(.title3)
                     }
-                    
+                    if server.luciPackage == .openClash{
                     Toggle("", isOn: $isEnabled)
                         .labelsHidden()
-                        .onChange(of: isEnabled) { newValue in
-                            onToggle(newValue)
-                        }
+                            .onChange(of: isEnabled) { newValue in
+                                onToggle(newValue)
+                            }
+                    }
                 }
             }
             

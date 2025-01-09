@@ -1,4 +1,12 @@
 import Foundation
+import OSLog
+
+// UCI 响应结构体
+struct UCIResponse: Codable {
+    let result: String
+    let error: String?
+}
+
 private let logger = LogManager.shared
 
 @MainActor
@@ -97,12 +105,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
                 throw NetworkError.serverError(500)
             }
             
-            struct UCIResponse: Codable {
-                let result: String
-                let error: String?
-            }
-            
-            let uciResponse = try JSONDecoder().decode(UCIResponse.self, from: data)
+            let uciResponse: UCIResponse = try JSONDecoder().decode(UCIResponse.self, from: data)
             if let error = uciResponse.error, !error.isEmpty {
                 throw NetworkError.serverError(500)
             }
@@ -199,12 +202,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
                 throw NetworkError.serverError(500)
             }
             
-            struct UCIResponse: Codable {
-                let result: String
-                let error: String?
-            }
-            
-            let uciResponse = try JSONDecoder().decode(UCIResponse.self, from: data)
+            let uciResponse: UCIResponse = try JSONDecoder().decode(UCIResponse.self, from: data)
             if let error = uciResponse.error, !error.isEmpty {
                 throw NetworkError.serverError(500)
             }
@@ -239,7 +237,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
                     continue
                 }
                 
-                let uciDetailResponse = try JSONDecoder().decode(UCIResponse.self, from: detailData)
+                let uciDetailResponse: UCIResponse = try JSONDecoder().decode(UCIResponse.self, from: detailData)
                 if let error = uciDetailResponse.error, !error.isEmpty {
                     continue
                 }
@@ -346,149 +344,216 @@ class ConfigSubscriptionViewModel: ObservableObject {
     }
     
     func addSubscription(_ subscription: ConfigSubscription) async {
-        do {
-            print("🔄 开始添加订阅: \(subscription.name)")
-            print("📝 订阅信息:")
-            printSubscriptionState(subscription)
-            
-            let token = try await getAuthToken()
-            
-            // 构建请求
-            let scheme = server.openWRTUseSSL ? "https" : "http"
-            guard let openWRTUrl = server.openWRTUrl else {
-                throw NetworkError.invalidURL
-            }
-            let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
-            guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
-                throw NetworkError.invalidURL
-            }
-            
-            var request = URLRequest(url: url)
-            request.httpMethod = "POST"
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
-            
-            // 首先获取当前订阅数量
-            let countCommand: [String: Any] = [
-                "method": "exec",
-                "params": ["uci show openclash | grep 'config_subscribe.*name' | wc -l"]
-            ]
-            request.httpBody = try JSONSerialization.data(withJSONObject: countCommand)
-            
-            let (countData, _) = try await URLSession.shared.data(for: request)
-            let countResponse = try JSONDecoder().decode(UCIResponse.self, from: countData)
-            
-            guard let countStr = countResponse.result.trimmingCharacters(in: .whitespacesAndNewlines).components(separatedBy: .newlines).first,
-                  let count = Int(countStr) else {
-                throw NetworkError.serverError(500)
-            }
-            
-            // 生成添加命令
-            var commands = [
-                "uci add openclash config_subscribe",
-                "uci set openclash.@config_subscribe[\(count)].enabled='\(subscription.enabled ? 1 : 0)'",
-                "uci set openclash.@config_subscribe[\(count)].name='\(subscription.name)'",
-                "uci set openclash.@config_subscribe[\(count)].address='\(subscription.address)'",
-                "uci set openclash.@config_subscribe[\(count)].sub_ua='\(subscription.subUA)'",
-                "uci set openclash.@config_subscribe[\(count)].sub_convert='\(subscription.subConvert ? 1 : 0)'"
-            ]
-            
-            // 添加可选参数
-            // 转换选项
-            if subscription.subConvert {
-                if let addr = subscription.convertAddress {
-                    commands.append("uci set openclash.@config_subscribe[\(count)].convert_address='\(addr)'")
+        if packageName == "openclash" {
+            do {
+                print("🔄 开始添加订阅: \(subscription.name)")
+                print("📝 订阅信息:")
+                printSubscriptionState(subscription)
+                
+                let token = try await getAuthToken()
+                
+                // 构建请求
+                let scheme = server.openWRTUseSSL ? "https" : "http"
+                guard let openWRTUrl = server.openWRTUrl else {
+                    throw NetworkError.invalidURL
+                }
+                let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
+                guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
+                    throw NetworkError.invalidURL
                 }
                 
-                if let template = subscription.template {
-                    commands.append("uci set openclash.@config_subscribe[\(count)].template='\(template)'")
+                var request = URLRequest(url: url)
+                request.httpMethod = "POST"
+                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                request.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
+                
+                // 首先获取当前订阅数量
+                let countCommand: [String: Any] = [
+                    "method": "exec",
+                    "params": ["uci show openclash | grep 'config_subscribe.*name' | wc -l"]
+                ]
+                request.httpBody = try JSONSerialization.data(withJSONObject: countCommand)
+                
+                let (countData, _) = try await URLSession.shared.data(for: request)
+                let countResponse: UCIResponse = try JSONDecoder().decode(UCIResponse.self, from: countData)
+                
+                guard let countStr = countResponse.result.trimmingCharacters(in: .whitespacesAndNewlines).components(separatedBy: .newlines).first,
+                    let count = Int(countStr) else {
+                    throw NetworkError.serverError(500)
                 }
-
-                // 布尔值选项：当 subConvert 为 true 时，始终设置值
-                let boolOptions = [
-                    "emoji": subscription.emoji,
-                    "udp": subscription.udp,
-                    "skip_cert_verify": subscription.skipCertVerify,
-                    "sort": subscription.sort,
-                    "node_type": subscription.nodeType,
-                    "rule_provider": subscription.ruleProvider
+                
+                // 生成添加命令
+                var commands = [
+                    "uci add openclash config_subscribe",
+                    "uci set openclash.@config_subscribe[\(count)].enabled='\(subscription.enabled ? 1 : 0)'",
+                    "uci set openclash.@config_subscribe[\(count)].name='\(subscription.name)'",
+                    "uci set openclash.@config_subscribe[\(count)].address='\(subscription.address)'",
+                    "uci set openclash.@config_subscribe[\(count)].sub_ua='\(subscription.subUA)'",
+                    "uci set openclash.@config_subscribe[\(count)].sub_convert='\(subscription.subConvert ? 1 : 0)'"
                 ]
                 
-                for (key, value) in boolOptions {
-                    // 如果值为 nil 或为 false，设置为 false
-                    // 如果值为 true，设置为 true
-                    let finalValue = value ?? false
-                    commands.append("uci set openclash.@config_subscribe[\(count)].\(key)='\(finalValue ? "true" : "false")'")
-                }
-            }
-            
-            // 关键词比较
-            if subscription.keyword != nil {
+                // 添加可选参数
+                // 转换选项
+                if subscription.subConvert {
+                    if let addr = subscription.convertAddress {
+                        commands.append("uci set openclash.@config_subscribe[\(count)].convert_address='\(addr)'")
+                    }
                     
-                let keywords = parseKeywordValues(subscription.keyword) // 使用新的解析方法
+                    if let template = subscription.template {
+                        commands.append("uci set openclash.@config_subscribe[\(count)].template='\(template)'")
+                    }
+
+                    // 布尔值选项：当 subConvert 为 true 时，始终设置值
+                    let boolOptions = [
+                        "emoji": subscription.emoji,
+                        "udp": subscription.udp,
+                        "skip_cert_verify": subscription.skipCertVerify,
+                        "sort": subscription.sort,
+                        "node_type": subscription.nodeType,
+                        "rule_provider": subscription.ruleProvider
+                    ]
+                    
+                    for (key, value) in boolOptions {
+                        // 如果值为 nil 或为 false，设置为 false
+                        // 如果值为 true，设置为 true
+                        let finalValue = value ?? false
+                        commands.append("uci set openclash.@config_subscribe[\(count)].\(key)='\(finalValue ? "true" : "false")'")
+                    }
+                }
                 
-                if !keywords.isEmpty{
-                    for keyword in keywords {
-                        print("添加关键词: \(keyword)")
-                        commands.append("uci add_list openclash.@config_subscribe[\(count)].keyword='\(keyword)'")
+                // 关键词比较
+                if subscription.keyword != nil {
+                        
+                    let keywords = parseKeywordValues(subscription.keyword) // 使用新的解析方法
+                    
+                    if !keywords.isEmpty{
+                        for keyword in keywords {
+                            print("添加关键词: \(keyword)")
+                            commands.append("uci add_list openclash.@config_subscribe[\(count)].keyword='\(keyword)'")
+                        }
                     }
                 }
-            }
-            
-            // 排除关键词比较
-            if subscription.exKeyword != nil {
-                let keywords = parseKeywordValues(subscription.exKeyword) // 使用新的解析方法
-                if !keywords.isEmpty{
-                    for keyword in keywords {
-                        print("添加关键词: \(keyword)")
-                        commands.append("uci add_list openclash.@config_subscribe[\(count)].ex_keyword='\(keyword)'")
+                
+                // 排除关键词比较
+                if subscription.exKeyword != nil {
+                    let keywords = parseKeywordValues(subscription.exKeyword) // 使用新的解析方法
+                    if !keywords.isEmpty{
+                        for keyword in keywords {
+                            print("添加关键词: \(keyword)")
+                            commands.append("uci add_list openclash.@config_subscribe[\(count)].ex_keyword='\(keyword)'")
+                        }
                     }
                 }
+                
+                print("📤 发送的命令:")
+                print(commands.joined(separator: " && "))
+                
+                // 执行添加命令
+                let addCommand: [String: Any] = [
+                    "method": "exec",
+                    "params": [commands.joined(separator: " && ")]
+                ]
+                request.httpBody = try JSONSerialization.data(withJSONObject: addCommand)
+                
+                let (data, response) = try await URLSession.shared.data(for: request)
+                
+                guard let httpResponse = response as? HTTPURLResponse,
+                    httpResponse.statusCode == 200 else {
+                    throw NetworkError.serverError(500)
+                }
+                
+                let uciResponse: UCIResponse = try JSONDecoder().decode(UCIResponse.self, from: data)
+                if let error = uciResponse.error, !error.isEmpty {
+                    throw NetworkError.serverError(500)
+                }
+                
+                print("✅ UCI命令执行成功")
+                
+                // 提交更改
+                try await commitChanges(token: token)
+                print("✅ 更改已提交")
+                logger.log("✅ 更改已提交")
+                
+                // 重新加载订阅列表
+                await loadSubscriptions()
+                print("✅ 订阅列表已刷新")
+                logger.log("✅ 订阅列表已刷新")
+                
+            } catch {
+                print("❌ 添加订阅失败: \(error.localizedDescription)")
+                logger.log("❌ 添加订阅失败: \(error.localizedDescription)")
+                errorMessage = error.localizedDescription
+                showError = true
             }
-            
-            print("📤 发送的命令:")
-            print(commands.joined(separator: " && "))
-            
-            // 执行添加命令
-            let addCommand: [String: Any] = [
-                "method": "exec",
-                "params": [commands.joined(separator: " && ")]
-            ]
-            request.httpBody = try JSONSerialization.data(withJSONObject: addCommand)
-            
-            let (data, response) = try await URLSession.shared.data(for: request)
-            
-            guard let httpResponse = response as? HTTPURLResponse,
-                  httpResponse.statusCode == 200 else {
-                throw NetworkError.serverError(500)
+        } else {
+            do {
+                print("🔄 开始添加 MihomoTProxy 订阅: \(subscription.name)")
+                print("📝 订阅信息:")
+                printSubscriptionState(subscription)
+                
+                let token = try await getAuthToken()
+                
+                // 构建请求
+                let scheme = server.openWRTUseSSL ? "https" : "http"
+                guard let openWRTUrl = server.openWRTUrl else {
+                    throw NetworkError.invalidURL
+                }
+                let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
+                guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
+                    throw NetworkError.invalidURL
+                }
+                
+                var request = URLRequest(url: url)
+                request.httpMethod = "POST"
+                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                request.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
+                
+                // 构建添加命令
+                let commands = [
+                    "uci add mihomo subscription",
+                    "uci set mihomo.@subscription[-1].name='\(subscription.name)'",
+                    "uci set mihomo.@subscription[-1].url='\(subscription.address)'",
+                    "uci set mihomo.@subscription[-1].user_agent='\(subscription.subUA)'",
+                    "uci set mihomo.@subscription[-1].prefer='\(subscription.remoteFirst ?? true ? "remote" : "local")'",
+                    "uci commit mihomo"
+                ].joined(separator: " && ")
+                
+                print("📤 发送的命令:")
+                print(commands)
+                
+                // 执行添加命令
+                let addCommand: [String: Any] = [
+                    "method": "exec",
+                    "params": [commands]
+                ]
+                request.httpBody = try JSONSerialization.data(withJSONObject: addCommand)
+                
+                let (data, response) = try await URLSession.shared.data(for: request)
+                
+                guard let httpResponse = response as? HTTPURLResponse,
+                    httpResponse.statusCode == 200 else {
+                    throw NetworkError.serverError(500)
+                }
+                
+                let uciResponse: UCIResponse = try JSONDecoder().decode(UCIResponse.self, from: data)
+                if let error = uciResponse.error, !error.isEmpty {
+                    throw NetworkError.serverError(500)
+                }
+                
+                print("✅ UCI命令执行成功")
+                logger.log("✅ UCI命令执行成功")
+                
+                // 重新加载订阅列表
+                await loadSubscriptions()
+                print("✅ 订阅列表已刷新")
+                logger.log("✅ 订阅列表已刷新")
+                
+            } catch {
+                print("❌ 添加订阅失败: \(error.localizedDescription)")
+                logger.log("❌ 添加订阅失败: \(error.localizedDescription)")
+                errorMessage = error.localizedDescription
+                showError = true
             }
-            struct UCIResponse: Codable {
-                let result: String
-                let error: String?
-            }
-            
-            let uciResponse = try JSONDecoder().decode(UCIResponse.self, from: data)
-            if let error = uciResponse.error, !error.isEmpty {
-                throw NetworkError.serverError(500)
-            }
-            
-            print("✅ UCI命令执行成功")
-            
-            // 提交更改
-            try await commitChanges(token: token)
-            print("✅ 更改已提交")
-            logger.log("✅ 更改已提交")
-            
-            // 重新加载订阅列表
-            await loadSubscriptions()
-            print("✅ 订阅列表已刷新")
-            logger.log("✅ 订阅列表已刷新")
-            
-        } catch {
-            print("❌ 添加订阅失败: \(error.localizedDescription)")
-            logger.log("❌ 添加订阅失败: \(error.localizedDescription)")
-            errorMessage = error.localizedDescription
-            showError = true
         }
     }
     
@@ -520,182 +585,183 @@ class ConfigSubscriptionViewModel: ObservableObject {
     }
     
     func updateSubscription(_ subscription: ConfigSubscription) async {
-        do {
-            print("🔄 开始更新订阅: \(subscription.name)")
-            logger.log("🔄 开始更新订阅: \(subscription.name)")
-            print("📝 当前订阅状态:")
-            printSubscriptionState(subscription)
-            
-            let token = try await getAuthToken()
-            
-            if let oldSub = subscriptions.first(where: { $0.id == subscription.id }) {
-                print("\n📝 对比旧订阅状态:")
-                printSubscriptionState(oldSub)
+        if packageName == "openclash" {
+            do {
+                print("🔄 开始更新订阅: \(subscription.name)")
+                logger.log("🔄 开始更新订阅: \(subscription.name)")
+                print("📝 当前订阅状态:")
+                printSubscriptionState(subscription)
                 
-                print("\n📝 检查字段更改...")
-                var commands: [String] = []
+                let token = try await getAuthToken()
                 
-                // 基本字段比较
-                if oldSub.name != subscription.name {
-                    commands.append("uci set openclash.@config_subscribe[\(subscription.id)].name='\(subscription.name)'")
-                }
-                if oldSub.address != subscription.address {
-                    commands.append("uci set openclash.@config_subscribe[\(subscription.id)].address='\(subscription.address)'")
-                }
-                if oldSub.subUA != subscription.subUA {
-                    commands.append("uci set openclash.@config_subscribe[\(subscription.id)].sub_ua='\(subscription.subUA)'")
-                }
-                if oldSub.enabled != subscription.enabled {
-                    commands.append("uci set openclash.@config_subscribe[\(subscription.id)].enabled='\(subscription.enabled ? 1 : 0)'")
-                }
-                if oldSub.subConvert != subscription.subConvert {
-                    commands.append("uci set openclash.@config_subscribe[\(subscription.id)].sub_convert='\(subscription.subConvert ? 1 : 0)'")
-                }
-                
-                // 转换选项比较
-                if subscription.subConvert {
-                    if oldSub.convertAddress != subscription.convertAddress {
-                        if let addr = subscription.convertAddress {
-                            commands.append("uci set openclash.@config_subscribe[\(subscription.id)].convert_address='\(addr)'")
-                        }
-                    }
-                    if oldSub.template != subscription.template {
-                        if let template = subscription.template {
-                            commands.append("uci set openclash.@config_subscribe[\(subscription.id)].template='\(template)'")
-                        }
-                    }
-
-                    // 布尔值选项：当 subConvert 为 true 时，始终设置值
-                    let boolOptions = [
-                        "emoji": subscription.emoji,
-                        "udp": subscription.udp,
-                        "skip_cert_verify": subscription.skipCertVerify,
-                        "sort": subscription.sort,
-                        "node_type": subscription.nodeType,
-                        "rule_provider": subscription.ruleProvider
-                    ]
+                if let oldSub = subscriptions.first(where: { $0.id == subscription.id }) {
+                    print("\n📝 对比旧订阅状态:")
+                    printSubscriptionState(oldSub)
                     
-                    for (key, value) in boolOptions {
-                        // 如果值为 nil 或为 false，设置为 false
-                        // 如果值为 true，设置为 true
-                        let finalValue = value ?? false
-                        commands.append("uci set openclash.@config_subscribe[\(subscription.id)].\(key)='\(finalValue ? "true" : "false")'")
+                    print("\n📝 检查字段更改...")
+                    var commands: [String] = []
+                    
+                    // 基本字段比较
+                    if oldSub.name != subscription.name {
+                        commands.append("uci set openclash.@config_subscribe[\(subscription.id)].name='\(subscription.name)'")
                     }
-                }
-                
-                // 关键词比较
-                if oldSub.keyword != subscription.keyword {
+                    if oldSub.address != subscription.address {
+                        commands.append("uci set openclash.@config_subscribe[\(subscription.id)].address='\(subscription.address)'")
+                    }
+                    if oldSub.subUA != subscription.subUA {
+                        commands.append("uci set openclash.@config_subscribe[\(subscription.id)].sub_ua='\(subscription.subUA)'")
+                    }
+                    if oldSub.enabled != subscription.enabled {
+                        commands.append("uci set openclash.@config_subscribe[\(subscription.id)].enabled='\(subscription.enabled ? 1 : 0)'")
+                    }
+                    if oldSub.subConvert != subscription.subConvert {
+                        commands.append("uci set openclash.@config_subscribe[\(subscription.id)].sub_convert='\(subscription.subConvert ? 1 : 0)'")
+                    }
+                    
+                    // 转换选项比较
+                    if subscription.subConvert {
+                        if oldSub.convertAddress != subscription.convertAddress {
+                            if let addr = subscription.convertAddress {
+                                commands.append("uci set openclash.@config_subscribe[\(subscription.id)].convert_address='\(addr)'")
+                            }
+                        }
+                        if oldSub.template != subscription.template {
+                            if let template = subscription.template {
+                                commands.append("uci set openclash.@config_subscribe[\(subscription.id)].template='\(template)'")
+                            }
+                        }
+
+                        // 布尔值选项：当 subConvert 为 true 时，始终设置值
+                        let boolOptions = [
+                            "emoji": subscription.emoji,
+                            "udp": subscription.udp,
+                            "skip_cert_verify": subscription.skipCertVerify,
+                            "sort": subscription.sort,
+                            "node_type": subscription.nodeType,
+                            "rule_provider": subscription.ruleProvider
+                        ]
                         
-                    let keywords = parseKeywordValues(subscription.keyword) // 使用新的解析方法
+                        for (key, value) in boolOptions {
+                            // 如果值为 nil 或为 false，设置为 false
+                            // 如果值为 true，设置为 true
+                            let finalValue = value ?? false
+                            commands.append("uci set openclash.@config_subscribe[\(subscription.id)].\(key)='\(finalValue ? "true" : "false")'")
+                        }
+                    }
                     
-                    if !keywords.isEmpty{
-                    // 只有当旧值存在时才发送 delete 命令
-                        if oldSub.keyword != nil {
-                            commands.append("uci delete openclash.@config_subscribe[\(subscription.id)].keyword")
+                    // 关键词比较
+                    if oldSub.keyword != subscription.keyword {
+                            
+                        let keywords = parseKeywordValues(subscription.keyword) // 使用新的解析方法
+                        
+                        if !keywords.isEmpty{
+                        // 只有当旧值存在时才发送 delete 命令
+                            if oldSub.keyword != nil {
+                                commands.append("uci delete openclash.@config_subscribe[\(subscription.id)].keyword")
+                            }
+                            for keyword in keywords {
+                                print("添加关键词: \(keyword)")
+                                commands.append("uci add_list openclash.@config_subscribe[\(subscription.id)].keyword='\(keyword)'")
+                            }
+                        }else {
+                                commands.append("uci delete openclash.@config_subscribe[\(subscription.id)].keyword")
                         }
-                        for keyword in keywords {
-                            print("添加关键词: \(keyword)")
-                            commands.append("uci add_list openclash.@config_subscribe[\(subscription.id)].keyword='\(keyword)'")
-                        }
-                    }else {
-                            commands.append("uci delete openclash.@config_subscribe[\(subscription.id)].keyword")
                     }
-                }
-                
-                // 排除关键词比较
-                if oldSub.exKeyword != subscription.exKeyword {
-                    let keywords = parseKeywordValues(subscription.exKeyword) // 使用新的解析方法
-                    if !keywords.isEmpty{
-                    // 只有当旧值存在时才发送 delete 命令
-                        if oldSub.exKeyword != nil {
-                            commands.append("uci delete openclash.@config_subscribe[\(subscription.id)].ex_keyword")
+                    
+                    // 排除关键词比较
+                    if oldSub.exKeyword != subscription.exKeyword {
+                        let keywords = parseKeywordValues(subscription.exKeyword) // 使用新的解析方法
+                        if !keywords.isEmpty{
+                        // 只有当旧值存在时才发送 delete 命令
+                            if oldSub.exKeyword != nil {
+                                commands.append("uci delete openclash.@config_subscribe[\(subscription.id)].ex_keyword")
+                            }
+                            for keyword in keywords {
+                                print("添加关键词: \(keyword)")
+                                commands.append("uci add_list openclash.@config_subscribe[\(subscription.id)].ex_keyword='\(keyword)'")
+                            }
+                        }else{
+                        commands.append("uci delete openclash.@config_subscribe[\(subscription.id)].ex_keyword")
                         }
-                        for keyword in keywords {
-                            print("添加关键词: \(keyword)")
-                            commands.append("uci add_list openclash.@config_subscribe[\(subscription.id)].ex_keyword='\(keyword)'")
-                        }
-                    }else{
-                       commands.append("uci delete openclash.@config_subscribe[\(subscription.id)].ex_keyword")
                     }
-                }
-                
-                // 自定义参数比较
-//                if oldSub.customParams != subscription.customParams {
-//                    if let params = subscription.customParams {
-//                        if oldSub.customParams != nil {
-//                            commands.append("uci delete openclash.@config_subscribe[\(subscription.id)].custom_params")
-//                        }
-//                        for param in params {
-//                            commands.append("uci add_list openclash.@config_subscribe[\(subscription.id)].custom_params='\(param)'")
-//                        }
-//                    }
-//                }
-                
-                if commands.isEmpty {
-                    print("ℹ️ 没有字段被更改，跳过更新")
-                    return
-                }
-                
-                // 构建请求
-                let scheme = server.openWRTUseSSL ? "https" : "http"
-                guard let openWRTUrl = server.openWRTUrl else {
-                    throw NetworkError.invalidURL
-                }
-                let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
-                guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
-                    throw NetworkError.invalidURL
-                }
-                
-                var request = URLRequest(url: url)
-                request.httpMethod = "POST"
-                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                request.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
-                
-                let command: [String: Any] = [
-                    "method": "exec",
-                    "params": [commands.joined(separator: " && ")]
-                ]
-                request.httpBody = try JSONSerialization.data(withJSONObject: command)
-                
-                let session = URLSession.shared
-                let (data, response) = try await session.data(for: request)
-                
-                guard let httpResponse = response as? HTTPURLResponse,
-                      httpResponse.statusCode == 200 else {
-                    print("❌ 服务器返回错误状态码: \((response as? HTTPURLResponse)?.statusCode ?? 0)")
-                    throw NetworkError.serverError(500)
-                }
-                
-                struct UCIResponse: Codable {
-                    let result: String
-                    let error: String?
-                }
-                
-                let uciResponse = try JSONDecoder().decode(UCIResponse.self, from: data)
-                if let error = uciResponse.error, !error.isEmpty {
-                    print("UCI命令执行失败: \(error)")
-                    throw NetworkError.serverError(500)
-                }
+                    
+                    // 自定义参数比较
+    //                if oldSub.customParams != subscription.customParams {
+    //                    if let params = subscription.customParams {
+    //                        if oldSub.customParams != nil {
+    //                            commands.append("uci delete openclash.@config_subscribe[\(subscription.id)].custom_params")
+    //                        }
+    //                        for param in params {
+    //                            commands.append("uci add_list openclash.@config_subscribe[\(subscription.id)].custom_params='\(param)'")
+    //                        }
+    //                    }
+    //                }
+                    
+                    if commands.isEmpty {
+                        print("ℹ️ 没有字段被更改，跳过更新")
+                        return
+                    }
+                    
+                    // 构建请求
+                    let scheme = server.openWRTUseSSL ? "https" : "http"
+                    guard let openWRTUrl = server.openWRTUrl else {
+                        throw NetworkError.invalidURL
+                    }
+                    let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
+                    guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
+                        throw NetworkError.invalidURL
+                    }
+                    
+                    var request = URLRequest(url: url)
+                    request.httpMethod = "POST"
+                    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                    request.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
+                    
+                    let command: [String: Any] = [
+                        "method": "exec",
+                        "params": [commands.joined(separator: " && ")]
+                    ]
+                    request.httpBody = try JSONSerialization.data(withJSONObject: command)
+                    
+                    let session = URLSession.shared
+                    let (data, response) = try await session.data(for: request)
+                    
+                    guard let httpResponse = response as? HTTPURLResponse,
+                        httpResponse.statusCode == 200 else {
+                        print("❌ 服务器返回错误状态码: \((response as? HTTPURLResponse)?.statusCode ?? 0)")
+                        throw NetworkError.serverError(500)
+                    }
+                    
+                    let uciResponse: UCIResponse = try JSONDecoder().decode(UCIResponse.self, from: data)
+                    if let error = uciResponse.error, !error.isEmpty {
+                        print("UCI命令执行失败: \(error)")
+                        throw NetworkError.serverError(500)
+                    }
 
-                print("📤 发送的命令:")
-                print(commands.joined(separator: " && "))
+                    print("📤 发送的命令:")
+                    print(commands.joined(separator: " && "))
+                    
+                    print("✅ UCI命令执行成功")
+                    
+                    // 提交更改
+                    try await commitChanges(token: token)
+                    print("✅ 更改已提交")
+                    
+                    // 重新加载订阅列表
+                    await loadSubscriptions()
+                    print("✅ 订阅列表已刷新")
+                    logger.log("✅ 订阅列表已刷新")
+                }
                 
-                print("✅ UCI命令执行成功")
-                
-                // 提交更改
-                try await commitChanges(token: token)
-                print("✅ 更改已提交")
-                
-                // 重新加载订阅列表
-                await loadSubscriptions()
-                print("✅ 订阅列表已刷新")
-                logger.log("✅ 订阅列表已刷新")
+            } catch {
+                print("❌ 更新订阅失败: \(error.localizedDescription)")
+                errorMessage = error.localizedDescription
+                showError = true
             }
-            
-        } catch {
-            print("❌ 更新订阅失败: \(error.localizedDescription)")
-            errorMessage = error.localizedDescription
-            showError = true
+        } else {
+            do {
+                
+            }
         }
     }
     
@@ -735,12 +801,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
                 throw NetworkError.serverError(500)
             }
             
-            struct UCIResponse: Codable {
-                let result: String
-                let error: String?
-            }
-            
-            let uciResponse = try JSONDecoder().decode(UCIResponse.self, from: data)
+            let uciResponse: UCIResponse = try JSONDecoder().decode(UCIResponse.self, from: data)
             if let error = uciResponse.error, !error.isEmpty {
                 print("❌ UCI命令执行失败: \(error)")
                 throw NetworkError.serverError(500)
@@ -792,12 +853,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
             throw NetworkError.serverError(500)
         }
         
-        struct UCIResponse: Codable {
-            let result: String
-            let error: String?
-        }
-        
-        let uciResponse = try JSONDecoder().decode(UCIResponse.self, from: data)
+        let uciResponse: UCIResponse = try JSONDecoder().decode(UCIResponse.self, from: data)
         if let error = uciResponse.error, !error.isEmpty {
             throw NetworkError.serverError(500)
         }
@@ -958,12 +1014,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
                 throw NetworkError.serverError(500)
             }
             
-            struct UCIResponse: Codable {
-                let result: String
-                let error: String?
-            }
-            
-            let uciResponse = try JSONDecoder().decode(UCIResponse.self, from: data)
+            let uciResponse: UCIResponse = try JSONDecoder().decode(UCIResponse.self, from: data)
             if let error = uciResponse.error, !error.isEmpty {
                 throw NetworkError.serverError(500)
             }
