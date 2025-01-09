@@ -2,14 +2,16 @@ import SwiftUI
 
 struct SubscriptionCard: View {
     let subscription: ConfigSubscription
+    let server: ClashServer
     let onEdit: () -> Void
     let onToggle: (Bool) -> Void
     
     @State private var isEnabled: Bool
     @Environment(\.colorScheme) private var colorScheme
     
-    init(subscription: ConfigSubscription, onEdit: @escaping () -> Void, onToggle: @escaping (Bool) -> Void) {
+    init(subscription: ConfigSubscription, server: ClashServer, onEdit: @escaping () -> Void, onToggle: @escaping (Bool) -> Void) {
         self.subscription = subscription
+        self.server = server
         self.onEdit = onEdit
         self.onToggle = onToggle
         self._isEnabled = State(initialValue: subscription.enabled)
@@ -70,6 +72,19 @@ struct SubscriptionCard: View {
                     Text("已启用订阅转换")
                         .font(.caption)
                         .foregroundColor(.green)
+                }
+                .padding(.top, 4)
+            }
+            
+            // 远程优先状态
+            if server.luciPackage == .mihomoTProxy,
+               let remoteFirst = subscription.remoteFirst {
+                HStack {
+                    Image(systemName: remoteFirst ? "cloud.fill" : "house.fill")
+                        .foregroundColor(.blue)
+                    Text(remoteFirst ? "远程优先" : "本地优先")
+                        .font(.caption)
+                        .foregroundColor(.blue)
                 }
                 .padding(.top, 4)
             }

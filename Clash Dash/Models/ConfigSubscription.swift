@@ -17,6 +17,7 @@ struct ConfigSubscription: Identifiable, Codable, Equatable {
     var ruleProvider: Bool?
     var keyword: String?
     var exKeyword: String?
+    var remoteFirst: Bool?
     
     // 转换模板选项
     static let templateOptions = [
@@ -45,7 +46,8 @@ struct ConfigSubscription: Identifiable, Codable, Equatable {
     // 修改 userAgentOptions 的值，使用小写作为 tag
     static let userAgentOptions: [(text: String, value: String)] = [
         ("Clash", "clash"),
-        ("Clash Meta", "clash.meta")
+        ("Clash Meta", "clash.meta"),
+        ("Mihomo", "mihomo")
     ]
     
     init(id: Int = 0,
@@ -63,7 +65,8 @@ struct ConfigSubscription: Identifiable, Codable, Equatable {
          nodeType: Bool? = nil,
          ruleProvider: Bool? = nil,
          keyword: String? = nil,
-         exKeyword: String? = nil) {
+         exKeyword: String? = nil,
+         remoteFirst: Bool? = true) {
         self.id = id
         self.name = name
         self.address = address
@@ -80,6 +83,7 @@ struct ConfigSubscription: Identifiable, Codable, Equatable {
         self.ruleProvider = ruleProvider
         self.keyword = keyword
         self.exKeyword = exKeyword
+        self.remoteFirst = remoteFirst
     }
 }
 

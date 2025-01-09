@@ -14,6 +14,7 @@ struct BasicInfoSection: View {
     @Binding var sort: Bool
     @Binding var nodeType: Bool
     @Binding var ruleProvider: Bool
+    @Binding var remoteFirst: Bool
     
     var body: some View {
         Section {
@@ -35,7 +36,9 @@ struct BasicInfoSection: View {
                 subUA = newValue.replacingOccurrences(of: "'", with: "").lowercased()
             }
             
-            if server.luciPackage != .mihomoTProxy {
+            if server.luciPackage == .mihomoTProxy {
+                Toggle("远程优先", isOn: $remoteFirst)
+            } else {
                 Toggle("订阅转换", isOn: $subConvert)
                     .onChange(of: subConvert) { newValue in
                         if !newValue {

@@ -14,6 +14,7 @@ struct SubscriptionEditView: View {
     @State private var enabled = true
     @State private var subUA = "clash"
     @State private var subConvert = false
+    @State private var remoteFirst = true
     
     // 过滤相关
     @State private var keywords: [String] = [""]
@@ -43,6 +44,7 @@ struct SubscriptionEditView: View {
             _enabled = State(initialValue: sub.enabled)
             _subUA = State(initialValue: sub.subUA.lowercased())
             _subConvert = State(initialValue: sub.subConvert)
+            _remoteFirst = State(initialValue: sub.remoteFirst ?? true)
             
             // 使用 ViewModel 解析关键词
             let parsedKeywords = viewModel.parseQuotedValues(sub.keyword)
@@ -83,6 +85,7 @@ struct SubscriptionEditView: View {
             _enabled = State(initialValue: true)
             _subUA = State(initialValue: "clash")
             _subConvert = State(initialValue: false)
+            _remoteFirst = State(initialValue: true)
             _keywords = State(initialValue: [])
             _exKeywords = State(initialValue: [])
         }
@@ -103,7 +106,8 @@ struct SubscriptionEditView: View {
                     skipCertVerify: $skipCertVerify,
                     sort: $sort,
                     nodeType: $nodeType,
-                    ruleProvider: $ruleProvider
+                    ruleProvider: $ruleProvider,
+                    remoteFirst: $remoteFirst
                 )
                 
                 if viewModel.currentServer.luciPackage != .mihomoTProxy {
@@ -200,7 +204,8 @@ struct SubscriptionEditView: View {
             nodeType: subConvert ? nodeType : nil,
             ruleProvider: subConvert ? ruleProvider : nil,
             keyword: filteredKeywords.isEmpty ? nil : viewModel.formatQuotedValues(filteredKeywords),
-            exKeyword: filteredExKeywords.isEmpty ? nil : viewModel.formatQuotedValues(filteredExKeywords)
+            exKeyword: filteredExKeywords.isEmpty ? nil : viewModel.formatQuotedValues(filteredExKeywords),
+            remoteFirst: remoteFirst
         )
         onSave(sub)
         dismiss()
