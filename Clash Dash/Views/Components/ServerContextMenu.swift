@@ -4,6 +4,7 @@ struct ServerContextMenu: ViewModifier {
     @ObservedObject var viewModel: ServerViewModel
     @ObservedObject var settingsViewModel: SettingsViewModel
     @State private var showingDeleteAlert = false
+    @State private var showingServiceLog = false
     let server: ClashServer
     var onEdit: () -> Void
     var onModeChange: (String) -> Void
@@ -81,6 +82,13 @@ struct ServerContextMenu: ViewModifier {
             // OpenClash 特有功能组
             if server.luciPackage == .openClash && server.source == .openWRT {
                 Divider()
+
+                Button {
+                    impactFeedback.impactOccurred()
+                    showingServiceLog = true
+                } label: {
+                    Label("运行日志", systemImage: "doc.text.below.ecg")
+                }
                 
                 Button {
                     impactFeedback.impactOccurred()
@@ -114,6 +122,13 @@ struct ServerContextMenu: ViewModifier {
             // mihomoTProxy 特有功能组
             if server.luciPackage == .mihomoTProxy && server.source == .openWRT {
                 Divider()
+
+                Button {
+                    impactFeedback.impactOccurred()
+                    showingServiceLog = true
+                } label: {
+                    Label("运行日志", systemImage: "doc.text.below.ecg")
+                }
                 
                 Button {
                     impactFeedback.impactOccurred()
@@ -142,6 +157,11 @@ struct ServerContextMenu: ViewModifier {
                 } label: {
                     Label("重启服务", systemImage: "arrow.clockwise.circle")
                 }
+            }
+        }
+        .sheet(isPresented: $showingServiceLog) {
+            NavigationStack {
+                ServiceLogView(server: server)
             }
         }
         .alert("确认删除", isPresented: $showingDeleteAlert) {

@@ -8,6 +8,7 @@ struct MoreView: View {
     @State private var showingSwitchConfig = false
     @State private var showingCustomRules = false
     @State private var showingRestartService = false
+    @State private var showingServiceLog = false
     
     // 添加触觉反馈生成器
     private let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
@@ -74,6 +75,18 @@ struct MoreView: View {
                 Section("OpenClash 插件控制") {
                     Button {
                         impactFeedback.impactOccurred()
+                        showingServiceLog = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "doc.text.below.ecg")
+                                .foregroundColor(.blue)
+                                .frame(width: 25)
+                            Text("运行日志")
+                        }
+                    }
+                    
+                    Button {
+                        impactFeedback.impactOccurred()
                         showingConfigSubscription = true
                     } label: {
                         HStack {
@@ -127,6 +140,18 @@ struct MoreView: View {
                 Section("MihomoTProxy 插件控制") {
                     Button {
                         impactFeedback.impactOccurred()
+                        showingServiceLog = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "doc.text.below.ecg")
+                                .foregroundColor(.blue)
+                                .frame(width: 25)
+                            Text("运行日志")
+                        }
+                    }
+                    
+                    Button {
+                        impactFeedback.impactOccurred()
                         showingConfigSubscription = true
                     } label: {
                         HStack {
@@ -134,18 +159,6 @@ struct MoreView: View {
                                 .foregroundColor(.blue)
                                 .frame(width: 25)
                             Text("订阅管理")
-                        }
-                    }
-                    
-                    Button {
-                        impactFeedback.impactOccurred()
-                        showingSwitchConfig = true
-                    } label: {
-                        HStack {
-                            Image(systemName: "document.badge.gearshape")
-                                .foregroundColor(.blue)
-                                .frame(width: 25)
-                            Text("配置管理")
                         }
                     }
                     
@@ -194,6 +207,11 @@ struct MoreView: View {
         .sheet(isPresented: $showingRestartService) {
             NavigationStack {
                 RestartServiceView(viewModel: viewModel.serverViewModel, server: server)
+            }
+        }
+        .sheet(isPresented: $showingServiceLog) {
+            NavigationStack {
+                ServiceLogView(server: server)
             }
         }
         .overlay(alignment: .bottom) {
