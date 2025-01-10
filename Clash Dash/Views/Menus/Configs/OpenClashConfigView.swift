@@ -138,7 +138,7 @@ struct OpenClashConfigView: View {
                 }
             }
         } message: {
-            Text("切换配置会重启 OpenClash 服务，这会导致当前连接中断。是否继续？")
+            Text("切换配置会重启 Clash 服务，这会导致当前连接中断。是否继续？")
         }
         .sheet(isPresented: $isChanging) {
             LogDisplayView(
@@ -153,6 +153,7 @@ struct OpenClashConfigView: View {
                 configName: config.name,
                 configFilename: config.filename,
                 isEnabled: config.state == .enabled,
+                isSubscription: config.isSubscription,
                 onConfigSaved: {
                     // 重新加载配置列表
                     Task {

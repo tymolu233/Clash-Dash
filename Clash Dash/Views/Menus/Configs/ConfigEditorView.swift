@@ -7,7 +7,8 @@ struct ConfigEditorView: View {
     let configName: String
     let configFilename: String
     let isEnabled: Bool
-    
+    let isSubscription: Bool
+
     @State private var configContent: String = ""
     @State private var isLoading = true
     @State private var showError = false
@@ -90,7 +91,12 @@ struct ConfigEditorView: View {
     
     private func loadConfigContent() async {
         do {
-            configContent = try await viewModel.fetchConfigContent(server, configFilename: configFilename)
+            configContent = try await viewModel.fetchConfigContent(
+                server,
+                configFilename: configFilename,
+                packageName: server.luciPackage == .openClash ? "openclash" : "mihomoTProxy",
+                isSubscription: isSubscription
+            )
             isLoading = false
         } catch {
             errorMessage = error.localizedDescription
@@ -104,7 +110,13 @@ struct ConfigEditorView: View {
         defer { isSaving = false }
         
         do {
-            try await viewModel.saveConfigContent(server, configFilename: configFilename, content: configContent)
+            try await viewModel.saveConfigContent(
+                server,
+                configFilename: configFilename,
+                content: configContent,
+                packageName: server.luciPackage == .openClash ? "openclash" : "mihomoTProxy",
+                isSubscription: isSubscription
+            )
             
             if isEnabled {
                 isRestarting = true

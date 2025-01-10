@@ -980,7 +980,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         return token
     }
     
-    func fetchConfigContent(_ server: ClashServer, configFilename: String) async throws -> String {
+    func fetchConfigContent(_ server: ClashServer, configFilename: String, packageName: String, isSubscription: Bool) async throws -> String {
         let scheme = server.openWRTUseSSL ? "https" : "http"
         guard let openWRTUrl = server.openWRTUrl else {
             throw NetworkError.invalidURL
@@ -1005,9 +1005,20 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
         
+        // 根据包名和是否为订阅构建文件路径
+        let configPath: String
+        if packageName == "openclash" {
+            configPath = "/etc/openclash/config/\(configFilename)"
+        } else {
+            // mihomoTProxy
+            configPath = isSubscription ? 
+                "/etc/mihomo/subscriptions/\(configFilename)" :
+                "/etc/mihomo/profiles/\(configFilename)"
+        }
+
         let command: [String: Any] = [
             "method": "exec",
-            "params": ["cat '/etc/openclash/config/\(configFilename)'"]
+            "params": ["cat '\(configPath)'"]
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: command)
         
@@ -1029,7 +1040,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         return configResponse.result
     }
     
-    func saveConfigContent(_ server: ClashServer, configFilename: String, content: String) async throws {
+    func saveConfigContent(_ server: ClashServer, configFilename: String, content: String, packageName: String, isSubscription: Bool) async throws {
         let scheme = server.openWRTUseSSL ? "https" : "http"
         guard let openWRTUrl = server.openWRTUrl else {
             throw NetworkError.invalidURL
@@ -1060,9 +1071,21 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         // 转义内容中的特殊字符
         let escapedContent = content.replacingOccurrences(of: "'", with: "'\\''")
         
+        // 根据包名和是否为订阅构建文件路径
+        let configPath: String
+        if packageName == "openclash" {
+            configPath = "'/etc/openclash/config/\(configFilename)'"
+        } else {
+            // mihomoTProxy
+            configPath = isSubscription ? 
+                "'/etc/mihomo/subscriptions/\(configFilename)'" :
+                "'/etc/mihomo/profiles/\(configFilename)'"
+        }
+
+        print("🔍 写入配置文件路径: \(configPath)")
+        
         // 构建写入命令,使用 echo 直接写入
-        let filePath = "/etc/openclash/config/\(configFilename)"
-        let cmd = "echo '\(escapedContent)' > \(filePath) 2>&1 && echo '写入成功' || echo '写入失败'"
+        let cmd = "echo '\(escapedContent)' > \(configPath) 2>&1 && echo '写入成功' || echo '写入失败'"
         
         var request = URLRequest(url: url)
         request.httpMethod = "POST" 
@@ -1082,10 +1105,6 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             print("📥 写入响应状态码: \(httpResponse.statusCode)")
             logger.log("📥 写入响应状态码: \(httpResponse.statusCode)")
         }
-        
-        // if let responseStr = String(data: data, encoding: .utf8) {
-        //     print("📥 写入响应内容: \(responseStr)")
-        // }
         
         guard let httpResponse = response as? HTTPURLResponse,
               httpResponse.statusCode == 200 else {
@@ -1110,7 +1129,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         
         let statCommand: [String: Any] = [
             "method": "stat",
-            "params": [filePath]
+            "params": [configPath.replacingOccurrences(of: "'", with: "")]
         ]
         statRequest.httpBody = try JSONSerialization.data(withJSONObject: statCommand)
         
