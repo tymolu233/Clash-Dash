@@ -297,10 +297,19 @@ struct OpenClashConfigView: View {
             showError = true
             return
         }
+
+        
+
+    
+        
         
         Task {
             do {
-                try await viewModel.deleteOpenClashConfig(server, configFilename: config.filename)
+                try await viewModel.deleteOpenClashConfig(
+                    server, configFilename: config.filename,
+                    packageName: server.luciPackage == .openClash ? "openclash" : "mihomoTProxy",
+                    isSubscription: config.isSubscription
+                    )
                 await loadConfigs()  // 重新加载配置列表
                 // 添加成功触觉反馈
                 let successFeedback = UINotificationFeedbackGenerator()

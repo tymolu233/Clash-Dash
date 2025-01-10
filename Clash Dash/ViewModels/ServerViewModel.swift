@@ -1437,7 +1437,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         return try JSONDecoder().decode(ClashStatusResponse.self, from: data)
     }
     
-    func deleteOpenClashConfig(_ server: ClashServer, configFilename: String) async throws {
+    func deleteOpenClashConfig(_ server: ClashServer, configFilename: String, packageName: String, isSubscription: Bool) async throws {
         let scheme = server.openWRTUseSSL ? "https" : "http"
         guard let openWRTUrl = server.openWRTUrl else {
             throw NetworkError.invalidURL
@@ -1464,39 +1464,60 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             // print("❌ 无效的 URL")
             throw NetworkError.invalidURL
         }
-        
-        let deleteCommand = """
-        rm -f /tmp/Proxy_Group && \
-        rm -f \"/etc/openclash/backup/\(configFilename)\" && \
-        rm -f \"/etc/openclash/history/\(configFilename)\" && \
-        rm -f \"/etc/openclash/history/\(configFilename).db\" && \
-        rm -f \"/etc/openclash/\(configFilename)\" && \
-        rm -f \"/etc/openclash/config/\(configFilename)\"
-        """
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
-        
-        let command: [String: Any] = [
-            "method": "exec",
-            "params": [deleteCommand]
-        ]
-        request.httpBody = try JSONSerialization.data(withJSONObject: command)
-        
-        let session = makeURLSession(for: server)
-        let (data, response) = try await session.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200 else {
-            // print("❌ 删除失败")
-            logger.log("❌ 删除失败")
-            throw NetworkError.serverError((response as? HTTPURLResponse)?.statusCode ?? 500)
+        if packageName == "openclash" {
+            let deleteCommand = """
+            rm -f /tmp/Proxy_Group && \
+            rm -f \"/etc/openclash/backup/\(configFilename)\" && \
+            rm -f \"/etc/openclash/history/\(configFilename)\" && \
+            rm -f \"/etc/openclash/history/\(configFilename).db\" && \
+            rm -f \"/etc/openclash/\(configFilename)\" && \
+            rm -f \"/etc/openclash/config/\(configFilename)\"
+            """
+            
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
+            
+            let command: [String: Any] = [
+                "method": "exec",
+                "params": [deleteCommand]
+            ]
+            request.httpBody = try JSONSerialization.data(withJSONObject: command)
+            
+            let session = makeURLSession(for: server)
+            let (data, response) = try await session.data(for: request)
+            
+            guard let httpResponse = response as? HTTPURLResponse,
+                httpResponse.statusCode == 200 else {
+                // print("❌ 删除失败")
+                logger.log("❌ 删除失败")
+                throw NetworkError.serverError((response as? HTTPURLResponse)?.statusCode ?? 500)
+            }
+            
+            // print("✅ 配置文件删除成功")
+            logger.log("✅ 配置文件删除成功")
+        } else {
+            // mihomoTProxy
+            
+            let deleteCommand: String
+
+            if isSubscription {
+                // let removeCommand = "uci delete mihomo.\(configFilename.replacingOccurrences(of: ".yaml", with: "").replacingOccurrences(of: ".yml", with: "")) && uci commit mihomo"
+                // let removeResponse = try await makeUCIRequest(server, token: token, method: "sys", params: ["exec", [removeCommand]])
+
+                // logger.log("📥 删除订阅配置响应: \(removeResponse)")
+                deleteCommand = "rm '/etc/mihomo/subscriptions/\(configFilename)'"
+            } else {
+                deleteCommand = "rm '/etc/mihomo/profiles/\(configFilename)'"
+            }
+
+            // print("🗑 开始删除配置文件: \(deleteCommand)")
+
+            let deleteResponse = try await makeUCIRequest(server, token: token, method: "sys", params: ["exec", [deleteCommand]])
+            logger.log("📥 删除配置文件响应: \(deleteResponse)")
+
         }
-        
-        // print("✅ 配置文件删除成功")
-        logger.log("✅ 配置文件删除成功")
     }
     
     func fetchMihomoTProxyConfigs(_ server: ClashServer) async throws -> [OpenClashConfig] {
