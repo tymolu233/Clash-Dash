@@ -78,11 +78,11 @@ struct RestartServiceView: View {
             Button("确认重启", role: .destructive) {
                 Task {
                     try? await Task.sleep(nanoseconds: 1_000_000_000)
-                    await restartService()
+                    await restartService(package: server.luciPackage)
                 }
             }
         } message: {
-            Text("重启 OpenClash 服务将导致：\n\n1. 所有当前连接会被中断\n2. 服务在重启期间不可用\n\n是否确认重启？")
+            Text("重启服务将导致：\n\n1. 所有当前连接会被中断\n2. 服务在重启期间不可用\n\n是否确认重启？")
         }
         .alert("错误", isPresented: .constant(error != nil)) {
             Button("确定") {
@@ -95,69 +95,148 @@ struct RestartServiceView: View {
         }
     }
     
-    private func restartService() async {
+    private func restartService(package: LuCIPackage = .openClash) async {
         isRestarting = true
         isRestartSuccessful = false
         logs.removeAll()
         
         do {
-            // 1. 先发送重启命令
-            let stream = try await viewModel.restartOpenClash(
-                server,
-                packageName: server.luciPackage == .openClash ? "openclash" : "mihomoTProxy",
-                isSubscription: false
-            )
-            
-            // 2. 开始轮询日志
-            let scheme = server.openWRTUseSSL ? "https" : "http"
-            guard let openWRTUrl = server.openWRTUrl else {
-                throw NetworkError.invalidURL
-            }
-            let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
-            
-            guard let username = server.openWRTUsername,
-                  let password = server.openWRTPassword else {
-                throw NetworkError.unauthorized(message: "未设置 OpenWRT 用户名或密码")
-            }
-            
-            // 获取认证令牌
-            let token = try await viewModel.getAuthToken(server, username: username, password: password)
-            
-            // 3. 持续获取日志，直到服务完全启动或超时
-            var retryCount = 0
-            let maxRetries = 300 // 最多尝试300次，每次0.1秒
-            
-            while retryCount < maxRetries {
-                let random = Int.random(in: 1...1000000000)
-                guard let logURL = URL(string: "\(baseURL)/cgi-bin/luci/admin/services/openclash/startlog?\(random)") else {
+            if package == .openClash {
+                // 1. 先发送重启命令
+                let stream = try await viewModel.restartOpenClash(
+                    server,
+                    packageName: "openclash",
+                    isSubscription: false
+                )
+                
+                // 2. 开始轮询日志
+                let scheme = server.openWRTUseSSL ? "https" : "http"
+                guard let openWRTUrl = server.openWRTUrl else {
                     throw NetworkError.invalidURL
                 }
+                let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
                 
-                var logRequest = URLRequest(url: logURL)
-                logRequest.setValue("sysauth_http=\(token); sysauth=\(token)", forHTTPHeaderField: "Cookie")
+                guard let username = server.openWRTUsername,
+                      let password = server.openWRTPassword else {
+                    throw NetworkError.unauthorized(message: "未设置 OpenWRT 用户名或密码")
+                }
                 
-                let (logData, _) = try await URLSession.shared.data(for: logRequest)
-                let logResponse = try JSONDecoder().decode(StartLogResponse.self, from: logData)
+                // 获取认证令牌
+                let token = try await viewModel.getAuthToken(server, username: username, password: password)
                 
-                if !logResponse.startlog.isEmpty {
-                    let newLogs = logResponse.startlog
-                        .components(separatedBy: "\n")
-                        .filter { !$0.isEmpty }
+                // 3. 持续获取日志，直到服务完全启动或超时
+                var retryCount = 0
+                let maxRetries = 300 // 最多尝试300次，每次0.1秒
+                
+                while retryCount < maxRetries {
+                    let random = Int.random(in: 1...1000000000)
+                    guard let logURL = URL(string: "\(baseURL)/cgi-bin/luci/admin/services/openclash/startlog?\(random)") else {
+                        throw NetworkError.invalidURL
+                    }
                     
-                    for log in newLogs {
-                        if !logs.contains(log) {
+                    var logRequest = URLRequest(url: logURL)
+                    logRequest.setValue("sysauth_http=\(token); sysauth=\(token)", forHTTPHeaderField: "Cookie")
+                    
+                    let (logData, _) = try await URLSession.shared.data(for: logRequest)
+                    let logResponse = try JSONDecoder().decode(StartLogResponse.self, from: logData)
+                    
+                    if !logResponse.startlog.isEmpty {
+                        let newLogs = logResponse.startlog
+                            .components(separatedBy: "\n")
+                            .filter { !$0.isEmpty }
+                        
+                        for log in newLogs {
+                            if !logs.contains(log) {
+                                withAnimation {
+                                    logs.append(log)
+                                }
+                                
+                                // 检查重启成功标记
+                                if log.contains("第九步") || log.contains("第八步") || log.contains("启动成功") {
+                                    // 等待2秒后标记成功
+                                    try await Task.sleep(nanoseconds: 2_000_000_000)
+                                    isRestartSuccessful = true
+                                    isRestarting = false
+                                    
+                                    // 再等待1秒后关闭sheet
+                                    try await Task.sleep(nanoseconds: 1_000_000_000)
+                                    await MainActor.run {
+                                        dismiss()
+                                    }
+                                    return
+                                }
+                            }
+                        }
+                    }
+                    
+                    retryCount += 1
+                    try await Task.sleep(nanoseconds: 100_000_000) // 等待0.1秒
+                }
+                
+                // 如果超时，添加提示信息
+                withAnimation {
+                    logs.append("⚠️ 获取日志超时，请自行检查服务状态")
+                }
+            } else {
+                // mihomoTProxy
+                // 1. 获取认证令牌
+                guard let username = server.openWRTUsername,
+                      let password = server.openWRTPassword else {
+                    throw NetworkError.unauthorized(message: "未设置 OpenWRT 用户名或密码")
+                }
+                
+                let token = try await viewModel.getAuthToken(server, username: username, password: password)
+                
+                // 2. 清理日志
+                withAnimation {
+                    logs.append("🧹 清理 MihomoTProxy 运行日志...")
+                }
+                let clearLogCmd = "/usr/libexec/mihomo-call clear_log app"
+                let clearLogRequest = try await makeUCIRequest(server, token: token, method: "sys", params: ["exec", [clearLogCmd]])
+                
+                // 3. 重启服务
+                withAnimation {
+                    logs.append("🔄 重启 MihomoTProxy 服务...")
+                }
+                let restartCmd = "/etc/init.d/mihomo restart"
+                let restartRequest = try await makeUCIRequest(server, token: token, method: "sys", params: ["exec", [restartCmd]])
+                
+                // 4. 监控日志
+                var seenLogs = Set<String>()
+                var retryCount = 0
+                let maxRetries = 300 // 最多尝试300次，每次0.1秒
+                
+                while retryCount < maxRetries {
+                    // 获取应用日志
+                    let getLogCmd = "cat /var/log/mihomo/app.log"
+                    let logRequest = try await makeUCIRequest(server, token: token, method: "sys", params: ["exec", [getLogCmd]])
+                    
+                    if let result = logRequest["result"] as? String {
+                        // 将日志按行分割并处理
+                        let newLogs = result.components(separatedBy: "\n")
+                            .filter { !$0.isEmpty }
+                            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                            .filter { !$0.isEmpty && !seenLogs.contains($0) }
+                        
+                        // 处理每一行日志
+                        for log in newLogs {
+                            seenLogs.insert(log)
                             withAnimation {
                                 logs.append(log)
                             }
                             
-                            // 检查重启成功标记
-                            if log.contains("第九步") || log.contains("第八步") || log.contains("启动成功") {
-                                // 等待2秒后标记成功
-                                try await Task.sleep(nanoseconds: 2_000_000_000)
+                            // 每条日志显示后等待 0.2 秒
+                            try await Task.sleep(nanoseconds: 200_000_000)
+                            
+                            // 检查启动成功标记
+                            if log.contains("[App] Start Successful") {
+                                withAnimation {
+                                    logs.append("✅ MihomoTProxy 服务已完全启动")
+                                }
                                 isRestartSuccessful = true
                                 isRestarting = false
                                 
-                                // 再等待1秒后关闭sheet
+                                // 等待1秒后关闭sheet
                                 try await Task.sleep(nanoseconds: 1_000_000_000)
                                 await MainActor.run {
                                     dismiss()
@@ -166,15 +245,15 @@ struct RestartServiceView: View {
                             }
                         }
                     }
+                    
+                    retryCount += 1
+                    try await Task.sleep(nanoseconds: 100_000_000) // 等待0.1秒
                 }
                 
-                retryCount += 1
-                try await Task.sleep(nanoseconds: 100_000_000) // 等待0.1秒
-            }
-            
-            // 如果超时，添加提示信息
-            withAnimation {
-                logs.append("⚠️ 获取日志超时，请自行检查服务状态")
+                // 如果超时，添加提示信息
+                withAnimation {
+                    logs.append("⚠️ 获取日志超时，请自行检查服务状态")
+                }
             }
             
         } catch {
@@ -182,6 +261,45 @@ struct RestartServiceView: View {
         }
         
         isRestarting = false
+    }
+    
+    private func makeUCIRequest(_ server: ClashServer, token: String, method: String, params: [Any]) async throws -> [String: Any] {
+        let scheme = server.openWRTUseSSL ? "https" : "http"
+        guard let openWRTUrl = server.openWRTUrl else {
+            throw NetworkError.invalidURL
+        }
+        let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
+        
+        guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/\(method)?auth=\(token)") else {
+            throw NetworkError.invalidURL
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
+        
+        let requestBody: [String: Any] = [
+            "id": 1,
+            "method": params[0],
+            "params": params[1]
+        ]
+        
+        request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+        
+        let session = URLSession.shared
+        let (data, response) = try await session.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse,
+              httpResponse.statusCode == 200 else {
+            throw NetworkError.serverError((response as? HTTPURLResponse)?.statusCode ?? 500)
+        }
+        
+        guard let jsonResponse = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw NetworkError.invalidResponse(message: "Invalid JSON response")
+        }
+        
+        return jsonResponse
     }
 }
 

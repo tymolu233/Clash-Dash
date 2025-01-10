@@ -86,14 +86,14 @@ struct ServerContextMenu: ViewModifier {
                     impactFeedback.impactOccurred()
                     onShowConfigSubscription()
                 } label: {
-                    Label("订阅管理", systemImage: "cloud.fill")
+                    Label("订阅管理", systemImage: "cloud")
                 }
                 
                 Button {
                     impactFeedback.impactOccurred()
                     onShowSwitchConfig()
                 } label: {
-                    Label("配置管理", systemImage: "arrow.2.circlepath")
+                    Label("配置管理", systemImage: "document.badge.gearshape")
                 }
                 
                 Button {
@@ -119,14 +119,14 @@ struct ServerContextMenu: ViewModifier {
                     impactFeedback.impactOccurred()
                     onShowConfigSubscription()
                 } label: {
-                    Label("订阅管理", systemImage: "cloud.fill")
+                    Label("订阅管理", systemImage: "cloud")
                 }
                 
                 Button {
                     impactFeedback.impactOccurred()
                     onShowSwitchConfig()
                 } label: {
-                    Label("配置管理", systemImage: "arrow.2.circlepath")
+                    Label("配置管理", systemImage: "document.badge.gearshape")
                 }
                 
                 // Button {
@@ -136,12 +136,12 @@ struct ServerContextMenu: ViewModifier {
                 //     Label("附加规则", systemImage: "list.bullet.rectangle")
                 // }
                 
-                // Button {
-                //     impactFeedback.impactOccurred()
-                //     onShowRestartService()
-                // } label: {
-                //     Label("重启服务", systemImage: "arrow.clockwise.circle")
-                // }
+                Button {
+                    impactFeedback.impactOccurred()
+                    onShowRestartService()
+                } label: {
+                    Label("重启服务", systemImage: "arrow.clockwise.circle")
+                }
             }
         }
         .alert("确认删除", isPresented: $showingDeleteAlert) {

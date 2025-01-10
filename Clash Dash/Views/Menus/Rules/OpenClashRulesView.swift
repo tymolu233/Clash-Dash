@@ -89,7 +89,7 @@ struct OpenClashRulesView: View {
                                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                         Button(role: .destructive) {
                                             Task {
-                                                await deleteRule(rule)
+                                                await deleteRule(rule, package: server.luciPackage)
                                             }
                                         } label: {
                                             Label("删除", systemImage: "trash")
@@ -104,7 +104,7 @@ struct OpenClashRulesView: View {
                                         
                                         Button {
                                             Task {
-                                                await toggleRule(rule)
+                                                await toggleRule(rule, package: server.luciPackage)
                                             }
                                         } label: {
                                             Label(rule.isEnabled ? "禁用" : "启用", 
@@ -136,7 +136,7 @@ struct OpenClashRulesView: View {
                                     .toggleStyle(SwitchToggleStyle(tint: .blue))
                                     .onChange(of: isCustomRulesEnabled) { newValue in
                                         Task {
-                                            await toggleCustomRules(enabled: newValue)
+                                            await toggleCustomRules(enabled: newValue, package: server.luciPackage)
                                         }
                                     }
                                 
@@ -159,7 +159,7 @@ struct OpenClashRulesView: View {
                 }
             }
             .task {
-                await loadRules()
+                await loadRules(package: server.luciPackage)
             }
             .alert("错误", isPresented: $showError) {
                 Button("确定", role: .cancel) { }
@@ -171,14 +171,14 @@ struct OpenClashRulesView: View {
             .sheet(isPresented: $showingAddSheet) {
                 RuleEditView(server: server) { rule in
                     Task {
-                        await addRule(rule)
+                        await addRule(rule, package: server.luciPackage)
                     }
                 }
             }
             .sheet(item: $editingRule) { rule in
                 RuleEditView(title: "编辑规则", rule: rule, server: server) { updatedRule in
                     Task {
-                        await updateRule(updatedRule)
+                        await updateRule(updatedRule, package: server.luciPackage)
                     }
                 }
             }
@@ -186,9 +186,11 @@ struct OpenClashRulesView: View {
                 OpenClashRulesHelpView()
             }
         }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
     }
     
-    private func loadRules() async {
+    private func loadRules(package: LuCIPackage = .openClash) async {
         // print("🔄 开始加载规则...")
         isLoading = true
         defer { 
@@ -226,10 +228,20 @@ struct OpenClashRulesView: View {
             statusRequest.httpMethod = "POST"
             statusRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
             
-            let statusPayload: [String: Any] = [
-                "method": "exec",
-                "params": ["uci get openclash.config.enable_custom_clash_rules"]
-            ]
+            let statusPayload: [String: Any]
+            if package == .openClash {
+                statusPayload = [
+                    "method": "exec",
+                    "params": ["uci get openclash.config.enable_custom_clash_rules"]
+                ]
+            } else {
+                statusPayload = [
+                    "method": "exec",
+                    "params": ["uci get mihomo.mixin.mixin_file_content"]
+                ]
+            }
+
+            print("📝 准备发送的请求: \(statusPayload)")
             
             statusRequest.httpBody = try JSONSerialization.data(withJSONObject: statusPayload)
             
@@ -240,7 +252,7 @@ struct OpenClashRulesView: View {
                 await MainActor.run {
                     self.isCustomRulesEnabled = enabled
                 }
-                // print("📍 自定义规则状态: \(enabled ? "启用" : "禁用")")
+                print("📍 自定义规则状态: \(enabled ? "启用" : "禁用")")
             }
             
             // 获取规则内容
@@ -253,11 +265,19 @@ struct OpenClashRulesView: View {
             var request = URLRequest(url: url)
             request.httpMethod = "POST"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            
-            let payload: [String: Any] = [
-                "method": "exec",
-                "params": ["cat /etc/openclash/custom/openclash_custom_rules.list"]
-            ]
+
+            let payload: [String: Any]
+            if package == .openClash {
+                payload = [
+                    "method": "exec",
+                    "params": ["cat /etc/openclash/custom/openclash_custom_rules.list"]
+                ]
+            } else {
+                payload = [
+                    "method": "exec",
+                    "params": ["cat /etc/mihomo/mixin.yaml"]
+                ]
+            }
             
             request.httpBody = try JSONSerialization.data(withJSONObject: payload)
             
@@ -335,7 +355,7 @@ struct OpenClashRulesView: View {
         return content
     }
     
-    private func saveRules() async throws {
+    private func saveRules(package: LuCIPackage = .openClash) async throws {
         // print("💾 开始保存规则...")
         isProcessing = true
         defer { 
@@ -367,7 +387,13 @@ struct OpenClashRulesView: View {
         // print("📄 准备写入的内容:\n\(content)")
         
         // 构建写入命令，使用 echo 直接写入
-        let filePath = "/etc/openclash/custom/openclash_custom_rules.list"
+        let filePath: String
+        if package == .openClash {
+            filePath = "/etc/openclash/custom/openclash_custom_rules.list"
+        } else {
+            filePath = "/etc/mihomo/mixin.yaml"
+        }
+        
         let escapedContent = content.replacingOccurrences(of: "'", with: "'\\''")
         let cmd = "echo '\(escapedContent)' > \(filePath) 2>&1 && echo '写入成功' || echo '写入失败'"
         
@@ -429,7 +455,7 @@ struct OpenClashRulesView: View {
         }
     }
     
-    private func toggleRule(_ rule: OpenClashRule) async {
+    private func toggleRule(_ rule: OpenClashRule, package: LuCIPackage = .openClash) async {
         // print("🔄 切换规则态: \(rule.target) - 当前状态: \(rule.isEnabled)")
         guard let index = rules.firstIndex(where: { $0.id == rule.id }) else { 
             // print("❌ 未找到要切换的规则")
@@ -441,7 +467,7 @@ struct OpenClashRulesView: View {
         rules[index] = updatedRule
         
         do {
-            try await saveRules()
+            try await saveRules(package: package)
         } catch {
             errorMessage = error.localizedDescription
             showError = true
@@ -450,7 +476,7 @@ struct OpenClashRulesView: View {
         }
     }
     
-    private func deleteRule(_ rule: OpenClashRule) async {
+    private func deleteRule(_ rule: OpenClashRule, package: LuCIPackage = .openClash) async {
         // print("🗑️ 删除规则: \(rule.target)")
         guard let index = rules.firstIndex(where: { $0.id == rule.id }) else { 
             // print("❌ 未找到要删除的规则")
@@ -461,7 +487,7 @@ struct OpenClashRulesView: View {
         rules.remove(at: index)
         
         do {
-            try await saveRules()
+            try await saveRules(package: package)
         } catch {
             errorMessage = error.localizedDescription
             showError = true
@@ -493,11 +519,11 @@ struct OpenClashRulesView: View {
         }
     }
     
-    private func addRule(_ rule: OpenClashRule) async {
+    private func addRule(_ rule: OpenClashRule, package: LuCIPackage = .openClash) async {
         // print("➕ 添加新规则: \(rule.target)")
         rules.insert(rule, at: 0)
         do {
-            try await saveRules()
+            try await saveRules(package: package)
             // print("✅ 规则添加成功")
         } catch {
             rules.removeFirst()
@@ -507,7 +533,7 @@ struct OpenClashRulesView: View {
         }
     }
     
-    private func updateRule(_ rule: OpenClashRule) async {
+    private func updateRule(_ rule: OpenClashRule, package: LuCIPackage = .openClash) async {
 //        print("📝 更新规则: \(rule.target)")
         guard let index = rules.firstIndex(where: { $0.id == rule.id }) else { 
             // print("❌ 未找到要更新的规则")
@@ -517,7 +543,7 @@ struct OpenClashRulesView: View {
         rules[index] = rule
         
         do {
-            try await saveRules()
+            try await saveRules(package: package)
         } catch {
             rules[index] = originalRule
             errorMessage = error.localizedDescription
@@ -525,7 +551,7 @@ struct OpenClashRulesView: View {
         }
     }
     
-    private func toggleCustomRules(enabled: Bool) async {
+    private func toggleCustomRules(enabled: Bool, package: LuCIPackage = .openClash) async {
         // print("🔄 切换自定义规则状态: \(enabled)")
         isProcessing = true
         defer { isProcessing = false }
@@ -554,11 +580,21 @@ struct OpenClashRulesView: View {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             
             // 设置启用状态
-            let setCmd = "uci set openclash.config.enable_custom_clash_rules='\(enabled ? "1" : "0")' && uci commit openclash"
-            let payload: [String: Any] = [
-                "method": "exec",
-                "params": [setCmd]
-            ]
+            let setCmd: String
+            let payload: [String: Any]
+            if package == .openClash {  
+                setCmd = "uci set openclash.config.enable_custom_clash_rules='\(enabled ? "1" : "0")' && uci commit openclash"
+                payload = [
+                    "method": "exec",
+                    "params": [setCmd]
+                ]
+            } else {
+                setCmd = "uci set mihomo.mixin.mixin_file_content='\(enabled ? "1" : "0")' && uci commit mihomo"
+                payload = [
+                    "method": "exec",
+                    "params": [setCmd]
+                ]
+            }
             
             request.httpBody = try JSONSerialization.data(withJSONObject: payload)
             

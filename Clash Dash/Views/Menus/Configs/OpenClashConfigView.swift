@@ -43,7 +43,7 @@ struct OpenClashConfigView: View {
                             Text("没有找到配置文件")
                                 .font(.title3)
                             
-                            Text("请确认配置文件目录不为空")
+                            Text("请确认配置文件目录不为空，并确保配置文件格式为 YAML")
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
                             

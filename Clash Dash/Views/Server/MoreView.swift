@@ -77,7 +77,7 @@ struct MoreView: View {
                         showingConfigSubscription = true
                     } label: {
                         HStack {
-                            Image(systemName: "cloud.fill")
+                            Image(systemName: "cloud")
                                 .foregroundColor(.blue)
                                 .frame(width: 25)
                             Text("订阅管理")
@@ -89,7 +89,7 @@ struct MoreView: View {
                         showingSwitchConfig = true
                     } label: {
                         HStack {
-                            Image(systemName: "arrow.2.circlepath")
+                            Image(systemName: "document.badge.gearshape")
                                 .foregroundColor(.blue)
                                 .frame(width: 25)
                             Text("配置管理")
@@ -130,7 +130,7 @@ struct MoreView: View {
                         showingConfigSubscription = true
                     } label: {
                         HStack {
-                            Image(systemName: "cloud.fill")
+                            Image(systemName: "cloud")
                                 .foregroundColor(.blue)
                                 .frame(width: 25)
                             Text("订阅管理")
@@ -142,7 +142,7 @@ struct MoreView: View {
                         showingSwitchConfig = true
                     } label: {
                         HStack {
-                            Image(systemName: "arrow.2.circlepath")
+                            Image(systemName: "document.badge.gearshape")
                                 .foregroundColor(.blue)
                                 .frame(width: 25)
                             Text("配置管理")
@@ -161,17 +161,17 @@ struct MoreView: View {
                     //     }
                     // }
                     
-                    // Button {
-                    //     impactFeedback.impactOccurred()
-                    //     showingRestartService = true
-                    // } label: {
-                    //     HStack {
-                    //         Image(systemName: "arrow.clockwise.circle")
-                    //             .foregroundColor(.blue)
-                    //             .frame(width: 25)
-                    //         Text("重启服务")
-                    //     }
-                    // }
+                    Button {
+                        impactFeedback.impactOccurred()
+                        showingRestartService = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "arrow.clockwise.circle")
+                                .foregroundColor(.blue)
+                                .frame(width: 25)
+                            Text("重启服务")
+                        }
+                    }
                 }
             }
         }

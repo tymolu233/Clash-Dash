@@ -113,5 +113,7 @@ struct ConfigSubscriptionView: View {
         .task {
             await viewModel.loadSubscriptions()
         }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
     }
 }
