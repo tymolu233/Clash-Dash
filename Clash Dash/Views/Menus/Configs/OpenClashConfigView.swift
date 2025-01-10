@@ -202,7 +202,12 @@ struct OpenClashConfigView: View {
         defer { isLoading = false }
         
         do {
-            configs = try await viewModel.fetchOpenClashConfigs(server)
+            switch server.luciPackage {
+            case .openClash:
+                configs = try await viewModel.fetchOpenClashConfigs(server)
+            case .mihomoTProxy:
+                configs = try await viewModel.fetchMihomoTProxyConfigs(server)
+            }
             // 添加成功的触觉反馈
             let successFeedback = UINotificationFeedbackGenerator()
             successFeedback.notificationOccurred(.success)

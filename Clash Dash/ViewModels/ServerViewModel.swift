@@ -1365,4 +1365,29 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         print("✅ 配置文件删除成功")
         logger.log("✅ 配置文件删除成功")
     }
+    
+    func fetchMihomoTProxyConfigs(_ server: ClashServer) async throws -> [OpenClashConfig] {
+        let scheme = server.openWRTUseSSL ? "https" : "http"
+        guard let openWRTUrl = server.openWRTUrl else {
+            throw NetworkError.invalidURL
+        }
+        let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
+        
+        print("🔍 开始获取 MihomoTProxy 配置列表: \(baseURL)")
+        logger.log("🔍 开始获取 MihomoTProxy 配置列表: \(baseURL)")
+        
+        // 获取认证 token
+        guard let username = server.openWRTUsername,
+              let password = server.openWRTPassword else {
+            print("❌ 未找到认证信息")
+            logger.log("❌ 未找到认证信息")
+            throw NetworkError.unauthorized(message: "未设置 OpenWRT 用户名或密码")
+        }
+        
+        let token = try await getAuthToken(server, username: username, password: password)
+        
+        // TODO: 实现 MihomoTProxy 的配置获取逻辑
+        // 这里暂时返回空数组，后续实现具体逻辑
+        return []
+    }
 } 

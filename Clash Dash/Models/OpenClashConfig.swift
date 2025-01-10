@@ -8,6 +8,7 @@ struct OpenClashConfig: Identifiable {
     let check: ConfigCheck
     let subscription: SubscriptionInfo?
     let fileSize: Int64
+    var isSubscription: Bool = false
     
     enum ConfigState: String {
         case enabled = "Enabled"
