@@ -173,8 +173,11 @@ struct CompactProviderCard: View {
                 .padding(.vertical, 14)
                 .frame(height: 64)
                 .background(cardBackgroundColor)
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-                .shadow(color: Color.black.opacity(0.03), radius: 1, x: 0, y: 1)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .mask {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .padding(.bottom, isExpanded ? -16 : 0)
+                }
             }
             .buttonStyle(.plain)
             // 添加长按菜单
@@ -282,10 +285,16 @@ struct CompactProviderCard: View {
                     .padding(.vertical, 8)
                 }
                 .background(cardBackgroundColor)
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-                .shadow(color: Color.black.opacity(0.03), radius: 1, x: 0, y: 1)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .mask {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .padding(.top, -16)
+                }
             }
         }
+        .background(cardBackgroundColor)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .shadow(color: Color.black.opacity(0.03), radius: 1, x: 0, y: 1)
         .overlay(alignment: .bottom) {
             if showingUpdateSuccess || isUpdating {
                 HStack {

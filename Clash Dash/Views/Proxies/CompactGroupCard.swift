@@ -216,8 +216,11 @@ struct CompactGroupCard: View {
                 .padding(.vertical, 14)
                 .frame(height: 64)
                 .background(cardBackgroundColor)
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-                .shadow(color: Color.black.opacity(0.03), radius: 1, x: 0, y: 1)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .mask {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .padding(.bottom, isExpanded ? -16 : 0)
+                }
             }
             .buttonStyle(.plain)
             
@@ -261,10 +264,15 @@ struct CompactGroupCard: View {
                     .padding(.vertical, 8)
                 }
                 .background(cardBackgroundColor)
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-                .shadow(color: Color.black.opacity(0.03), radius: 1, x: 0, y: 1)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .mask {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .padding(.top, -16)
+                }
             }
         }
+        .background(cardBackgroundColor)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         // Update nodes when hideUnavailableProxies changes
         .onChange(of: hideUnavailableProxies) { _ in
             if isExpanded {
