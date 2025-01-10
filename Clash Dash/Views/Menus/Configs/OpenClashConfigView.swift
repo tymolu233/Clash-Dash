@@ -270,13 +270,6 @@ struct OpenClashConfigView: View {
         } else {
             editingConfig = config
         }
-
-        if config.isSubscription {
-            errorMessage = "该配置为订阅类型，你所做的修改将在下次订阅更新后丢失"
-            showingEditAlert = true
-        } else {
-            editingConfig = config
-        }
     }
     
     private func formatFileSize(_ size: Int64) -> String {

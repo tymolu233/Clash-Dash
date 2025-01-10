@@ -165,7 +165,7 @@ struct ClashServer: Identifiable, Codable {
         } else if let urlError = error as? URLError {
             switch urlError.code {
             case .timedOut:
-                return .timeout(message: "请求超时，请检查输入的地址与端口能否访问")
+                return .timeout(message: "请求超时")
             case .notConnectedToInternet:
                 return .invalidResponse(message: "网络未连接")
             case .cannotConnectToHost:

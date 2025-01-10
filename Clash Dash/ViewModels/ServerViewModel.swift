@@ -286,7 +286,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             logger.log("服务器地址：\(server.url):\(server.port) ：URLError: \(urlError.localizedDescription)")
             switch urlError.code {
             case .timedOut:
-                updateServerStatus(server, status: .error, message: "请求超时，请检查输入的 OpenWRT 地址与端口能否访问")
+                updateServerStatus(server, status: .error, message: "请求超时")
             case .cancelled:
                 updateServerStatus(server, status: .error, message: "请求被取消")
             case .secureConnectionFailed:
@@ -521,7 +521,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             let (loginData, loginResponse) = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<(Data, URLResponse), Error>) in
                 let task = session.dataTask(with: loginRequest) { data, response, error in
                     if let error = error as? URLError, error.code == .timedOut {
-                        continuation.resume(throwing: NetworkError.timeout(message: "请求超时，请检查输入的 OpenWRT 地址与端口能否访问"))
+                        continuation.resume(throwing: NetworkError.timeout(message: "请求超时"))
                     } else if let error = error {
                         continuation.resume(throwing: error)
                     } else if let data = data, let response = response {
@@ -657,7 +657,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             }
         } catch let urlError as URLError {
             if urlError.code == .timedOut {
-                throw NetworkError.timeout(message: "请求超时，请检查输入的 OpenWRT 地址与端口能否访问")
+                throw NetworkError.timeout(message: "请求超时")
             }
             throw urlError
         }
