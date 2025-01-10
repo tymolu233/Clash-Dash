@@ -282,7 +282,7 @@ struct ContentView: View {
         }
         .preferredColorScheme(colorScheme)
         .onAppear {
-            print("🎬 ContentView 出现")
+            // print("🎬 ContentView 出现")
             // 获取当前 Wi-Fi SSID
             if enableWiFiBinding {
                 NEHotspotNetwork.fetchCurrent { network in

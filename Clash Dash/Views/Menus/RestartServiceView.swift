@@ -102,7 +102,11 @@ struct RestartServiceView: View {
         
         do {
             // 1. 先发送重启命令
-            let stream = try await viewModel.restartOpenClash(server)
+            let stream = try await viewModel.restartOpenClash(
+                server,
+                packageName: server.luciPackage == .openClash ? "openclash" : "mihomoTProxy",
+                isSubscription: false
+            )
             
             // 2. 开始轮询日志
             let scheme = server.openWRTUseSSL ? "https" : "http"

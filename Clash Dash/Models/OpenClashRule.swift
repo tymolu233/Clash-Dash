@@ -9,7 +9,7 @@ struct OpenClashRule: Identifiable, Equatable {
     let comment: String?    // 备注
     
     init(from ruleString: String) {
-        print("🔍 解析规则字符串: \(ruleString)")
+        // print("🔍 解析规则字符串: \(ruleString)")
         self.id = UUID()
         // 移除前导空格
         let trimmedString = ruleString.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -30,9 +30,9 @@ struct OpenClashRule: Identifiable, Equatable {
             self.type = ruleComponents[0].trimmingCharacters(in: .whitespacesAndNewlines)
             self.target = ruleComponents[1].trimmingCharacters(in: .whitespacesAndNewlines)
             self.action = ruleComponents[2].trimmingCharacters(in: .whitespacesAndNewlines)
-            print("✅ 规则解析成功 - 类型: \(type), 目标: \(target), 动作: \(action)")
+            // print("✅ 规则解析成功 - 类型: \(type), 目标: \(target), 动作: \(action)")
         } else {
-            print("❌ 规则格式无效")
+            // print("❌ 规则格式无效")
             self.type = ""
             self.target = ""
             self.action = ""

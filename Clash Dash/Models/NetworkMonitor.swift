@@ -63,13 +63,13 @@ class NetworkMonitor: ObservableObject {
     
     func pauseMonitoring() {
         isViewActive = false
-        print("暂停监控")
+        // print("暂停监控")
     }
     
     func resumeMonitoring() {
         guard let server = server else { return }
         isViewActive = true
-        print("恢复监控")
+        // print("恢复监控")
         
         if !isConnected[.traffic, default: false] {
             connectToTraffic(server: server)
@@ -109,7 +109,7 @@ class NetworkMonitor: ObservableObject {
         guard let url = getWebSocketURL(for: "traffic", server: server) else { return }
         guard !isConnected[.traffic, default: false] else { return }
         
-        print("正在连接 Traffic WebSocket (\(url.absoluteString))...")
+        // print("正在连接 Traffic WebSocket (\(url.absoluteString))...")
         
         var request = URLRequest(url: url)
         if !server.secret.isEmpty {
@@ -125,7 +125,7 @@ class NetworkMonitor: ObservableObject {
         guard let url = getWebSocketURL(for: "memory", server: server) else { return }
         guard !isConnected[.memory, default: false] else { return }
         
-        print("正在连接 Memory WebSocket (\(url.absoluteString))...")
+        // print("正在连接 Memory WebSocket (\(url.absoluteString))...")
         
         var request = URLRequest(url: url)
         if !server.secret.isEmpty {
@@ -141,7 +141,7 @@ class NetworkMonitor: ObservableObject {
         guard let url = getWebSocketURL(for: "connections", server: server) else { return }
         guard !isConnected[.connections, default: false] else { return }
         
-        print("正在连接 Connections WebSocket (\(url.absoluteString))...")
+        // print("正在连接 Connections WebSocket (\(url.absoluteString))...")
         
         var request = URLRequest(url: url)
         if !server.secret.isEmpty {
@@ -155,7 +155,7 @@ class NetworkMonitor: ObservableObject {
     }
     
     private func handleWebSocketError(_ error: Error, type: ConnectionType) {
-        print("\(type.rawValue) WebSocket 错误: \(error.localizedDescription)")
+        // print("\(type.rawValue) WebSocket 错误: \(error.localizedDescription)")
         
         if let urlError = error as? URLError {
             switch urlError.code {
@@ -180,7 +180,7 @@ class NetworkMonitor: ObservableObject {
             switch result {
             case .success(let message):
                 if !self.isConnected[.traffic, default: false] {
-                    print("Traffic WebSocket 已连接")
+                    // print("Traffic WebSocket 已连接")
                     self.isConnected[.traffic] = true
                 }
                 
@@ -209,7 +209,7 @@ class NetworkMonitor: ObservableObject {
             switch result {
             case .success(let message):
                 if !self.isConnected[.memory, default: false] {
-                    print("Memory WebSocket 已连接")
+                    // print("Memory WebSocket 已连接")
                     self.isConnected[.memory] = true
                 }
                 
@@ -238,7 +238,7 @@ class NetworkMonitor: ObservableObject {
             switch result {
             case .success(let message):
                 if !self.isConnected[.connections, default: false] {
-                    print("Connections WebSocket 已连接")
+                    // print("Connections WebSocket 已连接")
                     self.isConnected[.connections] = true
                 }
                 
@@ -334,7 +334,7 @@ class NetworkMonitor: ObservableObject {
         // print("收到连接数据: \(text)")  // 添加调试日志
         
         guard let data = text.data(using: .utf8) else {
-            print("无法将文本转换为数据")
+            // print("无法将文本转换为数据")
             return
         }
         
@@ -346,7 +346,7 @@ class NetworkMonitor: ObservableObject {
                 self?.totalDownload = self?.formatBytes(connections.downloadTotal) ?? "0 MB"
             }
         } catch {
-            print("解析连接数据失败: \(error)")
+            // print("解析连接数据失败: \(error)")
             if let decodingError = error as? DecodingError {
                 switch decodingError {
                 case .dataCorrupted(let context):
@@ -387,14 +387,14 @@ class NetworkMonitor: ObservableObject {
               isMonitoring,
               isViewActive else { return }
         
-        print("准备重试连接 \(type.rawValue) WebSocket")
+        // print("准备重试连接 \(type.rawValue) WebSocket")
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
             guard let self = self,
                   self.isMonitoring,
                   self.isViewActive else { return }
             
-            print("开始重新连接 \(type.rawValue) WebSocket...")
+            // print("开始重新连接 \(type.rawValue) WebSocket...")
             switch type {
             case .traffic:
                 self.connectToTraffic(server: server)

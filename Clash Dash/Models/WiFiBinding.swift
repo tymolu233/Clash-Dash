@@ -32,13 +32,13 @@ class WiFiBindingManager: ObservableObject {
     }
     
     init() {
-        print("🏁 初始化 WiFiBindingManager")
+        // print("🏁 初始化 WiFiBindingManager")
         logger.log("初始化 WiFiBindingManager")
         if isEnabled {
             loadBindings()
             loadDefaultServers()
         } else {
-            print("⚠️ Wi-Fi 绑定功能未启用，跳过加载绑定数据")
+            // print("⚠️ Wi-Fi 绑定功能未启用，跳过加载绑定数据")
             logger.log("Wi-Fi 绑定功能未启用，跳过加载绑定数据")
         }
     }
@@ -137,12 +137,12 @@ class WiFiBindingManager: ObservableObject {
     
     func onEnableChange() {
         if isEnabled {
-            print("🔄 Wi-Fi 绑定功能已启用，加载绑定数据")
+            // print("🔄 Wi-Fi 绑定功能已启用，加载绑定数据")
             logger.log("Wi-Fi 绑定功能已启用，加载绑定数据")
             loadBindings()
             loadDefaultServers()
         } else {
-            print("🔄 Wi-Fi 绑定功能已禁用，清空绑定数据")
+            // print("🔄 Wi-Fi 绑定功能已禁用，清空绑定数据")
             logger.log("Wi-Fi 绑定功能已禁用，清空绑定数据")
             bindings.removeAll()
             defaultServerIds.removeAll()

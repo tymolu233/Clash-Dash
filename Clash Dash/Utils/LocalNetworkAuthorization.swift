@@ -38,7 +38,7 @@ public class LocalNetworkAuthorization: NSObject {
             case .ready, .cancelled:
                 break
             case let .waiting(error):
-                print("Local network permission has been denied: \(error)")
+                // print("Local network permission has been denied: \(error)")
                 self.reset()
                 self.completion?(false)
             default:
@@ -65,7 +65,7 @@ public class LocalNetworkAuthorization: NSObject {
 extension LocalNetworkAuthorization : NetServiceDelegate {
     public func netServiceDidPublish(_ sender: NetService) {
         self.reset()
-        print("Local network permission has been granted")
+        // print("Local network permission has been granted")
         completion?(true)
     }
 }

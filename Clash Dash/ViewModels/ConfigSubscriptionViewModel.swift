@@ -163,7 +163,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
                             } else {
                                 currentSub.keyword! += " " + cleanValue
                             }
-                            print("处理关键词: \(cleanValue)") // 添加调试日志
+                            // print("处理关键词: \(cleanValue)") // 添加调试日志
                         } else if key.contains(".ex_keyword") {
                             let cleanValue = value.trimmingCharacters(in: .whitespaces)
                             if currentSub.exKeyword == nil {
@@ -171,7 +171,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
                             } else {
                                 currentSub.exKeyword! += " " + cleanValue
                             }
-                            print("处理排除关键词: \(cleanValue)") // 添加调试日志
+                            // print("处理排除关键词: \(cleanValue)") // 添加调试日志
                         }
                     }
                 }
@@ -354,9 +354,9 @@ class ConfigSubscriptionViewModel: ObservableObject {
     func addSubscription(_ subscription: ConfigSubscription) async {
         if packageName == "openclash" {
             do {
-                print("🔄 开始添加订阅: \(subscription.name)")
-                print("📝 订阅信息:")
-                printSubscriptionState(subscription)
+                // print("🔄 开始添加订阅: \(subscription.name)")
+                // print("📝 订阅信息:")
+                // printSubscriptionState(subscription)
                 
                 let token = try await getAuthToken()
                 
@@ -436,7 +436,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
                     
                     if !keywords.isEmpty{
                         for keyword in keywords {
-                            print("添加关键词: \(keyword)")
+                            // print("添加关键词: \(keyword)")
                             commands.append("uci add_list openclash.@config_subscribe[\(count)].keyword='\(keyword)'")
                         }
                     }
@@ -447,14 +447,14 @@ class ConfigSubscriptionViewModel: ObservableObject {
                     let keywords = parseKeywordValues(subscription.exKeyword) // 使用新的解析方法
                     if !keywords.isEmpty{
                         for keyword in keywords {
-                            print("添加关键词: \(keyword)")
+                            // print("添加关键词: \(keyword)")
                             commands.append("uci add_list openclash.@config_subscribe[\(count)].ex_keyword='\(keyword)'")
                         }
                     }
                 }
                 
-                print("📤 发送的命令:")
-                print(commands.joined(separator: " && "))
+                // print("📤 发送的命令:")
+                // print(commands.joined(separator: " && "))
                 
                 // 执行添加命令
                 let addCommand: [String: Any] = [
@@ -475,29 +475,29 @@ class ConfigSubscriptionViewModel: ObservableObject {
                     throw NetworkError.serverError(500)
                 }
                 
-                print("✅ UCI命令执行成功")
+                // print("✅ UCI命令执行成功")
                 
                 // 提交更改
                 try await commitChanges(token: token)
-                print("✅ 更改已提交")
+                // print("✅ 更改已提交")
                 logger.log("✅ 更改已提交")
                 
                 // 重新加载订阅列表
                 await loadSubscriptions()
-                print("✅ 订阅列表已刷新")
+                // print("✅ 订阅列表已刷新")
                 logger.log("✅ 订阅列表已刷新")
                 
             } catch {
-                print("❌ 添加订阅失败: \(error.localizedDescription)")
+                // print("❌ 添加订阅失败: \(error.localizedDescription)")
                 logger.log("❌ 添加订阅失败: \(error.localizedDescription)")
                 errorMessage = error.localizedDescription
                 showError = true
             }
         } else {
             do {
-                print("🔄 开始添加 MihomoTProxy 订阅: \(subscription.name)")
-                print("📝 订阅信息:")
-                printSubscriptionState(subscription)
+                // print("🔄 开始添加 MihomoTProxy 订阅: \(subscription.name)")
+                // print("📝 订阅信息:")
+                // printSubscriptionState(subscription)
                 
                 let token = try await getAuthToken()
                 
@@ -526,8 +526,8 @@ class ConfigSubscriptionViewModel: ObservableObject {
                     "uci commit mihomo"
                 ].joined(separator: " && ")
                 
-                print("📤 发送的命令:")
-                print(commands)
+                // print("📤 发送的命令:")
+                // print(commands)
                 
                 // 执行添加命令
                 let addCommand: [String: Any] = [
@@ -548,16 +548,16 @@ class ConfigSubscriptionViewModel: ObservableObject {
                     throw NetworkError.serverError(500)
                 }
                 
-                print("✅ UCI命令执行成功")
+                // print("✅ UCI命令执行成功")
                 logger.log("✅ UCI命令执行成功")
                 
                 // 重新加载订阅列表
                 await loadSubscriptions()
-                print("✅ 订阅列表已刷新")
+                // print("✅ 订阅列表已刷新")
                 logger.log("✅ 订阅列表已刷新")
                 
             } catch {
-                print("❌ 添加订阅失败: \(error.localizedDescription)")
+                // print("❌ 添加订阅失败: \(error.localizedDescription)")
                 logger.log("❌ 添加订阅失败: \(error.localizedDescription)")
                 errorMessage = error.localizedDescription
                 showError = true
@@ -571,12 +571,12 @@ class ConfigSubscriptionViewModel: ObservableObject {
     func parseKeywordValues(_ input: String?) -> [String] {
         guard let input = input else { return [] }
         
-        print("解析关键词输入: \(input)") // 添加调试日志
+        // print("解析关键词输入: \(input)") // 添加调试日志
         
         // 使用正则表达式匹配单引号之间的内容
         let pattern = "'([^']+)'"
         guard let regex = try? NSRegularExpression(pattern: pattern) else {
-            print("正则表达式创建失败") // 添加调试日志
+            // print("正则表达式创建失败") // 添加调试日志
             return []
         }
         
@@ -586,29 +586,29 @@ class ConfigSubscriptionViewModel: ObservableObject {
         let words = matches.compactMap { match -> String? in
             guard let range = Range(match.range(at: 1), in: input) else { return nil }
             let word = String(input[range])
-            print("匹配到关键词: \(word)") // 添加调试日志
+            // print("匹配到关键词: \(word)") // 添加调试日志
             return word
         }
         
-        print("解析结果: \(words)") // 添加调试日志
+        // print("解析结果: \(words)") // 添加调试日志
         return words
     }
     
     func updateSubscription(_ subscription: ConfigSubscription) async {
         if packageName == "openclash" {
             do {
-                print("🔄 开始更新订阅: \(subscription.name)")
+                // print("🔄 开始更新订阅: \(subscription.name)")
                 logger.log("🔄 开始更新订阅: \(subscription.name)")
-                print("📝 当前订阅状态:")
-                printSubscriptionState(subscription)
+                // print("📝 当前订阅状态:")
+                // printSubscriptionState(subscription)
                 
                 let token = try await getAuthToken()
                 
                 if let oldSub = subscriptions.first(where: { $0.id == subscription.id }) {
-                    print("\n📝 对比旧订阅状态:")
-                    printSubscriptionState(oldSub)
+                    // print("\n📝 对比旧订阅状态:")
+                    // printSubscriptionState(oldSub)
                     
-                    print("\n📝 检查字段更改...")
+                    // print("\n📝 检查字段更改...")
                     var commands: [String] = []
                     
                     // 基本字段比较
@@ -670,7 +670,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
                                 commands.append("uci delete openclash.@config_subscribe[\(subscription.id)].keyword")
                             }
                             for keyword in keywords {
-                                print("添加关键词: \(keyword)")
+                                // print("添加关键词: \(keyword)")
                                 commands.append("uci add_list openclash.@config_subscribe[\(subscription.id)].keyword='\(keyword)'")
                             }
                         }else {
@@ -687,7 +687,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
                                 commands.append("uci delete openclash.@config_subscribe[\(subscription.id)].ex_keyword")
                             }
                             for keyword in keywords {
-                                print("添加关键词: \(keyword)")
+                                // print("添加关键词: \(keyword)")
                                 commands.append("uci add_list openclash.@config_subscribe[\(subscription.id)].ex_keyword='\(keyword)'")
                             }
                         }else{
@@ -708,7 +708,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
     //                }
                     
                     if commands.isEmpty {
-                        print("ℹ️ 没有字段被更改，跳过更新")
+                        // print("ℹ️ 没有字段被更改，跳过更新")
                         return
                     }
                     
@@ -738,39 +738,39 @@ class ConfigSubscriptionViewModel: ObservableObject {
                     
                     guard let httpResponse = response as? HTTPURLResponse,
                         httpResponse.statusCode == 200 else {
-                        print("❌ 服务器返回错误状态码: \((response as? HTTPURLResponse)?.statusCode ?? 0)")
+                        // print("❌ 服务器返回错误状态码: \((response as? HTTPURLResponse)?.statusCode ?? 0)")
                         throw NetworkError.serverError(500)
                     }
                     
                     let uciResponse: UCIResponse = try JSONDecoder().decode(UCIResponse.self, from: data)
                     if let error = uciResponse.error, !error.isEmpty {
-                        print("UCI命令执行失败: \(error)")
+                        // print("UCI命令执行失败: \(error)")
                         throw NetworkError.serverError(500)
                     }
 
-                    print("📤 发送的命令:")
+                    // print("📤 发送的命令:")
                     print(commands.joined(separator: " && "))
                     
-                    print("✅ UCI命令执行成功")
+                    // print("✅ UCI命令执行成功")
                     
                     // 提交更改
                     try await commitChanges(token: token)
-                    print("✅ 更改已提交")
+                    // print("✅ 更改已提交")
                     
                     // 重新加载订阅列表
                     await loadSubscriptions()
-                    print("✅ 订阅列表已刷新")
+                    // print("✅ 订阅列表已刷新")
                     logger.log("✅ 订阅列表已刷新")
                 }
                 
             } catch {
-                print("❌ 更新订阅失败: \(error.localizedDescription)")
+                // print("❌ 更新订阅失败: \(error.localizedDescription)")
                 errorMessage = error.localizedDescription
                 showError = true
             }
         } else {
             do {
-                print("🔄 开始更新 MihomoTProxy 订阅: \(subscription.name)")
+                // print("🔄 开始更新 MihomoTProxy 订阅: \(subscription.name)")
                 logger.log("🔄 开始更新 MihomoTProxy 订阅: \(subscription.name)")
                 
                 let token = try await getAuthToken()
@@ -799,8 +799,8 @@ class ConfigSubscriptionViewModel: ObservableObject {
                     "uci commit mihomo"
                 ].joined(separator: " && ")
                 
-                print("📤 发送的命令:")
-                print(commands)
+                // print("📤 发送的命令:")
+                // print(commands)
                 
                 // 执行更新命令
                 let updateCommand: [String: Any] = [
@@ -821,16 +821,16 @@ class ConfigSubscriptionViewModel: ObservableObject {
                     throw NetworkError.serverError(500)
                 }
                 
-                print("✅ UCI命令执行成功")
+                // print("✅ UCI命令执行成功")
                 logger.log("✅ UCI命令执行成功")
                 
                 // 重新加载订阅列表
                 await loadSubscriptions()
-                print("✅ 订阅列表已刷新")
+                // print("✅ 订阅列表已刷新")
                 logger.log("✅ 订阅列表已刷新")
                 
             } catch {
-                print("❌ 更新订阅失败: \(error.localizedDescription)")
+                // print("❌ 更新订阅失败: \(error.localizedDescription)")
                 logger.log("❌ 更新订阅失败: \(error.localizedDescription)")
                 errorMessage = error.localizedDescription
                 showError = true
@@ -839,7 +839,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
     }
     
     func toggleSubscription(_ subscription: ConfigSubscription, enabled: Bool) async {
-        print("🔄 切换订阅状态: \(subscription.name) -> \(enabled ? "启用" : "禁用")")
+        // print("🔄 切换订阅状态: \(subscription.name) -> \(enabled ? "启用" : "禁用")")
         do {
             let token = try await getAuthToken()
             
@@ -864,34 +864,34 @@ class ConfigSubscriptionViewModel: ObservableObject {
             ]
             request.httpBody = try JSONSerialization.data(withJSONObject: command)
             
-            print("📤 发送切换命令...")
+            // print("📤 发送切换命令...")
             let session = URLSession.shared
             let (data, response) = try await session.data(for: request)
             
             guard let httpResponse = response as? HTTPURLResponse,
                   httpResponse.statusCode == 200 else {
-                print("❌ 服务器返回错误状态码: \((response as? HTTPURLResponse)?.statusCode ?? 0)")
+                // print("❌ 服务器返回错误状态码: \((response as? HTTPURLResponse)?.statusCode ?? 0)")
                 throw NetworkError.serverError(500)
             }
             
             let uciResponse: UCIResponse = try JSONDecoder().decode(UCIResponse.self, from: data)
             if let error = uciResponse.error, !error.isEmpty {
-                print("❌ UCI命令执行失败: \(error)")
+                // print("❌ UCI命令执行失败: \(error)")
                 throw NetworkError.serverError(500)
             }
             
-            print("✅ UCI命令执行成功")
+            // print("✅ UCI命令执行成功")
             
             // 提交更改
             try await commitChanges(token: token)
-            print("✅ 更改已提交")
+            // print("✅ 更改已提交")
             
             // 重新加载订阅列表
             await loadSubscriptions()
-            print("✅ 订阅列表已刷新")
+            // print("✅ 订阅列表已刷新")
             
         } catch {
-            print("❌ 切换订阅状态失败: \(error.localizedDescription)")
+            // print("❌ 切换订阅状态失败: \(error.localizedDescription)")
             errorMessage = error.localizedDescription
             showError = true
         }
@@ -940,7 +940,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
             let trimmed = $0.trimmingCharacters(in: .whitespaces)
             return "'\(trimmed)'"
         }.joined(separator: " ")
-        print("格式化关键词: \(values) -> \(formatted ?? "nil")") // 添加调试日志
+        // print("格式化关键词: \(values) -> \(formatted ?? "nil")") // 添加调试日志
         return formatted
     }
     
@@ -948,12 +948,12 @@ class ConfigSubscriptionViewModel: ObservableObject {
     func parseQuotedValues(_ input: String?) -> [String] {
         guard let input = input else { return [] }
         
-        print("解析关键词输入: \(input)") // 添加调试日志
+        // print("解析关键词输入: \(input)") // 添加调试日志
         
         // 使用正则表达式匹配单引号之间的内容
         let pattern = "'([^']+)'"
         guard let regex = try? NSRegularExpression(pattern: pattern) else {
-            print("正则表达式创建失败") // 添加调试日志
+            // print("正则表达式创建失败") // 添加调试日志
             return []
         }
         
@@ -963,34 +963,34 @@ class ConfigSubscriptionViewModel: ObservableObject {
         let words = matches.compactMap { match -> String? in
             guard let range = Range(match.range(at: 1), in: input) else { return nil }
             let word = String(input[range])
-            print("匹配到关键词: \(word)") // 添加调试日志
+            // print("匹配到关键词: \(word)") // 添加调试日志
             return word
         }
         
-        print("解析结果: \(words)") // 添加调试日志
+        // print("解析结果: \(words)") // 添加调试日志
         return words
     }
     
     // 辅助方法：打印订阅状态
     private func printSubscriptionState(_ subscription: ConfigSubscription) {
-        print("- 名称: \(subscription.name.replacingOccurrences(of: "'", with: ""))")
-        print("- 地址: \(subscription.address.replacingOccurrences(of: "'", with: ""))")
-        print("- 启用状态: \(subscription.enabled)")
-        print("- User-Agent: \(subscription.subUA)")
-        print("- 订阅转换: \(subscription.subConvert)")
+        // print("- 名称: \(subscription.name.replacingOccurrences(of: "'", with: ""))")
+        // print("- 地址: \(subscription.address.replacingOccurrences(of: "'", with: ""))")
+        // print("- 启用状态: \(subscription.enabled)")
+        // print("- User-Agent: \(subscription.subUA)")
+        // print("- 订阅转换: \(subscription.subConvert)")
         if subscription.subConvert {
-            print("  - 转换地址: \(subscription.convertAddress ?? "无")")
-            print("  - 转换模板: \(subscription.template ?? "无")")
-            print("  - Emoji: \(subscription.emoji ?? false)")
-            print("  - UDP: \(subscription.udp ?? false)")
-            print("  - 跳过证书验证: \(subscription.skipCertVerify ?? false)")
-            print("  - 排序: \(subscription.sort ?? false)")
-            print("  - 节点类型: \(subscription.nodeType ?? false)")
-            print("  - 规则集: \(subscription.ruleProvider ?? false)")
-//            print("  - 自定义参数: \(subscription.customParams ?? [])")
+//             print("  - 转换地址: \(subscription.convertAddress ?? "无")")
+//             print("  - 转换模板: \(subscription.template ?? "无")")
+//             print("  - Emoji: \(subscription.emoji ?? false)")
+//             print("  - UDP: \(subscription.udp ?? false)")
+//             print("  - 跳过证书验证: \(subscription.skipCertVerify ?? false)")
+//             print("  - 排序: \(subscription.sort ?? false)")
+//             print("  - 节点类型: \(subscription.nodeType ?? false)")
+//             print("  - 规则集: \(subscription.ruleProvider ?? false)")
+// //            print("  - 自定义参数: \(subscription.customParams ?? [])")
         }
-        print("- 包含关键词: \(subscription.keyword ?? "无")")
-        print("- 排除关键词: \(subscription.exKeyword ?? "无")")
+        // print("- 包含关键词: \(subscription.keyword ?? "无")")
+        // print("- 排除关键词: \(subscription.exKeyword ?? "无")")
     }
     
     func loadTemplateOptions() async {
@@ -1040,7 +1040,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
                 .map { $0.trimmingCharacters(in: CharacterSet(charactersIn: "'")) }
 
         } catch {
-            print("❌ 加载模板选项失败: \(error.localizedDescription)")
+            // print("❌ 加载模板选项失败: \(error.localizedDescription)")
             errorMessage = error.localizedDescription
             showError = true
         }
@@ -1049,7 +1049,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
     func deleteSubscription(_ subscription: ConfigSubscription) async {
         if packageName == "openclash" {
             do {
-                print("🗑️ 开始删除订阅: \(subscription.name)")
+                // print("🗑️ 开始删除订阅: \(subscription.name)")
                 
                 let token = try await getAuthToken()
                 
@@ -1093,19 +1093,19 @@ class ConfigSubscriptionViewModel: ObservableObject {
                     throw NetworkError.serverError(500)
                 }
                 
-                print("✅ 删除成功")
+                // print("✅ 删除成功")
                 
                 // 重新加载订阅列表
                 await loadSubscriptions()
                 
             } catch {
-                print("❌ 删除订阅失败: \(error.localizedDescription)")
+                // print("❌ 删除订阅失败: \(error.localizedDescription)")
                 errorMessage = error.localizedDescription
                 showError = true
             }
         } else {
             do {
-                print("🗑️ 开始删除 MihomoTProxy 订阅: \(subscription.name)")
+                // print("🗑️ 开始删除 MihomoTProxy 订阅: \(subscription.name)")
                 
                 let token = try await getAuthToken()
                 
@@ -1149,14 +1149,14 @@ class ConfigSubscriptionViewModel: ObservableObject {
                     throw NetworkError.serverError(500)
                 }
                 
-                print("✅ 删除成功")
+                // print("✅ 删除成功")
                 logger.log("✅ 删除成功")
                 
                 // 重新加载订阅列表
                 await loadSubscriptions()
                 
             } catch {
-                print("❌ 删除订阅失败: \(error.localizedDescription)")
+                // print("❌ 删除订阅失败: \(error.localizedDescription)")
                 logger.log("❌ 删除订阅失败: \(error.localizedDescription)")
                 errorMessage = error.localizedDescription
                 showError = true
@@ -1329,7 +1329,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
             "method": "exec",
             "params": ["/usr/libexec/mihomo-call subscription update \(subscriptionId)"]
         ]
-        print(command)
+        // print(command)
         request.httpBody = try JSONSerialization.data(withJSONObject: command)
         
         let (data, response) = try await URLSession.shared.data(for: request)

@@ -18,7 +18,7 @@ struct Clash_Dash: App {
         Task { @MainActor in
             let localNetworkAuthorization = LocalNetworkAuthorization()
             let authorized = await localNetworkAuthorization.requestAuthorization()
-            print("Local network authorization status: \(authorized)")
+            // print("Local network authorization status: \(authorized)")
         }
     }
     

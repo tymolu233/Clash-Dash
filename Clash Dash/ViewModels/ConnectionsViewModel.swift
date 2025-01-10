@@ -184,7 +184,7 @@ class ConnectionsViewModel: ObservableObject {
                 let (_, response) = try await session.data(for: testRequest)
                 
                 if let httpResponse = response as? HTTPURLResponse {
-                    log("✅ HTTP 连接测试状态码: \(httpResponse.statusCode)")
+                    // log("✅ HTTP 连接测试状态码: \(httpResponse.statusCode)")
                     
                     if httpResponse.statusCode == 401 {
                         DispatchQueue.main.async { [weak self] in

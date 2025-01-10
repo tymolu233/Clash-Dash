@@ -189,25 +189,25 @@ struct OpenClashRulesView: View {
     }
     
     private func loadRules() async {
-        print("🔄 开始加载规则...")
+        // print("🔄 开始加载规则...")
         isLoading = true
         defer { 
             isLoading = false
-            print("✅ 规则加载完成")
+            // print("✅ 规则加载完成")
         }
         
         guard let username = server.openWRTUsername,
               let password = server.openWRTPassword else {
-            print("❌ 错误: 未设置 OpenWRT 用户名或密码")
+            // print("❌ 错误: 未设置 OpenWRT 用户名或密码")
             errorMessage = "未设置 OpenWRT 用户名或密码"
             showError = true
             return
         }
         
         do {
-            print("🔑 正在获取认证 token...")
+            // print("🔑 正在获取认证 token...")
             let token = try await viewModel.getAuthToken(server, username: username, password: password)
-            print("✅ 成功获取 token")
+            // print("✅ 成功获取 token")
             
             let scheme = server.openWRTUseSSL ? "https" : "http"
             guard let openWRTUrl = server.openWRTUrl else {
@@ -240,7 +240,7 @@ struct OpenClashRulesView: View {
                 await MainActor.run {
                     self.isCustomRulesEnabled = enabled
                 }
-                print("📍 自定义规则状态: \(enabled ? "启用" : "禁用")")
+                // print("📍 自定义规则状态: \(enabled ? "启用" : "禁用")")
             }
             
             // 获取规则内容
@@ -265,25 +265,25 @@ struct OpenClashRulesView: View {
             let response = try JSONDecoder().decode(OpenClashRuleResponse.self, from: data)
             
             if let error = response.error {
-                print("❌ 服务器返回错误: \(error)")
+                // print("❌ 服务器返回错误: \(error)")
                 errorMessage = "服务器错误: \(error)"
                 showError = true
                 return
             }
             
             guard let result = response.result else {
-                print("❌ 服务器返回空结果")
+                // print("❌ 服务器返回空结果")
                 errorMessage = "服务器返回空结果"
                 showError = true
                 return
             }
             
             // 添加日志查看服务器返回的原始内容
-            print("📥 服务器返回的原始内容:\n\(result)")
+            // print("📥 服务器返回的原始内容:\n\(result)")
             
             // 解析规则
             let ruleLines = result.components(separatedBy: CharacterSet.newlines)
-            print("📝 开始解析规则，总行数: \(ruleLines.count)")
+            // print("📝 开始解析规则，总行数: \(ruleLines.count)")
             
             var parsedRules: [OpenClashRule] = []
             var isInRulesSection = false
@@ -292,34 +292,32 @@ struct OpenClashRulesView: View {
                 let trimmedLine = line.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
                 if trimmedLine == "rules:" {
                     isInRulesSection = true
-                    print("✅ 在第 \(index) 行找到 rules: 标记")
+                    // print("✅ 在第 \(index) 行找到 rules: 标记")
                     continue
                 }
                 
                 if isInRulesSection {
                     if trimmedLine.hasPrefix("-") || trimmedLine.hasPrefix("##-") {
-                        print("🔍 解析规则行: \(trimmedLine)")
+                        // print("🔍 解析规则行: \(trimmedLine)")
                         let rule = OpenClashRule(from: trimmedLine)
                         if !rule.type.isEmpty {
                             parsedRules.append(rule)
-                            print("✅ 成功解析规则: \(rule.target)")
-                        } else {
-                            print("⚠️ 规则解析失败: \(trimmedLine)")
+                            // print("✅ 成功解析规则: \(rule.target)")
                         }
                     }
                 }
             }
             
-            print("📊 规则解析完成，找到 \(parsedRules.count) 条有效规则")
+            // print("📊 规则解析完成，找到 \(parsedRules.count) 条有效规则")
             
             await MainActor.run {
                 self.rules = parsedRules
             }
             
-            print("📝 解析到 \(parsedRules.count) 条规则")
+            // print("📝 解析到 \(parsedRules.count) 条规则")
             
         } catch {
-            print("❌ 错误: \(error.localizedDescription)")
+            // print("❌ 错误: \(error.localizedDescription)")
             errorMessage = error.localizedDescription
             showError = true
         }
@@ -333,16 +331,16 @@ struct OpenClashRulesView: View {
             let comment = rule.comment.map { " #\($0)" } ?? ""
             content += "\(prefix)\(rule.type),\(rule.target),\(rule.action)\(comment)\n"
         }
-        print("📄 生成的规则内容:\n\(content)")  // 添加这行来查看生成的内容
+        // print("📄 生成的规则内容:\n\(content)")  // 添加这行来查看生成的内容
         return content
     }
     
     private func saveRules() async throws {
-        print("💾 开始保存规则...")
+        // print("💾 开始保存规则...")
         isProcessing = true
         defer { 
             isProcessing = false 
-            print("✅ 规则保存完成")
+            // print("✅ 规则保存完成")
         }
         
         guard let username = server.openWRTUsername,
@@ -366,7 +364,7 @@ struct OpenClashRulesView: View {
         
         // 生成规则内容
         let content = generateRulesContent()
-        print("📄 准备写入的内容:\n\(content)")
+        // print("📄 准备写入的内容:\n\(content)")
         
         // 构建写入命令，使用 echo 直接写入
         let filePath = "/etc/openclash/custom/openclash_custom_rules.list"
@@ -383,24 +381,24 @@ struct OpenClashRulesView: View {
             "params": [cmd]
         ]
         
-        print("📝 执行命令: \(cmd)")
+        // print("📝 执行命令: \(cmd)")
         request.httpBody = try JSONSerialization.data(withJSONObject: command)
         
         let (data, response) = try await URLSession.shared.data(for: request)
         
         // 添加响应状态码日志
         if let httpResponse = response as? HTTPURLResponse {
-            print("📡 服务器响应状态码: \(httpResponse.statusCode)")
+            // print("📡 服务器响应状态码: \(httpResponse.statusCode)")
             if let responseString = String(data: data, encoding: .utf8) {
-                print("📥 服务器响应内容: \(responseString)")
+                // print("📥 服务器响应内容: \(responseString)")
                 
                 if let responseData = try? JSONDecoder().decode(OpenClashRuleResponse.self, from: data) {
                     if let error = responseData.error {
-                        print("❌ 服务器返回错误: \(error)")
+                        // print("❌ 服务器返回错误: \(error)")
                         throw NetworkError.serverError(500)
                     }
                     if let result = responseData.result {
-                        print("📄 命令执行结果: \(result)")
+                        // print("📄 命令执行结果: \(result)")
                         if result.contains("写入失败") {
                             throw NetworkError.serverError(500)
                         }
@@ -417,7 +415,7 @@ struct OpenClashRulesView: View {
                     let (verifyData, _) = try await URLSession.shared.data(for: request)
                     if let verifyResponse = try? JSONDecoder().decode(OpenClashRuleResponse.self, from: verifyData),
                        let verifyResult = verifyResponse.result {
-                        print("✅ 文件内容验证:\n\(verifyResult)")
+                        // print("✅ 文件内容验证:\n\(verifyResult)")
                     }
                 }
             }
@@ -426,15 +424,15 @@ struct OpenClashRulesView: View {
         guard let httpResponse = response as? HTTPURLResponse,
               httpResponse.statusCode == 200 else {
             let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 500
-            print("❌ 服务器返回错误状态码: \(statusCode)")
+            // print("❌ 服务器返回错误状态码: \(statusCode)")
             throw NetworkError.serverError(statusCode)
         }
     }
     
     private func toggleRule(_ rule: OpenClashRule) async {
-        print("🔄 切换规则态: \(rule.target) - 当前状态: \(rule.isEnabled)")
+        // print("🔄 切换规则态: \(rule.target) - 当前状态: \(rule.isEnabled)")
         guard let index = rules.firstIndex(where: { $0.id == rule.id }) else { 
-            print("❌ 未找到要切换的规则")
+            // print("❌ 未找到要切换的规则")
             return 
         }
         
@@ -453,9 +451,9 @@ struct OpenClashRulesView: View {
     }
     
     private func deleteRule(_ rule: OpenClashRule) async {
-        print("🗑️ 删除规则: \(rule.target)")
+        // print("🗑️ 删除规则: \(rule.target)")
         guard let index = rules.firstIndex(where: { $0.id == rule.id }) else { 
-            print("❌ 未找到要删除的规则")
+            // print("❌ 未找到要删除的规则")
             return 
         }
         
@@ -496,23 +494,23 @@ struct OpenClashRulesView: View {
     }
     
     private func addRule(_ rule: OpenClashRule) async {
-        print("➕ 添加新规则: \(rule.target)")
+        // print("➕ 添加新规则: \(rule.target)")
         rules.insert(rule, at: 0)
         do {
             try await saveRules()
-            print("✅ 规则添加成功")
+            // print("✅ 规则添加成功")
         } catch {
             rules.removeFirst()
-            print("❌ 规则添加失败: \(error.localizedDescription)")
+            // print("❌ 规则添加失败: \(error.localizedDescription)")
             errorMessage = error.localizedDescription
             showError = true
         }
     }
     
     private func updateRule(_ rule: OpenClashRule) async {
-        print("📝 更新规则: \(rule.target)")
+//        print("📝 更新规则: \(rule.target)")
         guard let index = rules.firstIndex(where: { $0.id == rule.id }) else { 
-            print("❌ 未找到要更新的规则")
+            // print("❌ 未找到要更新的规则")
             return 
         }
         let originalRule = rules[index]
@@ -528,7 +526,7 @@ struct OpenClashRulesView: View {
     }
     
     private func toggleCustomRules(enabled: Bool) async {
-        print("🔄 切换自定义规则状态: \(enabled)")
+        // print("🔄 切换自定义规则状态: \(enabled)")
         isProcessing = true
         defer { isProcessing = false }
         
@@ -571,9 +569,7 @@ struct OpenClashRulesView: View {
                 throw NetworkError.serverError((response as? HTTPURLResponse)?.statusCode ?? 500)
             }
             
-            if let responseString = String(data: data, encoding: .utf8) {
-                print("📥 服务器响应: \(responseString)")
-            }
+            let responseString = String(data: data, encoding: .utf8)
             
             // 重启 OpenClash 服务使配置生效
             // let restartCmd = "/etc/init.d/openclash restart"
@@ -591,10 +587,10 @@ struct OpenClashRulesView: View {
             //     throw NetworkError.serverError((restartResponse as? HTTPURLResponse)?.statusCode ?? 500)
             // }
             
-            print("✅ 自定义规则状态已更新为: \(enabled ? "启用" : "禁用")")
+            // print("✅ 自定义规则状态已更新为: \(enabled ? "启用" : "禁用")")
             
         } catch {
-            print("❌ 切换自定义规则状态失败: \(error.localizedDescription)")
+            // print("❌ 切换自定义规则状态失败: \(error.localizedDescription)")
             errorMessage = error.localizedDescription
             showError = true
             // 恢复UI状态

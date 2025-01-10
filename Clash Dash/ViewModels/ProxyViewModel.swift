@@ -200,13 +200,13 @@ class ProxyViewModel: ObservableObject {
                 // print("📊 代理组数量: \(self.groups.count)")
                 
                 // 打印组的变化
-                for group in self.groups {
-                    if let oldGroup = oldGroups.first(where: { $0.name == group.name }) {
-                        if oldGroup.now != group.now {
-                            print("📝 组 \(group.name) 的选中节点已更新: \(oldGroup.now) -> \(group.now)")
-                        }
-                    }
-                }
+                // for group in self.groups {
+                //     if let oldGroup = oldGroups.first(where: { $0.name == group.name }) {
+                //         if oldGroup.now != group.now {
+                //             print("📝 组 \(group.name) 的选中节点已更新: \(oldGroup.now) -> \(group.now)")
+                //         }
+                //     }
+                // }
             } else {
                 logger.log("❌ 解析 proxies 数据失败")
             }
@@ -263,10 +263,10 @@ class ProxyViewModel: ObservableObject {
             } else {
                 print("❌ 解析 providers 数据失败")
                 // 尝试打印原始数据以进行调试
-                if let jsonString = String(data: providersData, encoding: .utf8) {
-                    print("📝 原始 providers 数据:")
-                    print(jsonString)
-                }
+                let jsonString = String(data: providersData, encoding: .utf8)
+                    // print("📝 原始 providers 数据:")
+                    // print(jsonString)
+                
             }
             
             // 5. 更新节点数据
@@ -310,7 +310,7 @@ class ProxyViewModel: ObservableObject {
                 if server.clashUseSSL,
                    let httpsResponse = response as? HTTPURLResponse,
                    httpsResponse.statusCode == 400 {
-                    print("SSL 连接失败，服务器可能不支持 HTTPS")
+                    // print("SSL 连接失败，服务器可能不支持 HTTPS")
                     continue
                 }
                 
@@ -335,20 +335,20 @@ class ProxyViewModel: ObservableObject {
         if let urlError = error as? URLError {
             switch urlError.code {
             case .secureConnectionFailed:
-                print("SSL 连接失败：服务器 SSL 证书无")
+                logger.log("SSL 连接失败：服务器 SSL 证书无")
             case .serverCertificateHasBadDate:
-                print("SSL 错误：服务器证书已过期")
+                logger.log("SSL 错误：服务器证书已过期")
             case .serverCertificateUntrusted:
-                print("SSL 错误：服务器证书不受信任")
+                logger.log("SSL 错误：服务器证书不受信任")
             case .serverCertificateNotYetValid:
-                print("SSL 错误：服务器证书尚未生效")
+                logger.log("SSL 错误：服务器证书尚未生效")
             case .cannotConnectToHost:
-                print("无法连接到服务器：\(server.clashUseSSL ? "HTTPS" : "HTTP") 连接失败")
+                logger.log("无法连接到服务器：\(server.clashUseSSL ? "HTTPS" : "HTTP") 连接失败")
             default:
-                print("网络错误：\(urlError.localizedDescription)")
+                logger.log("网络错误：\(urlError.localizedDescription)")
             }
         } else {
-            print("其他错误：\(error.localizedDescription)")
+            logger.log("其他错误：\(error.localizedDescription)")
         }
     }
     
@@ -645,11 +645,9 @@ class ProxyViewModel: ObservableObject {
                 // 更新最后测试时间并通知视图更新
                 self.lastDelayTestTime = Date()
                 objectWillChange.send()
-            } else {
-                print("解析响应数据失败")
             }
         } catch {
-            print("测速过程出错: \(error)")
+            // print("测速过程出错: \(error)")
             handleNetworkError(error)
         }
         
@@ -673,7 +671,7 @@ class ProxyViewModel: ObservableObject {
             if server.clashUseSSL,
                let httpsResponse = response as? HTTPURLResponse,
                httpsResponse.statusCode == 400 {
-                print("SSL 连接失败，服务器可能不支持 HTTPS")
+                // print("SSL 连接失败，服务器可能不支持 HTTPS")
                 return
             }
             
@@ -695,7 +693,7 @@ class ProxyViewModel: ObservableObject {
                     }
                 }
             } else {
-                print("代理提供者 \(providerName) 更新失败")
+                logger.log("代理提供者 \(providerName) 更新失败")
             }
         } catch {
             handleNetworkError(error)
@@ -718,7 +716,7 @@ class ProxyViewModel: ObservableObject {
             if server.clashUseSSL,
                let httpsResponse = response as? HTTPURLResponse,
                httpsResponse.statusCode == 400 {
-                print("SSL 连接失败，服务器可能不支持 HTTPS")
+                // print("SSL 连接失败，服务器可能不支持 HTTPS")
                 testingProviders.remove(providerName)  // 记得移除
                 return
             }
@@ -773,7 +771,7 @@ class ProxyViewModel: ObservableObject {
             if server.clashUseSSL,
                let httpsResponse = response as? HTTPURLResponse,
                httpsResponse.statusCode == 400 {
-                print("SSL 连接失败，服务器可能不支持 HTTPS")
+                // print("SSL 连接失败，服务器可能不支持 HTTPS")
                 _ = await MainActor.run {
                     testingNodes.remove(proxyName)
                     objectWillChange.send()

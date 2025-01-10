@@ -179,7 +179,7 @@ extension ConfigSubscription {
             }
         }
 
-        print("🔍 生成的 UCI 命令: \(commands)")
+        // print("🔍 生成的 UCI 命令: \(commands)")
         
         return commands
     }

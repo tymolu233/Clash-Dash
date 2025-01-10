@@ -231,8 +231,13 @@ struct OpenClashConfigView: View {
         
         Task {
             do {
-                let logStream = try await viewModel.switchOpenClashConfig(server, configFilename: config.filename)
-                for await log in logStream {
+                let logStream = try await viewModel.switchClashConfig(
+                    server,
+                    configFilename: config.filename,
+                    packageName: server.luciPackage == .openClash ? "openclash" : "mihomoTProxy",
+                    isSubscription: config.isSubscription
+                )
+                for try await log in logStream {
                     await MainActor.run {
                         startupLogs.append(log)
                     }
@@ -260,7 +265,14 @@ struct OpenClashConfigView: View {
         configToEdit = config
         
         if config.fileSize > maxEditSize {
-            errorMessage = "配置文件较大（\(formatFileSize(config.fileSize))），超过 90KB 将无法保存"
+            errorMessage = "配置文件较大（\(formatFileSize(config.fileSize))），可能无法保存"
+            showingEditAlert = true
+        } else {
+            editingConfig = config
+        }
+
+        if config.isSubscription {
+            errorMessage = "该配置为订阅类型，你所做的修改将在下次订阅更新后丢失"
             showingEditAlert = true
         } else {
             editingConfig = config

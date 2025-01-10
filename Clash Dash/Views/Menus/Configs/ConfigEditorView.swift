@@ -123,7 +123,11 @@ struct ConfigEditorView: View {
                 startupLogs.removeAll()
                 
                 do {
-                    let logStream = try await viewModel.restartOpenClash(server)
+                    let logStream = try await viewModel.restartOpenClash(
+                        server,
+                        packageName: server.luciPackage == .openClash ? "openclash" : "mihomoTProxy",
+                        isSubscription: isSubscription
+                    )
                     
                     for try await log in logStream {
                         await MainActor.run {
