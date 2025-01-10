@@ -7,6 +7,7 @@ struct CompactGroupCard: View {
     @State private var isExpanded = false
     @AppStorage("hideUnavailableProxies") private var hideUnavailableProxies = false
     @AppStorage("proxyGroupSortOrder") private var proxyGroupSortOrder = ProxyGroupSortOrder.default
+    @AppStorage("pinBuiltinProxies") private var pinBuiltinProxies = false
     @State private var currentNodeOrder: [String]?
     @State private var displayedNodes: [String] = []
     @State private var showURLTestAlert = false
@@ -32,7 +33,7 @@ struct CompactGroupCard: View {
     // Add separate function for sorting
     private func getSortedNodes() -> [String] {
         // First separate special nodes and normal nodes
-        let specialNodes = ["DIRECT", "PROXY", "REJECT"]
+        let specialNodes = ["DIRECT", "REJECT", "REJECT-DROP", "PASS", "COMPATIBLE"]
         let normalNodes = group.all.filter { node in
             !specialNodes.contains(node.uppercased())
         }
@@ -40,11 +41,11 @@ struct CompactGroupCard: View {
             specialNodes.contains(node.uppercased())
         }
         
-        // Sort normal nodes according to settings
-        var sortedNormalNodes = normalNodes
+        // Sort nodes according to settings
+        var sortedNodes = pinBuiltinProxies ? normalNodes : group.all
         switch proxyGroupSortOrder {
         case .latencyAsc:
-            sortedNormalNodes.sort { node1, node2 in
+            sortedNodes.sort { node1, node2 in
                 let delay1 = viewModel.getNodeDelay(nodeName: node1)
                 let delay2 = viewModel.getNodeDelay(nodeName: node2)
                 if delay1 == 0 { return false }
@@ -52,7 +53,7 @@ struct CompactGroupCard: View {
                 return delay1 < delay2
             }
         case .latencyDesc:
-            sortedNormalNodes.sort { node1, node2 in
+            sortedNodes.sort { node1, node2 in
                 let delay1 = viewModel.getNodeDelay(nodeName: node1)
                 let delay2 = viewModel.getNodeDelay(nodeName: node2)
                 if delay1 == 0 { return false }
@@ -60,15 +61,15 @@ struct CompactGroupCard: View {
                 return delay1 > delay2
             }
         case .nameAsc:
-            sortedNormalNodes.sort { $0 < $1 }
+            sortedNodes.sort { $0 < $1 }
         case .nameDesc:
-            sortedNormalNodes.sort { $0 > $1 }
+            sortedNodes.sort { $0 > $1 }
         case .default:
             break
         }
         
-        // Combine special nodes and sorted normal nodes
-        return specialNodesPresent + sortedNormalNodes
+        // Return sorted nodes with special nodes at top if pinned
+        return pinBuiltinProxies ? specialNodesPresent + sortedNodes : sortedNodes
     }
     
     private func updateDisplayedNodes() {

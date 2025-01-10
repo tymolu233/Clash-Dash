@@ -850,7 +850,7 @@ class ProxyViewModel: ObservableObject {
         }
         
         // 特殊节点始终排在最前面（添加 PROXY）
-        let builtinNodes = ["DIRECT", "REJECT", "PROXY"]
+        let builtinNodes = ["DIRECT", "REJECT", "REJECT-DROP", "PASS", "COMPATIBLE"]
         let specialNodes = nodeNames.filter { node in
             builtinNodes.contains(node.uppercased())
         }
