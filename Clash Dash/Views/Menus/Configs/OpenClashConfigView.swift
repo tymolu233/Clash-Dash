@@ -56,6 +56,7 @@ struct OpenClashConfigView: View {
                             ForEach(configs) { config in
                                 ConfigCard(
                                     config: config,
+                                    server: server,
                                     onSelect: {
                                         if !isDragging {
                                             handleConfigSelection(config)
@@ -303,6 +304,7 @@ struct OpenClashConfigView: View {
 
 struct ConfigCard: View {
     let config: OpenClashConfig
+    let server: ClashServer
     let onSelect: () -> Void
     let onEdit: () -> Void
     let onDelete: () -> Void
@@ -322,6 +324,9 @@ struct ConfigCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 // 标题栏
                 HStack {
+                    Image(systemName: config.isSubscription ? "cloud.fill" : "house.fill")
+                                    .foregroundColor(.blue)
+                                    .font(.headline)
                     Text(config.name)
                         .font(.headline)
                         .lineLimit(1)
@@ -355,17 +360,35 @@ struct ConfigCard: View {
                     )
                     
                     // 语法检查状态
+                    if server.luciPackage == .openClash {
                     InfoRow(
                         icon: config.check == .normal ? "checkmark.circle.fill" : "xmark.circle.fill",
                         text: config.check.rawValue,
                         color: config.check == .normal ? .green : .red
                     )
-                    
+                    }
+
+                    // 本地配置或订阅配置
+                    // if config.isSubscription {
+                    //     InfoRow(
+                    //         icon: "cloud.fill",
+                    //         text: "订阅配置"
+                    //     )
+                    // } else {
+                    //     // 添加文件大小显示
+                    //     InfoRow(
+                    //         icon: "doc.circle",
+                    //         text: "本地配置"
+                    //     )
+                    // }
+
                     // 添加文件大小显示
                     InfoRow(
                         icon: "doc.circle",
                         text: formatFileSize(config.fileSize)
                     )
+                    
+                    
                 }
                 .font(.subheadline)
                 

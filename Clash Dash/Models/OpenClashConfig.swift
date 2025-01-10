@@ -3,7 +3,7 @@ import Foundation
 struct OpenClashConfig: Identifiable {
     let id = UUID()
     let name: String
-    let state: ConfigState
+    var state: ConfigState
     let mtime: Date
     let check: ConfigCheck
     let subscription: SubscriptionInfo?

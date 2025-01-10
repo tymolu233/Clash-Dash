@@ -856,7 +856,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             subRequest.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
             
             let (subData, _) = try await session.data(for: subRequest)
-            // logger.log("订阅信息: \(subData)")
+            
             let subscription = try? JSONDecoder().decode(OpenClashConfig.SubscriptionInfo.self, from: subData)
             guard let subscription = subscription else {
                 print("❌ 订阅信息解码失败")
@@ -874,7 +874,10 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                 fileSize: Int64(statResponse.result.size)
             )
             
-            configs.append(config)
+            // 根据订阅信息判断是否为订阅配置
+            var updatedConfig = config
+            updatedConfig.isSubscription = subscription.subInfo != "No Sub Info Found"
+            configs.append(updatedConfig)
             print("✅ 成功添加配置: \(fileName)")
             logger.log("✅ 成功添加配置: \(fileName)")
         }
@@ -1367,27 +1370,260 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
     }
     
     func fetchMihomoTProxyConfigs(_ server: ClashServer) async throws -> [OpenClashConfig] {
+        print("🔍 开始获取 MihomoTProxy 配置列表")
+        // 获取认证 token
+        guard let username = server.openWRTUsername,
+              let password = server.openWRTPassword else {
+            print("❌ 未设置 OpenWRT 用户名或密码")
+            throw NetworkError.unauthorized(message: "未设置 OpenWRT 用户名或密码")
+        }
+        
+        print("🔑 获取认证令牌...")
+        let token = try await getAuthToken(server, username: username, password: password)
+        print("✅ 获取令牌成功")
+        var configs: [OpenClashConfig] = []
+        
+        // 1. 获取 profiles 目录下的配置文件（非订阅）
+        print("📂 获取 profiles 目录下的配置文件...")
+        let profilesResponse = try await makeUCIRequest(server, token: token, method: "fs", params: ["glob", ["/etc/mihomo/profiles/*"]])
+        print("📥 profiles 响应: \(profilesResponse)")
+        
+        if let result = profilesResponse["result"] as? [Any],
+           let profiles = result.first as? [String] {
+            print("📝 找到 \(profiles.count) 个配置文件")
+            for profile in profiles {
+                print("处理配置文件: \(profile)")
+                // 只处理 yaml 或 yml 文件
+                guard profile.hasSuffix(".yaml") || profile.hasSuffix(".yml") else {
+                    print("⏭️ 跳过非 YAML 文件: \(profile)")
+                    continue
+                }
+                
+                // 获取文件元数据
+                print("📊 获取文件元数据...")
+                let metadata = try await makeUCIRequest(server, token: token, method: "fs", params: ["stat", [profile]])
+                print("📥 文件元数据: \(metadata)")
+                
+                if let stat = metadata["result"] as? [String: Any] {
+                    let name = profile.replacingOccurrences(of: "/etc/mihomo/profiles/", with: "")
+                    let mtime = Date(timeIntervalSince1970: (stat["mtime"] as? TimeInterval) ?? 0)
+                    let size = Int64((stat["size"] as? Int) ?? 0)
+                    
+                    print("📄 创建配置对象:")
+                    print("- 名称: \(name)")
+                    print("- 修改时间: \(mtime)")
+                    print("- 大小: \(size)")
+                    
+                    let config = OpenClashConfig(
+                        name: name,
+                        state: .disabled,  // 稍后更新状态
+                        mtime: mtime,
+                        check: .normal,    // MihomoTProxy 不支持语法检查
+                        subscription: nil,
+                        fileSize: size
+                    )
+                    var updatedConfig = config
+                    updatedConfig.isSubscription = false
+                    configs.append(updatedConfig)
+                    print("✅ 添加配置成功")
+                }
+            }
+        }
+        
+        // 2. 获取 subscriptions 目录下的配置文件（订阅）
+        print("\n📂 获取 subscriptions 目录下的配置文件...")
+        let subscriptionsResponse = try await makeUCIRequest(server, token: token, method: "fs", params: ["glob", ["/etc/mihomo/subscriptions/*"]])
+        print("📥 subscriptions 响应: \(subscriptionsResponse)")
+        
+        if let result = subscriptionsResponse["result"] as? [Any],
+           let subscriptions = result.first as? [String] {
+            print("📝 找到 \(subscriptions.count) 个订阅配置")
+            for subscription in subscriptions {
+                print("处理订阅配置: \(subscription)")
+                // 只处理 yaml 或 yml 文件
+                guard subscription.hasSuffix(".yaml") || subscription.hasSuffix(".yml") else {
+                    print("⏭️ 跳过非 YAML 文件: \(subscription)")
+                    continue
+                }
+                
+                let subId = subscription.replacingOccurrences(of: "/etc/mihomo/subscriptions/", with: "")
+                
+                // 获取订阅详情
+                print("📊 获取订阅详情...")
+                let detailResponse = try await makeUCIRequest(server, token: token, method: "sys", params: ["exec", ["uci show mihomo." + subId.replacingOccurrences(of: ".yaml", with: "").replacingOccurrences(of: ".yml", with: "")]])
+                print("📥 订阅详情响应: \(detailResponse)")
+                
+                if let detailResult = detailResponse["result"] as? String,
+                   !detailResult.isEmpty {  // 只有在有订阅详情时才继续处理
+                    // 获取文件元数据
+                    print("📊 获取文件元数据...")
+                    let metadata = try await makeUCIRequest(server, token: token, method: "fs", params: ["stat", [subscription]])
+                    print("📥 文件元数据: \(metadata)")
+                    
+                    if let stat = metadata["result"] as? [String: Any] {
+                        let name = subId
+                        let mtime = Date(timeIntervalSince1970: (stat["mtime"] as? TimeInterval) ?? 0)
+                        let size = Int64((stat["size"] as? Int) ?? 0)
+                        
+                        print("📄 创建订阅配置对象:")
+                        print("- 名称: \(name)")
+                        print("- 修改时间: \(mtime)")
+                        print("- 大小: \(size)")
+                        
+                        // 解析订阅详情
+                        var subscriptionInfo: OpenClashConfig.SubscriptionInfo? = nil
+                        let lines = detailResult.split(separator: "\n")
+                        var subData: [String: String] = [:]
+                        for line in lines {
+                            let parts = line.split(separator: "=", maxSplits: 1)
+                            if parts.count == 2 {
+                                let key = String(parts[0].split(separator: ".").last ?? "")
+                                let value = String(parts[1]).trimmingCharacters(in: CharacterSet(charactersIn: "'"))
+                                subData[key] = value
+                                print("订阅数据: \(key) = \(value)")
+                            }
+                        }
+                        
+                        // 计算剩余天数
+                        var dayLeft: Int? = nil
+                        if let expireStr = subData["expire"] {
+                            let dateFormatter = DateFormatter()
+                            dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+                            if let expireDate = dateFormatter.date(from: expireStr) {
+                                dayLeft = Calendar.current.dateComponents([.day], from: Date(), to: expireDate).day
+                            }
+                        }
+                        
+                        // 计算使用百分比
+                        var percent: String? = nil
+                        if let usedStr = subData["used"]?.replacingOccurrences(of: " GB", with: ""),
+                           let totalStr = subData["total"]?.replacingOccurrences(of: " GB", with: ""),
+                           let used = Double(usedStr),
+                           let total = Double(totalStr) {
+                            let percentage = (used / total) * 100
+                            percent = String(format: "%.1f", percentage)
+                        }
+                        
+                        // 格式化到期时间
+                        var formattedExpire: String? = nil
+                        if let expireStr = subData["expire"] {
+                            let inputFormatter = DateFormatter()
+                            inputFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+                            let outputFormatter = DateFormatter()
+                            outputFormatter.dateFormat = "yyyy-MM-dd"
+                            if let date = inputFormatter.date(from: expireStr) {
+                                formattedExpire = outputFormatter.string(from: date)
+                            }
+                        }
+                        
+                        subscriptionInfo = OpenClashConfig.SubscriptionInfo(
+                            surplus: subData["avaliable"],
+                            total: subData["total"],
+                            dayLeft: dayLeft,
+                            httpCode: nil,
+                            used: subData["used"],
+                            expire: formattedExpire,
+                            subInfo: subData["url"] ?? "",
+                            percent: percent
+                        )
+                        print("✅ 创建订阅信息成功")
+                        
+                        // 创建并添加配置
+                        let config = OpenClashConfig(
+                            name: name,
+                            state: .disabled,  // 稍后更新状态
+                            mtime: mtime,
+                            check: .normal,    // MihomoTProxy 不支持语法检查
+                            subscription: subscriptionInfo,
+                            fileSize: size
+                        )
+                        var updatedConfig = config
+                        updatedConfig.isSubscription = true
+                        configs.append(updatedConfig)
+                        print("✅ 添加订阅配置成功")
+                    }
+                }
+            }
+        }
+        
+        // 3. 获取当前使用的配置
+        print("\n🔍 获取当前使用的配置...")
+        let currentConfigResponse = try await makeUCIRequest(server, token: token, method: "sys", params: ["exec", ["uci show mihomo.config.profile"]])
+        print("📥 当前配置响应: \(currentConfigResponse)")
+        
+        if let currentConfig = currentConfigResponse["result"] as? String,
+           !currentConfig.isEmpty {  // 只在有结果时处理
+            let currentConfigStr = currentConfig.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+                                              .replacingOccurrences(of: "'", with: "")
+            print("📄 当前使用的配置: \(currentConfigStr)")
+            
+            // 解析配置字符串
+            let parts = currentConfigStr.split(separator: ":")
+            if parts.count == 2 {
+                let configType = String(parts[0]).replacingOccurrences(of: "mihomo.config.profile=", with: "")  // subscription 或 file
+                let configName = String(parts[1]) // 配置名称
+                print("配置类型: \(configType), 配置名称: \(configName)")
+                
+                // 更新配置状态
+                configs = configs.map { config in
+                    var updatedConfig = config
+                    let isMatch = (configType == "subscription" && config.isSubscription && 
+                                   config.name.replacingOccurrences(of: ".yaml", with: "")
+                                            .replacingOccurrences(of: ".yml", with: "") == configName) ||
+                              (configType == "file" && !config.isSubscription && config.name == configName)
+                    if isMatch {
+                        updatedConfig.state = .enabled
+                        print("✅ 标记配置为启用状态: \(config.name)")
+                    }
+                    return updatedConfig
+                }
+            }
+        }
+        
+        print("\n📊 最终配置列表:")
+        for config in configs {
+            print("- \(config.name) (订阅: \(config.isSubscription), 状态: \(config.state))")
+        }
+        
+        return configs
+    }
+    
+    private func makeUCIRequest(_ server: ClashServer, token: String, method: String, params: [Any]) async throws -> [String: Any] {
         let scheme = server.openWRTUseSSL ? "https" : "http"
         guard let openWRTUrl = server.openWRTUrl else {
             throw NetworkError.invalidURL
         }
         let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
         
-        print("🔍 开始获取 MihomoTProxy 配置列表: \(baseURL)")
-        logger.log("🔍 开始获取 MihomoTProxy 配置列表: \(baseURL)")
-        
-        // 获取认证 token
-        guard let username = server.openWRTUsername,
-              let password = server.openWRTPassword else {
-            print("❌ 未找到认证信息")
-            logger.log("❌ 未找到认证信息")
-            throw NetworkError.unauthorized(message: "未设置 OpenWRT 用户名或密码")
+        guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/\(method)?auth=\(token)") else {
+            throw NetworkError.invalidURL
         }
         
-        let token = try await getAuthToken(server, username: username, password: password)
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
         
-        // TODO: 实现 MihomoTProxy 的配置获取逻辑
-        // 这里暂时返回空数组，后续实现具体逻辑
-        return []
+        let requestBody: [String: Any] = [
+            "id": 1,
+            "method": params[0],
+            "params": params[1]
+        ]
+        
+        request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+        
+        let session = makeURLSession(for: server)
+        let (data, response) = try await session.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse,
+              httpResponse.statusCode == 200 else {
+            throw NetworkError.serverError((response as? HTTPURLResponse)?.statusCode ?? 500)
+        }
+        
+        guard let jsonResponse = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw NetworkError.invalidResponse(message: "Invalid JSON response")
+        }
+        
+        return jsonResponse
     }
 } 

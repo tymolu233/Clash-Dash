@@ -93,7 +93,7 @@ struct ServerContextMenu: ViewModifier {
                     impactFeedback.impactOccurred()
                     onShowSwitchConfig()
                 } label: {
-                    Label("切换配置", systemImage: "arrow.2.circlepath")
+                    Label("配置管理", systemImage: "arrow.2.circlepath")
                 }
                 
                 Button {
@@ -122,12 +122,12 @@ struct ServerContextMenu: ViewModifier {
                     Label("订阅管理", systemImage: "cloud.fill")
                 }
                 
-                // Button {
-                //     impactFeedback.impactOccurred()
-                //     onShowSwitchConfig()
-                // } label: {
-                //     Label("切换配置", systemImage: "arrow.2.circlepath")
-                // }
+                Button {
+                    impactFeedback.impactOccurred()
+                    onShowSwitchConfig()
+                } label: {
+                    Label("配置管理", systemImage: "arrow.2.circlepath")
+                }
                 
                 // Button {
                 //     impactFeedback.impactOccurred()
