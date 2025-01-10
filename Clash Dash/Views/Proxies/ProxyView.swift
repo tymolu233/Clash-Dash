@@ -1,24 +1,24 @@
 import SwiftUI
 
 // 添加到文件顶部，在 LoadingView 之前
-struct CardShadowModifier: ViewModifier {
+struct CardBackgroundModifier: ViewModifier {
     @Environment(\.colorScheme) private var colorScheme
     
     var cardBackgroundColor: Color {
-        colorScheme == .dark ? Color(.systemGray6) : Color(.systemBackground)
+        colorScheme == .dark ? Color(.systemGray5) : Color(.secondarySystemBackground)
     }
     
     func body(content: Content) -> some View {
         content
             .background(cardBackgroundColor)
             .clipShape(RoundedRectangle(cornerRadius: 12))
-            .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
+            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.05 : 0.1), radius: colorScheme == .dark ? 2 : 4, x: 0, y: 1)
     }
 }
 
 extension View {
-    func cardShadow() -> some View {
-        modifier(CardShadowModifier())
+    func cardBackground() -> some View {
+        modifier(CardBackgroundModifier())
     }
 }
 
@@ -835,7 +835,7 @@ struct ProxyProviderCard: View {
                                 updateStatus = .failure
                                 // 失败时的触觉反馈
                                 let errorFeedback = UINotificationFeedbackGenerator()
-                                errorFeedback.notificationOccurred(.error)
+                                errorFeedback.notificationOccurred(.error) 
                                 
                                 try await Task.sleep(nanoseconds: 2_000_000_000)
                                 updateStatus = .none
@@ -921,7 +921,7 @@ struct ProxyProviderCard: View {
             }
         }
         .padding()
-        .cardShadow()
+        .cardBackground()
         .onTapGesture {
             // 添加触觉反馈
             impactFeedback.impactOccurred()
@@ -1340,7 +1340,7 @@ struct ProxyNodeCard: View {
     
     // 添加缓存计算结果
     private var cardBackgroundColor: Color {
-        colorScheme == .dark ? Color(.systemGray6) : Color(.secondarySystemBackground)
+        colorScheme == .dark ? Color(.secondarySystemBackground) : Color(.secondarySystemBackground)
     }
     
     var body: some View {
@@ -1424,19 +1424,15 @@ struct ProxyNodeCard: View {
         }
         .padding()
         .frame(maxWidth: .infinity)
-        .background {
-            RoundedRectangle(cornerRadius: 12)
-                .fill(cardBackgroundColor)
-                .drawingGroup(opaque: false)  // 优化背景渲染
-        }
+        .cardBackground()  // 使用新的背景修饰符
         .overlay {
             if isSelected {
                 RoundedRectangle(cornerRadius: 12)
                     .strokeBorder(.blue, lineWidth: 2)
-                    .drawingGroup(opaque: false)  // 优化选中状态渲染
+                    .drawingGroup(opaque: false)
             }
         }
-        .animation(.easeInOut(duration: 0.2), value: isSelected)  // 限制动画范围
+        .animation(.easeInOut(duration: 0.2), value: isSelected)
     }
     
     // 获取节点延迟的辅助方法
