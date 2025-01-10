@@ -8,6 +8,8 @@ struct GlobalSettingsView: View {
     @AppStorage("proxyGroupSortOrder") private var proxyGroupSortOrder = ProxyGroupSortOrder.default
     @AppStorage("speedTestURL") private var speedTestURL = "https://www.gstatic.com/generate_204"
     @AppStorage("speedTestTimeout") private var speedTestTimeout = 5000
+    @AppStorage("pinBuiltinProxies") private var pinBuiltinProxies = false
+    @AppStorage("hideProxyProviders") private var hideProxyProviders = false
     @State private var showClearCacheAlert = false
     
     var body: some View {
@@ -41,19 +43,13 @@ struct GlobalSettingsView: View {
                 SettingToggleRow(
                     title: "置顶内置策略",
                     subtitle: "将 DIRECT 和 REJECT 等内置策略始终保持在最前面",
-                    isOn: .init(
-                        get: { UserDefaults.standard.bool(forKey: "pinBuiltinProxies") },
-                        set: { UserDefaults.standard.set($0, forKey: "pinBuiltinProxies") }
-                    )
+                    isOn: $pinBuiltinProxies
                 )
                 
                 SettingToggleRow(
                     title: "隐藏代理提供者",
                     subtitle: "在代理页面中不显示代理提供者信息",
-                    isOn: .init(
-                        get: { UserDefaults.standard.bool(forKey: "hideProxyProviders") },
-                        set: { UserDefaults.standard.set($0, forKey: "hideProxyProviders") }
-                    )
+                    isOn: $hideProxyProviders
                 )
             } header: {
                 SectionHeader(title: "代理组排序设置", systemImage: "arrow.up.arrow.down")
