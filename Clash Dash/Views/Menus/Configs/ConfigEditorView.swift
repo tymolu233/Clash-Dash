@@ -5,6 +5,7 @@ struct ConfigEditorView: View {
     @ObservedObject var viewModel: ServerViewModel
     let server: ClashServer
     let configName: String
+    let configFilename: String
     let isEnabled: Bool
     
     @State private var configContent: String = ""
@@ -53,7 +54,7 @@ struct ConfigEditorView: View {
                 }
                 
                 ToolbarItem(placement: .primaryAction) {
-                    Button("完成") {
+                    Button("保存") {
                         showingSaveAlert = true
                     }
                 }
@@ -71,13 +72,13 @@ struct ConfigEditorView: View {
             }
         } message: {
             Text(isEnabled ? 
-                 "保存修改后的配置会重启 OpenClash 服务，这会导致已有连接中断。是否继续？" : 
+                 "保存修改后的配置会重启 Clash 服务，这会导致已有连接中断。是否继续？" : 
                  "确定要保存修改后的配置吗？这将覆盖原有配置文件。")
         }
         .sheet(isPresented: $isRestarting) {
             LogDisplayView(
                 logs: startupLogs,
-                title: "正在重启 OpenClash..."
+                title: "正在重启 Clash 服务..."
             )
         }
         .alert("错误", isPresented: $showError) {
@@ -89,7 +90,7 @@ struct ConfigEditorView: View {
     
     private func loadConfigContent() async {
         do {
-            configContent = try await viewModel.fetchConfigContent(server, configName: configName)
+            configContent = try await viewModel.fetchConfigContent(server, configFilename: configFilename)
             isLoading = false
         } catch {
             errorMessage = error.localizedDescription
@@ -103,7 +104,7 @@ struct ConfigEditorView: View {
         defer { isSaving = false }
         
         do {
-            try await viewModel.saveConfigContent(server, configName: configName, content: configContent)
+            try await viewModel.saveConfigContent(server, configFilename: configFilename, content: configContent)
             
             if isEnabled {
                 isRestarting = true

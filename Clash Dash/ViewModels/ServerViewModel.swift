@@ -887,14 +887,14 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         return configs
     }
     
-    func switchOpenClashConfig(_ server: ClashServer, configName: String) async throws -> AsyncStream<String> {
+    func switchOpenClashConfig(_ server: ClashServer, configFilename: String) async throws -> AsyncStream<String> {
         let scheme = server.openWRTUseSSL ? "https" : "http"
         guard let openWRTUrl = server.openWRTUrl else { 
             throw NetworkError.invalidURL
         }
         let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
-        print("🔄 开始切换配置: \(configName)")
-        logger.log("🔄 开始切换配置: \(configName)")
+        print("🔄 开始切换配置: \(configFilename)")
+        logger.log("🔄 开始切换配置: \(configFilename)")
         // 获取认证 token
         guard let username = server.openWRTUsername,
               let password = server.openWRTPassword else {
@@ -913,7 +913,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         request.httpMethod = "POST"
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
         request.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
-        request.httpBody = "config_name=\(configName)".data(using: .utf8)
+        request.httpBody = "config_name=\(configFilename)".data(using: .utf8)
         
         let session = makeURLSession(for: server)
         let (_, response) = try await session.data(for: request)
@@ -980,7 +980,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         return token
     }
     
-    func fetchConfigContent(_ server: ClashServer, configName: String) async throws -> String {
+    func fetchConfigContent(_ server: ClashServer, configFilename: String) async throws -> String {
         let scheme = server.openWRTUseSSL ? "https" : "http"
         guard let openWRTUrl = server.openWRTUrl else {
             throw NetworkError.invalidURL
@@ -1007,7 +1007,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         
         let command: [String: Any] = [
             "method": "exec",
-            "params": ["cat /etc/openclash/config/\(configName)"]
+            "params": ["cat '/etc/openclash/config/\(configFilename)'"]
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: command)
         
@@ -1029,15 +1029,15 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         return configResponse.result
     }
     
-    func saveConfigContent(_ server: ClashServer, configName: String, content: String) async throws {
+    func saveConfigContent(_ server: ClashServer, configFilename: String, content: String) async throws {
         let scheme = server.openWRTUseSSL ? "https" : "http"
         guard let openWRTUrl = server.openWRTUrl else {
             throw NetworkError.invalidURL
         }
         let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
         
-        print("开始保存配置文件: \(configName)")
-        logger.log("📝 开始保存配置文件: \(configName)")
+        print("开始保存配置文件: \(configFilename)")
+        logger.log("📝 开始保存配置文件: \(configFilename)")
         guard let username = server.openWRTUsername,
               let password = server.openWRTPassword else {
             print("❌ 未找到认证信息")
@@ -1061,7 +1061,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         let escapedContent = content.replacingOccurrences(of: "'", with: "'\\''")
         
         // 构建写入命令,使用 echo 直接写入
-        let filePath = "/etc/openclash/config/\(configName)"
+        let filePath = "/etc/openclash/config/\(configFilename)"
         let cmd = "echo '\(escapedContent)' > \(filePath) 2>&1 && echo '写入成功' || echo '写入失败'"
         
         var request = URLRequest(url: url)
@@ -1307,15 +1307,15 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         return try JSONDecoder().decode(ClashStatusResponse.self, from: data)
     }
     
-    func deleteOpenClashConfig(_ server: ClashServer, configName: String) async throws {
+    func deleteOpenClashConfig(_ server: ClashServer, configFilename: String) async throws {
         let scheme = server.openWRTUseSSL ? "https" : "http"
         guard let openWRTUrl = server.openWRTUrl else {
             throw NetworkError.invalidURL
         }
         let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
         
-        print("🗑 开始删除配置文件: \(configName)")
-        logger.log("开始删除配置文件: \(configName)")
+        print("🗑 开始删除配置文件: \(configFilename)")
+        logger.log("开始删除配置文件: \(configFilename)")
         
         guard let username = server.openWRTUsername,
               let password = server.openWRTPassword else {
@@ -1337,11 +1337,11 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         
         let deleteCommand = """
         rm -f /tmp/Proxy_Group && \
-        rm -f \"/etc/openclash/backup/\(configName)\" && \
-        rm -f \"/etc/openclash/history/\(configName)\" && \
-        rm -f \"/etc/openclash/history/\(configName).db\" && \
-        rm -f \"/etc/openclash/\(configName)\" && \
-        rm -f \"/etc/openclash/config/\(configName)\"
+        rm -f \"/etc/openclash/backup/\(configFilename)\" && \
+        rm -f \"/etc/openclash/history/\(configFilename)\" && \
+        rm -f \"/etc/openclash/history/\(configFilename).db\" && \
+        rm -f \"/etc/openclash/\(configFilename)\" && \
+        rm -f \"/etc/openclash/config/\(configFilename)\"
         """
         
         var request = URLRequest(url: url)
@@ -1530,7 +1530,8 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                         
                         // 创建并添加配置
                         let config = OpenClashConfig(
-                            name: name,
+                            name: subData["name"] ?? subId,  // 使用订阅的 name 字段，如果没有则使用文件名
+                            filename: subId,  // 使用原始文件名
                             state: .disabled,  // 稍后更新状态
                             mtime: mtime,
                             check: .normal,    // MihomoTProxy 不支持语法检查

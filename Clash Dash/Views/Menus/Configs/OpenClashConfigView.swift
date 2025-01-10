@@ -151,6 +151,7 @@ struct OpenClashConfigView: View {
                 viewModel: viewModel,
                 server: server,
                 configName: config.name,
+                configFilename: config.filename,
                 isEnabled: config.state == .enabled,
                 onConfigSaved: {
                     // 重新加载配置列表
@@ -229,7 +230,7 @@ struct OpenClashConfigView: View {
         
         Task {
             do {
-                let logStream = try await viewModel.switchOpenClashConfig(server, configName: config.name)
+                let logStream = try await viewModel.switchOpenClashConfig(server, configFilename: config.filename)
                 for await log in logStream {
                     await MainActor.run {
                         startupLogs.append(log)
@@ -286,7 +287,7 @@ struct OpenClashConfigView: View {
         
         Task {
             do {
-                try await viewModel.deleteOpenClashConfig(server, configName: config.name)
+                try await viewModel.deleteOpenClashConfig(server, configFilename: config.filename)
                 await loadConfigs()  // 重新加载配置列表
                 // 添加成功触觉反馈
                 let successFeedback = UINotificationFeedbackGenerator()

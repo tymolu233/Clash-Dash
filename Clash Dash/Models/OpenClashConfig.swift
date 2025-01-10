@@ -3,12 +3,23 @@ import Foundation
 struct OpenClashConfig: Identifiable {
     let id = UUID()
     let name: String
+    let filename: String
     var state: ConfigState
-    let mtime: Date
+    var mtime: Date
     let check: ConfigCheck
     let subscription: SubscriptionInfo?
     let fileSize: Int64
     var isSubscription: Bool = false
+    
+    init(name: String, filename: String? = nil, state: ConfigState, mtime: Date, check: ConfigCheck, subscription: SubscriptionInfo?, fileSize: Int64) {
+        self.name = name
+        self.filename = filename ?? name
+        self.state = state
+        self.mtime = mtime
+        self.check = check
+        self.subscription = subscription
+        self.fileSize = fileSize
+    }
     
     enum ConfigState: String {
         case enabled = "Enabled"
