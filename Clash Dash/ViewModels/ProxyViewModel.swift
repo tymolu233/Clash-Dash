@@ -836,27 +836,51 @@ class ProxyViewModel: ObservableObject {
     func getSortedNodes(_ nodeNames: [String], in group: ProxyGroup) -> [String] {
         // 获取排序设置
         let sortOrder = UserDefaults.standard.string(forKey: "proxyGroupSortOrder") ?? "default"
+        let pinBuiltinProxies = UserDefaults.standard.bool(forKey: "pinBuiltinProxies")
+        let hideUnavailable = UserDefaults.standard.bool(forKey: "hideUnavailableProxies")
+        
+        // 如果不置顶内置策略，且排序方式为默认，则保持原始顺序
+        if !pinBuiltinProxies && sortOrder == "default" {
+            if hideUnavailable {
+                return nodeNames.filter { node in
+                    getNodeDelay(nodeName: node) > 0
+                }
+            }
+            return nodeNames
+        }
         
         // 特殊节点始终排在最前面（添加 PROXY）
+        let builtinNodes = ["DIRECT", "REJECT", "PROXY"]
         let specialNodes = nodeNames.filter { node in
-            ["DIRECT", "REJECT", "PROXY"].contains(node.uppercased())
+            builtinNodes.contains(node.uppercased())
         }
         let normalNodes = nodeNames.filter { node in
-            !["DIRECT", "REJECT", "PROXY"].contains(node.uppercased())
+            !builtinNodes.contains(node.uppercased())
         }
         
-        // 检查是否需要隐藏不可用代理
-        let hideUnavailable = UserDefaults.standard.bool(forKey: "hideUnavailableProxies")
+        // 对普通节点应用隐藏不可用代理的设置
         let filteredNormalNodes = hideUnavailable ? 
             normalNodes.filter { node in
                 getNodeDelay(nodeName: node) > 0
             } : normalNodes
+            
+        // 如果开启了置顶内置策略，直接返回特殊节点+排序后的普通节点
+        if pinBuiltinProxies {
+            let sortedNormalNodes = sortNodes(filteredNormalNodes, sortOrder: sortOrder)
+            return specialNodes + sortedNormalNodes
+        }
         
-        // 根据排序设置对普通节点进行排序
-        let sortedNormalNodes: [String]
+        // 如果没有开启置顶内置策略，所有节点一起参与排序
+        let allNodes = hideUnavailable ? 
+            (specialNodes + filteredNormalNodes) : nodeNames
+        return sortNodes(allNodes, sortOrder: sortOrder)
+    }
+    
+    // 添加辅助方法来处理节点排序
+    private func sortNodes(_ nodes: [String], sortOrder: String) -> [String] {
         switch sortOrder {
         case "latencyAsc":
-            sortedNormalNodes = filteredNormalNodes.sorted { node1, node2 in
+            return nodes.sorted { node1, node2 in
                 let delay1 = getNodeDelay(nodeName: node1)
                 let delay2 = getNodeDelay(nodeName: node2)
                 if delay1 == 0 { return false }
@@ -864,7 +888,7 @@ class ProxyViewModel: ObservableObject {
                 return delay1 < delay2
             }
         case "latencyDesc":
-            sortedNormalNodes = filteredNormalNodes.sorted { node1, node2 in
+            return nodes.sorted { node1, node2 in
                 let delay1 = getNodeDelay(nodeName: node1)
                 let delay2 = getNodeDelay(nodeName: node2)
                 if delay1 == 0 { return false }
@@ -872,15 +896,12 @@ class ProxyViewModel: ObservableObject {
                 return delay1 > delay2
             }
         case "nameAsc":
-            sortedNormalNodes = filteredNormalNodes.sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+            return nodes.sorted { $0.localizedStandardCompare($1) == .orderedAscending }
         case "nameDesc":
-            sortedNormalNodes = filteredNormalNodes.sorted { $0.localizedStandardCompare($1) == .orderedDescending }
+            return nodes.sorted { $0.localizedStandardCompare($1) == .orderedDescending }
         default:
-            sortedNormalNodes = filteredNormalNodes
+            return nodes
         }
-        
-        // 合并特殊节点和排序后的普通节点
-        return specialNodes + sortedNormalNodes
     }
     
     // 添加辅助方法来获取有效延迟

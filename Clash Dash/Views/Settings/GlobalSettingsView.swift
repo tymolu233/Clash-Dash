@@ -39,6 +39,15 @@ struct GlobalSettingsView: View {
                 }
                 
                 SettingToggleRow(
+                    title: "置顶内置策略",
+                    subtitle: "将 DIRECT 和 REJECT 等内置策略始终保持在最前面",
+                    isOn: .init(
+                        get: { UserDefaults.standard.bool(forKey: "pinBuiltinProxies") },
+                        set: { UserDefaults.standard.set($0, forKey: "pinBuiltinProxies") }
+                    )
+                )
+                
+                SettingToggleRow(
                     title: "隐藏代理提供者",
                     subtitle: "在代理页面中不显示代理提供者信息",
                     isOn: .init(
