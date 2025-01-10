@@ -74,7 +74,7 @@ struct ServerDetailView: View {
                         impactFeedback.impactOccurred()
                     }
                     .tabItem {
-                        Label("More", systemImage: "ellipsis")
+                        Label("更多", systemImage: "ellipsis")
                     }
                     .tag(4)
             }

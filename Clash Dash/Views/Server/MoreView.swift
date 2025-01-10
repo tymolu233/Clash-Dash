@@ -92,7 +92,7 @@ struct MoreView: View {
                             Image(systemName: "arrow.2.circlepath")
                                 .foregroundColor(.blue)
                                 .frame(width: 25)
-                            Text("切换配置")
+                            Text("配置管理")
                         }
                     }
                     
@@ -137,17 +137,17 @@ struct MoreView: View {
                         }
                     }
                     
-                    // Button {
-                    //     impactFeedback.impactOccurred()
-                    //     showingSwitchConfig = true
-                    // } label: {
-                    //     HStack {
-                    //         Image(systemName: "arrow.2.circlepath")
-                    //             .foregroundColor(.blue)
-                    //             .frame(width: 25)
-                    //         Text("切换配置")
-                    //     }
-                    // }
+                    Button {
+                        impactFeedback.impactOccurred()
+                        showingSwitchConfig = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "arrow.2.circlepath")
+                                .foregroundColor(.blue)
+                                .frame(width: 25)
+                            Text("配置管理")
+                        }
+                    }
                     
                     // Button {
                     //     impactFeedback.impactOccurred()

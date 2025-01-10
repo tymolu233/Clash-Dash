@@ -51,6 +51,11 @@ struct RulesView: View {
         }
         .animation(.easeInOut, value: selectedTab)
         .animation(.easeInOut, value: showSearch)
+        .onAppear {
+            Task {
+                await viewModel.fetchData()
+            }
+        }
         .refreshable {
             await viewModel.fetchData()
         }
