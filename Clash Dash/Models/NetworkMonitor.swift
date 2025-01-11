@@ -323,10 +323,12 @@ class NetworkMonitor: ObservableObject {
                 timestamp: Date(),
                 usage: Double(memory.inuse) / 1024 / 1024 // 转换为 MB
             )
-            self?.memoryHistory.append(newMemoryRecord)
-            if self?.memoryHistory.count ?? 0 > 60 {
+            
+            // 确保历史记录不会无限增长
+            if self?.memoryHistory.count ?? 0 >= 30 {
                 self?.memoryHistory.removeFirst()
             }
+            self?.memoryHistory.append(newMemoryRecord)
         }
     }
     

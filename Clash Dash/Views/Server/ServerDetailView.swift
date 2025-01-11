@@ -35,15 +35,9 @@ struct ServerDetailView: View {
     var body: some View {
         TabView(selection: $selectedTab) {
             // 概览标签页
-            OverviewTab(server: server)
+            OverviewTab(server: server, monitor: networkMonitor)
                 .onAppear {
                     impactFeedback.impactOccurred()
-                    // 只在概览标签页启动监控
-                    networkMonitor.startMonitoring(server: server)
-                }
-                .onDisappear {
-                    // 离开概览标签页时停止监控
-                    networkMonitor.stopMonitoring()
                 }
                 .tabItem {
                     Label("概览", systemImage: "chart.line.uptrend.xyaxis")
@@ -116,6 +110,13 @@ struct ServerDetailView: View {
         .toolbarBackground(Color(.systemBackground), for: .navigationBar)
         .onAppear {
             viewModel.serverViewModel.setBingingManager(bindingManager)
+            // 如果当前是概览标签页，启动监控
+            if selectedTab == 0 {
+                networkMonitor.startMonitoring(server: server)
+            }
+        }
+        .onDisappear {
+            networkMonitor.stopMonitoring()
         }
         .onChange(of: selectedTab) { newTab in
             // 当标签页切换时，根据是否是概览标签页来启动或停止监控
@@ -284,7 +285,7 @@ struct SpeedChartView: View {
 // 2. 更新 OverviewTab
 struct OverviewTab: View {
     let server: ClashServer
-    @StateObject private var monitor = NetworkMonitor()
+    @ObservedObject var monitor: NetworkMonitor
     @StateObject private var settings = OverviewCardSettings()
     @Environment(\.colorScheme) var colorScheme
     
@@ -292,6 +293,35 @@ struct OverviewTab: View {
         colorScheme == .dark ? 
             Color(.systemGray6) : 
             Color(.systemBackground)
+    }
+    
+    private func maxMemoryValue(_ memoryHistory: [MemoryRecord]) -> Double {
+        // 获取当前数据中的最大值
+        let maxMemory = memoryHistory.map { $0.usage }.max() ?? 0
+        
+        // 如果没有数据或数据小，使用最小刻度
+        if maxMemory < 50 { // 小于 50MB
+            return 50 // 50MB
+        }
+        
+        // 计算合适的刻度值
+        let magnitude = pow(10, floor(log10(maxMemory)))
+        let normalized = maxMemory / magnitude
+        
+        // 选择合适的刻度倍数：1, 2, 5, 10
+        let scale: Double
+        if normalized <= 1 {
+            scale = 1
+        } else if normalized <= 2 {
+            scale = 2
+        } else if normalized <= 5 {
+            scale = 5
+        } else {
+            scale = 10
+        }
+        
+        // 计算最终的最大值，并留出一些余量（120%）
+        return magnitude * scale * 1.2
     }
     
     var body: some View {
@@ -366,18 +396,29 @@ struct OverviewTab: View {
                             // 只在 Meta 服务器上显示内存图表
                             if server.serverType != .premium {
                                 ChartCard(title: "内存使用", icon: "memorychip") {
-                                    Chart(monitor.memoryHistory) { record in
-                                        AreaMark(
-                                            x: .value("Time", record.timestamp),
-                                            y: .value("Memory", record.usage)
-                                        )
-                                        .foregroundStyle(.purple.opacity(0.3))
+                                    Chart {
+                                        // 添加预设的网格线和标签
+                                        ForEach(Array(stride(from: 0, to: maxMemoryValue(monitor.memoryHistory), by: maxMemoryValue(monitor.memoryHistory)/4)), id: \.self) { value in
+                                            RuleMark(
+                                                y: .value("Memory", value)
+                                            )
+                                            .lineStyle(StrokeStyle(lineWidth: 1))
+                                            .foregroundStyle(.gray.opacity(0.1))
+                                        }
                                         
-                                        LineMark(
-                                            x: .value("Time", record.timestamp),
-                                            y: .value("Memory", record.usage)
-                                        )
-                                        .foregroundStyle(.purple)
+                                        ForEach(monitor.memoryHistory) { record in
+                                            AreaMark(
+                                                x: .value("Time", record.timestamp),
+                                                y: .value("Memory", record.usage)
+                                            )
+                                            .foregroundStyle(.purple.opacity(0.3))
+                                            
+                                            LineMark(
+                                                x: .value("Time", record.timestamp),
+                                                y: .value("Memory", record.usage)
+                                            )
+                                            .foregroundStyle(.purple)
+                                        }
                                     }
                                     .frame(height: 200)
                                     .chartYAxis {
@@ -392,6 +433,7 @@ struct OverviewTab: View {
                                             }
                                         }
                                     }
+                                    .chartYScale(domain: 0...maxMemoryValue(monitor.memoryHistory))
                                     .chartXAxis {
                                         AxisMarks(values: .automatic(desiredCount: 3))
                                     }
@@ -410,10 +452,6 @@ struct OverviewTab: View {
         .background(Color(.systemGroupedBackground))
         .onAppear {
             monitor.resetData() // 重置监控数据
-            monitor.startMonitoring(server: server)
-        }
-        .onDisappear {
-            monitor.stopMonitoring()
         }
     }
 }
