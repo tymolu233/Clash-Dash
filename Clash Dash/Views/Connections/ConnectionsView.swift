@@ -512,14 +512,18 @@ struct ConnectionsView: View {
                 .padding()
         }
         .sheet(item: $selectedConnection) { connection in
-            ZStack {
-                Color(.systemBackground)
-                    .ignoresSafeArea()
-                
-                ConnectionDetailView(
-                    connection: connection,
-                    viewModel: viewModel
-                )
+            NavigationStack {
+                ZStack {
+                    Color(.systemBackground)
+                        .ignoresSafeArea()
+                    
+                    ConnectionDetailView(
+                        connection: connection,
+                        viewModel: viewModel
+                    )
+                }
+                .navigationTitle("连接详情")
+                .navigationBarTitleDisplayMode(.inline)
             }
             .presentationDragIndicator(.visible)
             .presentationDetents([.large])

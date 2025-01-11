@@ -38,6 +38,12 @@ struct ServerDetailView: View {
             OverviewTab(server: server)
                 .onAppear {
                     impactFeedback.impactOccurred()
+                    // 只在概览标签页启动监控
+                    networkMonitor.startMonitoring(server: server)
+                }
+                .onDisappear {
+                    // 离开概览标签页时停止监控
+                    networkMonitor.stopMonitoring()
                 }
                 .tabItem {
                     Label("概览", systemImage: "chart.line.uptrend.xyaxis")
@@ -109,11 +115,15 @@ struct ServerDetailView: View {
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarBackground(Color(.systemBackground), for: .navigationBar)
         .onAppear {
-            networkMonitor.startMonitoring(server: server)
             viewModel.serverViewModel.setBingingManager(bindingManager)
         }
-        .onDisappear {
-            networkMonitor.stopMonitoring()
+        .onChange(of: selectedTab) { newTab in
+            // 当标签页切换时，根据是否是概览标签页来启动或停止监控
+            if newTab == 0 {
+                networkMonitor.startMonitoring(server: server)
+            } else {
+                networkMonitor.stopMonitoring()
+            }
         }
     }
     
