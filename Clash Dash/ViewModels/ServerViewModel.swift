@@ -87,6 +87,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
     @Published var showError = false
     @Published var errorMessage: String?
     @Published var errorDetails: String?
+    @AppStorage("hideDisconnectedServers") private var hideDisconnectedServers = false
     
     private let defaults = UserDefaults.standard
     private let logger = LogManager.shared
@@ -100,6 +101,18 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         self.bindingManager = bindingManager
         super.init()
         loadServers()
+        
+        // 监听 hideDisconnectedServers 的变化
+        NotificationCenter.default.addObserver(self, selector: #selector(userDefaultsDidChange), name: UserDefaults.didChangeNotification, object: nil)
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+    
+    @objc private func userDefaultsDidChange() {
+        // 当 UserDefaults 发生变化时，发送一个 objectWillChange 通知
+        objectWillChange.send()
     }
     
     func setBingingManager(_ manager: WiFiBindingManager) {
@@ -413,15 +426,13 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
     
     // 添加一个辅助方法来判断服务器是否应该被隐藏
     func isServerHidden(_ server: ClashServer, currentWiFiSSID: String = "") -> Bool {
-        let hideDisconnectedServers = UserDefaults.standard.bool(forKey: "hideDisconnectedServers")
-        let enableWiFiBinding = UserDefaults.standard.bool(forKey: "enableWiFiBinding")
-        
         // 检查是否因为离线状态而隐藏
         if hideDisconnectedServers && server.status != .ok {
             return true
         }
         
         // 检查是否因为 WiFi 绑定而隐藏
+        let enableWiFiBinding = UserDefaults.standard.bool(forKey: "enableWiFiBinding")
         if enableWiFiBinding {
             guard let bindingManager = bindingManager else {
                 return false // 如果 bindingManager 未设置，不隐藏任何服务器
