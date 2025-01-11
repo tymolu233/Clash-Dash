@@ -20,109 +20,100 @@ struct ServerDetailView: View {
     // 添加触觉反馈生成器
     private let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
     
+    init(server: ClashServer) {
+        self.server = server
+        
+        // 设置 UITabBar 的外观
+        let appearance = UITabBarAppearance()
+        appearance.configureWithOpaqueBackground()
+        appearance.backgroundColor = UIColor.systemBackground
+        
+        UITabBar.appearance().scrollEdgeAppearance = appearance
+        UITabBar.appearance().standardAppearance = appearance
+    }
+    
     var body: some View {
-        NavigationStack {
-            TabView(selection: $selectedTab) {
-                // 概览标签页
-                OverviewTab(server: server)
-                    .onAppear {
-                        // 添加触觉反馈
-                        impactFeedback.impactOccurred()
-                    }
-                    .tabItem {
-                        Label("概览", systemImage: "chart.line.uptrend.xyaxis")
-                    }
-                    .tag(0)
-                
-                // 代理标签页
-                ProxyView(server: server)
-                    .onAppear {
-                        // 添加触觉反馈
-                        impactFeedback.impactOccurred()
-                    }
-                    .tabItem {
-                        Label("代理", systemImage: "globe")
-                    }
-                    .tag(1)
-                
-                // 规则标签页
-                RulesView(server: server)
-                    .onAppear {
-                        // 添加触觉反馈
-                        impactFeedback.impactOccurred()
-                    }
-                    .tabItem {
-                        Label("规则", systemImage: "ruler")
-                    }
-                    .tag(2)
-                
-                // 连接标签页
-                ConnectionsView(server: server)
-                    .onAppear {
-                        // 添加触觉反馈
-                        impactFeedback.impactOccurred()
-                    }
-                    .tabItem {
-                        Label("连接", systemImage: "link")
-                    }
-                    .tag(3)
-                
-                // 更多标签页
-                MoreView(server: server)
-                    .onAppear {
-                        // 添加触觉反馈
-                        impactFeedback.impactOccurred()
-                    }
-                    .tabItem {
-                        Label("更多", systemImage: "ellipsis")
-                    }
-                    .tag(4)
-            }
-            .navigationTitle(server.name.isEmpty ? "\(server.openWRTUrl ?? server.url):\(server.openWRTPort ?? server.port)" : server.name)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                if server.isQuickLaunch {
-                    ToolbarItem(placement: .principal) {
-                        HStack {
-                            Spacer()
-                                .frame(width: 25) // 调整图标与标题的间距，使得标题永远居中
-                            Text(server.name.isEmpty ? "\(server.openWRTUrl ?? server.url):\(server.openWRTPort ?? server.port)" : server.name)
-                                .font(.headline)
-                            Image(systemName: "bolt.circle.fill")
-                                .foregroundColor(.yellow)
-                                .font(.subheadline)
-                        }
-                    }
-                } else {
-                    ToolbarItem(placement: .principal) {
+        TabView(selection: $selectedTab) {
+            // 概览标签页
+            OverviewTab(server: server)
+                .onAppear {
+                    impactFeedback.impactOccurred()
+                }
+                .tabItem {
+                    Label("概览", systemImage: "chart.line.uptrend.xyaxis")
+                }
+                .tag(0)
+            
+            // 代理标签页
+            ProxyView(server: server)
+                .onAppear {
+                    impactFeedback.impactOccurred()
+                }
+                .tabItem {
+                    Label("代理", systemImage: "globe")
+                }
+                .tag(1)
+            
+            // 规则标签页
+            RulesView(server: server)
+                .onAppear {
+                    impactFeedback.impactOccurred()
+                }
+                .tabItem {
+                    Label("规则", systemImage: "ruler")
+                }
+                .tag(2)
+            
+            // 连接标签页
+            ConnectionsView(server: server)
+                .onAppear {
+                    impactFeedback.impactOccurred()
+                }
+                .tabItem {
+                    Label("连接", systemImage: "link")
+                }
+                .tag(3)
+            
+            // 更多标签页
+            MoreView(server: server)
+                .onAppear {
+                    impactFeedback.impactOccurred()
+                }
+                .tabItem {
+                    Label("更多", systemImage: "ellipsis")
+                }
+                .tag(4)
+        }
+        .navigationTitle(server.name.isEmpty ? "\(server.openWRTUrl ?? server.url):\(server.openWRTPort ?? server.port)" : server.name)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if server.isQuickLaunch {
+                ToolbarItem(placement: .principal) {
+                    HStack {
+                        Spacer()
+                            .frame(width: 25)
                         Text(server.name.isEmpty ? "\(server.openWRTUrl ?? server.url):\(server.openWRTPort ?? server.port)" : server.name)
                             .font(.headline)
+                        Image(systemName: "bolt.circle.fill")
+                            .foregroundColor(.yellow)
+                            .font(.subheadline)
                     }
                 }
+            } else {
+                ToolbarItem(placement: .principal) {
+                    Text(server.name.isEmpty ? "\(server.openWRTUrl ?? server.url):\(server.openWRTPort ?? server.port)" : server.name)
+                        .font(.headline)
+                }
             }
-            .toolbarBackground(.visible, for: .navigationBar)
-            .toolbarBackground(Color(.systemBackground), for: .navigationBar)
-            .onAppear {
-                networkMonitor.startMonitoring(server: server)
-                viewModel.serverViewModel.setBingingManager(bindingManager)
-            }
-            .onDisappear {
-                networkMonitor.stopMonitoring()
-            }
-            .navigationBarTitleDisplayMode(.inline)
-            .navigationTitle(server.name ?? server.url)
-            .sheet(isPresented: $showingConfigSubscription) {
-                ConfigSubscriptionView(server: server)
-            }
-            .sheet(isPresented: $showingSwitchConfig) {
-                OpenClashConfigView(viewModel: viewModel.serverViewModel, server: server)
-            }
-            .sheet(isPresented: $showingCustomRules) {
-                OpenClashRulesView(server: server)
-            }
-            .sheet(isPresented: $showingRestartService) {
-                RestartServiceView(viewModel: viewModel.serverViewModel, server: server)
-            }
+        }
+        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbarBackground(Color(.systemBackground), for: .navigationBar)
+        .onAppear {
+            networkMonitor.startMonitoring(server: server)
+            viewModel.serverViewModel.setBingingManager(bindingManager)
+        }
+        .onDisappear {
+            networkMonitor.stopMonitoring()
         }
     }
     

@@ -512,7 +512,10 @@ struct ConnectionsView: View {
                 .padding()
         }
         .sheet(item: $selectedConnection) { connection in
-            NavigationStack {
+            ZStack {
+                Color(.systemBackground)
+                    .ignoresSafeArea()
+                
                 ConnectionDetailView(
                     connection: connection,
                     viewModel: viewModel
@@ -528,11 +531,19 @@ struct ConnectionsView: View {
             viewModel.stopMonitoring()
         }
         .sheet(isPresented: $showClientTagSheet) {
-            ClientTagView(
-                viewModel: viewModel,
-                tagViewModel: tagViewModel
-            )
+            ZStack {
+                Color(.systemBackground)
+                    .ignoresSafeArea()
+                
+                NavigationStack {
+                    ClientTagView(
+                        viewModel: viewModel,
+                        tagViewModel: tagViewModel
+                    )
+                }
+            }
         }
+        .background(Color(.systemGroupedBackground).ignoresSafeArea())
     }
 }
 

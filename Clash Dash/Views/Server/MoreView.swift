@@ -190,30 +190,56 @@ struct MoreView: View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showingConfigSubscription) {
-            NavigationStack {
-                ConfigSubscriptionView(server: server)
+            ZStack {
+                Color(.systemBackground)
+                    .ignoresSafeArea()
+                
+                NavigationStack {
+                    ConfigSubscriptionView(server: server)
+                }
             }
         }
         .sheet(isPresented: $showingSwitchConfig) {
-            NavigationStack {
-                OpenClashConfigView(viewModel: viewModel.serverViewModel, server: server)
+            ZStack {
+                Color(.systemBackground)
+                    .ignoresSafeArea()
+                
+                NavigationStack {
+                    OpenClashConfigView(viewModel: viewModel.serverViewModel, server: server)
+                }
             }
         }
         .sheet(isPresented: $showingCustomRules) {
-            NavigationStack {
-                OpenClashRulesView(server: server)
+            ZStack {
+                Color(.systemBackground)
+                    .ignoresSafeArea()
+                
+                NavigationStack {
+                    OpenClashRulesView(server: server)
+                }
             }
         }
         .sheet(isPresented: $showingRestartService) {
-            NavigationStack {
-                RestartServiceView(viewModel: viewModel.serverViewModel, server: server)
+            ZStack {
+                Color(.systemBackground)
+                    .ignoresSafeArea()
+                
+                NavigationStack {
+                    RestartServiceView(viewModel: viewModel.serverViewModel, server: server)
+                }
             }
         }
         .sheet(isPresented: $showingServiceLog) {
-            NavigationStack {
-                ServiceLogView(server: server)
+            ZStack {
+                Color(.systemBackground)
+                    .ignoresSafeArea()
+                
+                NavigationStack {
+                    ServiceLogView(server: server)
+                }
             }
         }
+        .background(Color(.systemGroupedBackground).ignoresSafeArea())
         .overlay(alignment: .bottom) {
             if server.status == .ok {
                 VStack(spacing: 4) {
