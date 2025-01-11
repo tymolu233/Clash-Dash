@@ -590,6 +590,13 @@ class ConnectionsViewModel: ObservableObject {
         }
     }
     
+    // 添加批量关闭连接的方法
+    func closeConnections(_ connectionIds: [String]) {
+        for id in connectionIds {
+            closeConnection(id)
+        }
+    }
+    
     func refresh() async {
         stopMonitoring()
         if let server = server {

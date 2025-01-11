@@ -14,6 +14,7 @@ struct ConnectionsView: View {
     // 添加确认对话框的状态
     @State private var showCloseAllConfirmation = false
     @State private var showClearClosedConfirmation = false
+    @State private var showCloseFilteredConfirmation = false
     
     // 添加枚举类型
     private enum ConnectionFilter {
@@ -239,6 +240,18 @@ struct ConnectionsView: View {
                 )
                 .transition(.move(edge: .bottom).combined(with: .opacity))
                 
+                // 如果有搜索结果，显示终止筛选连接的按钮
+                if !searchText.isEmpty && !filteredConnections.isEmpty {
+                    MenuButton(
+                        icon: "xmark.circle",
+                        color: .red,
+                        action: {
+                            showCloseFilteredConfirmation = true
+                        }
+                    )
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+                
                 // 暂停/继续监控
                 MenuButton(
                     icon: viewModel.isMonitoring ? "pause.fill" : "play.fill",
@@ -330,6 +343,16 @@ struct ConnectionsView: View {
             }
         } message: {
             Text("确定要终止所有活跃的连接吗？\n这将断开 \(activeConnectionsCount) 个正在活跃的连接。")
+        }
+        .alert("确认终止筛选连接", isPresented: $showCloseFilteredConfirmation) {
+            Button("取消", role: .cancel) { }
+            Button("终止", role: .destructive) {
+                let connectionIds = filteredConnections.map { $0.id }
+                viewModel.closeConnections(connectionIds)
+                showMenu = false
+            }
+        } message: {
+            Text("确定要终止筛选出的连接吗？\n这将断开 \(filteredConnections.count) 个连接。")
         }
     }
     
@@ -595,8 +618,13 @@ struct SearchBar: View {
             }
         }
         .padding(8)
-        .background(Color(.systemGray6))
+        .background(Color(.systemBackground))
         .cornerRadius(8)
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+        )
+        .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
     }
 }
 
