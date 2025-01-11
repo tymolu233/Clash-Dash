@@ -87,7 +87,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
     @Published var showError = false
     @Published var errorMessage: String?
     @Published var errorDetails: String?
-    @AppStorage("hideDisconnectedServers") private var hideDisconnectedServers = false
+    @Published private(set) var hideDisconnectedServers: Bool
     
     private let defaults = UserDefaults.standard
     private let logger = LogManager.shared
@@ -98,6 +98,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
     private var activeSessions: [URLSession] = []  // 保持 URLSession 的引用
     
     init(bindingManager: WiFiBindingManager? = nil) {
+        self.hideDisconnectedServers = UserDefaults.standard.bool(forKey: "hideDisconnectedServers")
         self.bindingManager = bindingManager
         super.init()
         loadServers()
@@ -111,8 +112,12 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
     }
     
     @objc private func userDefaultsDidChange() {
-        // 当 UserDefaults 发生变化时，发送一个 objectWillChange 通知
-        objectWillChange.send()
+        let newValue = UserDefaults.standard.bool(forKey: "hideDisconnectedServers")
+        if newValue != hideDisconnectedServers {
+            DispatchQueue.main.async { [weak self] in
+                self?.hideDisconnectedServers = newValue
+            }
+        }
     }
     
     func setBingingManager(_ manager: WiFiBindingManager) {
