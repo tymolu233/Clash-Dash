@@ -423,15 +423,20 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         
         // 检查是否因为 WiFi 绑定而隐藏
         if enableWiFiBinding {
+            guard let bindingManager = bindingManager else {
+                return false // 如果 bindingManager 未设置，不隐藏任何服务器
+            }
+            
             if !currentWiFiSSID.isEmpty {
                 // 如果连接了 WiFi，检查是否有绑定
-                if let binding = bindingManager?.bindings.first(where: { $0.ssid == currentWiFiSSID }) {
+                if let binding = bindingManager.bindings.first(where: { $0.ssid == currentWiFiSSID }) {
                     return !binding.serverIds.contains(server.id.uuidString)
                 }
-                return true // 如果没有找到绑定，隐藏
+                // 如果没有找到绑定，显示默认服务器
+                return !bindingManager.defaultServerIds.contains(server.id.uuidString)
             } else {
-                // 如果没有连接 WiFi，检查是否在默认列表中
-                return !(bindingManager?.defaultServerIds.contains(server.id.uuidString) ?? false)
+                // 如果没有连接 WiFi，显示默认服务器
+                return !bindingManager.defaultServerIds.contains(server.id.uuidString)
             }
         }
         
