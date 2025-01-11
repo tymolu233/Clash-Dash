@@ -230,7 +230,7 @@ struct ProxyView: View {
                             // 代理提供者部分
                             if !hideProxyProviders {
                                 let httpProviders = viewModel.providers
-                                    .filter { $0.vehicleType.uppercased() == "HTTP" }
+                                    .filter { ["HTTP", "file"].contains($0.vehicleType.uppercased()) }
                                     .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
                                 
                                 if !httpProviders.isEmpty {
@@ -256,7 +256,7 @@ struct ProxyView: View {
                         // 代理提供者部分
                         if !hideProxyProviders {
                             let httpProviders = viewModel.providers
-                                .filter { $0.vehicleType.uppercased() == "HTTP" }
+                                .filter { ["HTTP", "file"].contains($0.vehicleType.uppercased()) }
                                 .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
                             
                             if !httpProviders.isEmpty {
