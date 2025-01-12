@@ -788,23 +788,65 @@ class SubscriptionManager: ObservableObject {
         }
         
         do {
-            if let config = try await clashClient.getCurrentConfig() {
-                if let subscriptionInfo = try await clashClient.getSubscriptionInfo(config: config) {
-                    let newSubscriptions = Array(subscriptionInfo.values)
-                    DispatchQueue.main.async {
-                        self.subscriptions = newSubscriptions
-                        self.lastUpdateTime = Date()
-                        self.isLoading = false
+            // 根据 ServerSource 决定获取订阅信息的方式
+            if server.source == .openWRT {
+                // 对于 openWRT 源，使用原有的逻辑
+                if let config = try await clashClient.getCurrentConfig() {
+                    if let subscriptionInfo = try await clashClient.getSubscriptionInfo(config: config) {
+                        // 保持现有订阅的顺序
+                        var newSubscriptions: [SubscriptionCardInfo] = []
+                        if !self.subscriptions.isEmpty {
+                            // 如果已有订阅，按照现有顺序更新
+                            for existingSub in self.subscriptions {
+                                if let updatedSub = subscriptionInfo.values.first(where: { $0.name == existingSub.name }) {
+                                    newSubscriptions.append(updatedSub)
+                                }
+                            }
+                            // 添加新的订阅（如果有）
+                            for newSub in subscriptionInfo.values {
+                                if !newSubscriptions.contains(where: { $0.name == newSub.name }) {
+                                    newSubscriptions.append(newSub)
+                                }
+                            }
+                        } else {
+                            // 如果是首次加载，按照名称排序
+                            newSubscriptions = Array(subscriptionInfo.values).sorted { ($0.name ?? "") < ($1.name ?? "") }
+                        }
+                        
+                        DispatchQueue.main.async {
+                            self.subscriptions = newSubscriptions
+                            self.lastUpdateTime = Date()
+                            self.isLoading = false
+                        }
+                        // 保存到缓存
+                        cache.save(subscriptions: newSubscriptions, for: server)
+                        return
                     }
-                    // 保存到缓存
-                    cache.save(subscriptions: newSubscriptions, for: server)
-                    return
                 }
             }
             
-            // 如果获取配置失败，尝试获取代理提供者信息
+            // 对于其他源或者 openWRT 获取失败的情况，直接尝试获取代理提供者信息
             if let proxyInfo = try await clashClient.getProxyProvider() {
-                let newSubscriptions = Array(proxyInfo.values)
+                // 保持现有订阅的顺序
+                var newSubscriptions: [SubscriptionCardInfo] = []
+                if !self.subscriptions.isEmpty {
+                    // 如果已有订阅，按照现有顺序更新
+                    for existingSub in self.subscriptions {
+                        if let updatedSub = proxyInfo.values.first(where: { $0.name == existingSub.name }) {
+                            newSubscriptions.append(updatedSub)
+                        }
+                    }
+                    // 添加新的订阅（如果有）
+                    for newSub in proxyInfo.values {
+                        if !newSubscriptions.contains(where: { $0.name == newSub.name }) {
+                            newSubscriptions.append(newSub)
+                        }
+                    }
+                } else {
+                    // 如果是首次加载，按照名称排序
+                    newSubscriptions = Array(proxyInfo.values).sorted { ($0.name ?? "") < ($1.name ?? "") }
+                }
+                
                 DispatchQueue.main.async {
                     self.subscriptions = newSubscriptions
                     self.lastUpdateTime = Date()
