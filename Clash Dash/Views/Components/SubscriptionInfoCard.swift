@@ -2,6 +2,10 @@ import SwiftUI
 
 struct SubscriptionInfoCard: View {
     let subscriptions: [SubscriptionCardInfo]
+    let lastUpdateTime: Date?
+    let isLoading: Bool
+    let onRefresh: () async -> Void
+    
     @State private var currentIndex = 0
     @Environment(\.colorScheme) var colorScheme
     
@@ -18,6 +22,24 @@ struct SubscriptionInfoCard: View {
             return String(format: "%.1f MB", bytes / (1024 * 1024))
         } else {
             return String(format: "%.1f KB", bytes / 1024)
+        }
+    }
+    
+    private func formatUpdateTime(_ date: Date?) -> String {
+        guard let date = date else { return "未更新" }
+        let now = Date()
+        let diff = now.timeIntervalSince(date)
+        
+        if diff < 10 {
+            return "刚刚"
+        } else if diff < 60 {
+            return "\(Int(diff))秒前"
+        } else if diff < 3600 {
+            return "\(Int(diff / 60))分钟前"
+        } else if diff < 86400 {
+            return "\(Int(diff / 3600))小时前"
+        } else {
+            return "\(Int(diff / 86400))天前"
         }
     }
     
@@ -44,6 +66,18 @@ struct SubscriptionInfoCard: View {
                             .font(.system(size: 14))
                             .foregroundColor(.blue)
                     }
+                }
+                
+                Button(action: {
+                    Task {
+                        await onRefresh()
+                    }
+                }) {
+                    Image(systemName: "arrow.clockwise.circle.fill")
+                        .font(.system(size: 14))
+                        .foregroundColor(.blue)
+                        .rotationEffect(.degrees(isLoading ? 360 : 0))
+                        .animation(isLoading ? Animation.linear(duration: 1).repeatForever(autoreverses: false) : .default, value: isLoading)
                 }
             }
             
@@ -74,57 +108,29 @@ struct SubscriptionInfoCard: View {
                         
                         Spacer()
                         
-                        Text("更新：\(subscription.lastUpdateTime, style: .date)")
+                        Text("更新：\(formatUpdateTime(lastUpdateTime))")
                             .font(.system(size: 12))
                             .foregroundColor(.secondary)
                     }
                     
-                    // 进度条
                     GeometryReader { geometry in
                         ZStack(alignment: .leading) {
-                            Rectangle()
-                                .frame(width: geometry.size.width, height: 4)
-                                .opacity(0.3)
-                                .foregroundColor(.gray)
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(Color(.systemGray5))
+                                .frame(height: 4)
                             
-                            Rectangle()
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(Color.blue)
                                 .frame(width: geometry.size.width * CGFloat(subscription.usedTraffic / subscription.totalTraffic), height: 4)
-                                .foregroundColor(.blue)
                         }
-                        .cornerRadius(2)
                     }
                     .frame(height: 4)
                 }
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(12)
         .background(cardBackgroundColor)
-        .cornerRadius(12)
-        .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
+        .cornerRadius(8)
+        .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
     }
-}
-
-// 预览
-#Preview {
-    VStack(spacing: 16) {
-        SubscriptionInfoCard(subscriptions: [
-            SubscriptionCardInfo(
-                name: "Premium订阅",
-                expiryDate: Date().addingTimeInterval(30 * 24 * 3600),
-                lastUpdateTime: Date().addingTimeInterval(-3600),
-                usedTraffic: 50 * 1024 * 1024 * 1024,
-                totalTraffic: 100 * 1024 * 1024 * 1024
-            ),
-            SubscriptionCardInfo(
-                name: "Basic订阅",
-                expiryDate: Date().addingTimeInterval(60 * 24 * 3600),
-                lastUpdateTime: Date().addingTimeInterval(-7200),
-                usedTraffic: 20 * 1024 * 1024 * 1024,
-                totalTraffic: 200 * 1024 * 1024 * 1024
-            )
-        ])
-    }
-    .padding()
-    .background(Color(.systemGroupedBackground))
 } 

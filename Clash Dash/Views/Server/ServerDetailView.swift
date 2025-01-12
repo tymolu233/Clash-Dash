@@ -16,12 +16,14 @@ struct ServerDetailView: View {
     @State private var showingCustomRules = false
     @State private var showingRestartService = false
     @EnvironmentObject private var bindingManager: WiFiBindingManager
+    @StateObject private var subscriptionManager: SubscriptionManager
     
     // 添加触觉反馈生成器
     private let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
     
     init(server: ClashServer) {
         self.server = server
+        self._subscriptionManager = StateObject(wrappedValue: SubscriptionManager(server: server))
         
         // 设置 UITabBar 的外观
         let appearance = UITabBarAppearance()
@@ -465,7 +467,17 @@ struct OverviewTab: View {
                             
                         case .subscription:
                             if !subscriptionManager.subscriptions.isEmpty {
-                                SubscriptionInfoCard(subscriptions: subscriptionManager.subscriptions)
+                                let subscriptions = subscriptionManager.subscriptions
+                                let lastUpdateTime = subscriptionManager.lastUpdateTime
+                                let isLoading = subscriptionManager.isLoading
+                                
+                                SubscriptionInfoCard(
+                                    subscriptions: subscriptions,
+                                    lastUpdateTime: lastUpdateTime,
+                                    isLoading: isLoading
+                                ) {
+                                    await subscriptionManager.refresh()
+                                }
                             }
                         }
                     }

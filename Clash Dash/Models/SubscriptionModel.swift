@@ -750,9 +750,13 @@ class MihomoClient: ClashClient {
 // 订阅信息管理器
 class SubscriptionManager: ObservableObject {
     @Published var subscriptions: [SubscriptionCardInfo] = []
+    @Published var isLoading = false
+    @Published var lastUpdateTime: Date?
+    
     private let server: ClashServer
     private let httpClient: HTTPClient
     private var clashClient: ClashClient
+    private let cache = SubscriptionCache.shared
     
     init(server: ClashServer) {
         self.server = server
@@ -765,28 +769,66 @@ class SubscriptionManager: ObservableObject {
         case .openClash:
             self.clashClient = OpenClashClient(server: server, httpClient: httpClient)
         }
+        
+        // 加载缓存的数据
+        if let cached = cache.load(for: server) {
+            self.subscriptions = cached
+            self.lastUpdateTime = cache.getLastUpdateTime(for: server)
+        }
     }
     
-    func fetchSubscriptionInfo() async {
+    func fetchSubscriptionInfo(forceRefresh: Bool = false) async {
+        // 如果不是强制刷新且已有缓存数据，直接返回
+        if !forceRefresh && !subscriptions.isEmpty {
+            return
+        }
+        
+        DispatchQueue.main.async {
+            self.isLoading = true
+        }
+        
         do {
             if let config = try await clashClient.getCurrentConfig() {
                 if let subscriptionInfo = try await clashClient.getSubscriptionInfo(config: config) {
+                    let newSubscriptions = Array(subscriptionInfo.values)
                     DispatchQueue.main.async {
-                        self.subscriptions = Array(subscriptionInfo.values)
+                        self.subscriptions = newSubscriptions
+                        self.lastUpdateTime = Date()
+                        self.isLoading = false
                     }
+                    // 保存到缓存
+                    cache.save(subscriptions: newSubscriptions, for: server)
                     return
                 }
             }
             
             // 如果获取配置失败，尝试获取代理提供者信息
             if let proxyInfo = try await clashClient.getProxyProvider() {
+                let newSubscriptions = Array(proxyInfo.values)
                 DispatchQueue.main.async {
-                    self.subscriptions = Array(proxyInfo.values)
+                    self.subscriptions = newSubscriptions
+                    self.lastUpdateTime = Date()
+                    self.isLoading = false
                 }
+                // 保存到缓存
+                cache.save(subscriptions: newSubscriptions, for: server)
             }
         } catch {
             print("Error fetching subscription info: \(error)")
+            DispatchQueue.main.async {
+                self.isLoading = false
+            }
         }
+    }
+    
+    func refresh() async {
+        await fetchSubscriptionInfo(forceRefresh: true)
+    }
+    
+    func clearCache() {
+        cache.clear(for: server)
+        subscriptions = []
+        lastUpdateTime = nil
     }
 }
 
