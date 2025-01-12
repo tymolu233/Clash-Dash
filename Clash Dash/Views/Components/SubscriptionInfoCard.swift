@@ -13,6 +13,8 @@ struct SubscriptionInfoCard: View {
     @Environment(\.colorScheme) var colorScheme
     @AppStorage("subscriptionCardStyle") private var cardStyle = SubscriptionCardStyle.classic
     
+    private let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+    
     private var cardBackgroundColor: Color {
         Color(.secondarySystemGroupedBackground)
     }
@@ -96,22 +98,23 @@ struct SubscriptionInfoCard: View {
                                 Text("\(Int(subscription.percentageUsed))%")
                                     .font(.system(size: 42, weight: .medium))
                                 
+                                // 简化的进度条设计
                                 GeometryReader { geometry in
                                     ZStack(alignment: .leading) {
-                                        RoundedRectangle(cornerRadius: 2)
+                                        RoundedRectangle(cornerRadius: 1.5)
                                             .fill(Color(.systemGray5))
-                                            .frame(height: 4)
+                                            .frame(height: 3)
                                         
-                                        RoundedRectangle(cornerRadius: 2)
+                                        RoundedRectangle(cornerRadius: 1.5)
                                             .fill(
                                                 getProgressColor(subscription.percentageUsed)
-                                                    .gradient
+                                                    .opacity(0.8)
                                             )
                                             .frame(width: geometry.size.width * CGFloat(subscription.usedTraffic / subscription.totalTraffic))
-                                            .frame(height: 4)
+                                            .frame(height: 3)
                                     }
                                 }
-                                .frame(width: 90, height: 4)
+                                .frame(width: 80, height: 3)
                                 
                                 Text("\(formatTraffic(subscription.usedTraffic)) / \(formatTraffic(subscription.totalTraffic))")
                                     .font(.system(size: 12))
@@ -121,7 +124,8 @@ struct SubscriptionInfoCard: View {
                         
                         // 更新时间和按钮
                         if isCurrentCard {
-                            HStack {
+                            ZStack {
+                                // 更新时间（左对齐）
                                 HStack(spacing: 4) {
                                     Image(systemName: "clock")
                                         .font(.system(size: 10))
@@ -131,9 +135,9 @@ struct SubscriptionInfoCard: View {
                                         .font(.system(size: 12))
                                 }
                                 .foregroundColor(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
                                 
-                                Spacer()
-                                
+                                // 点点指示器（居中）
                                 if subscriptions.count > 1 {
                                     HStack(spacing: 4) {
                                         ForEach(0..<subscriptions.count, id: \.self) { index in
@@ -144,8 +148,7 @@ struct SubscriptionInfoCard: View {
                                     }
                                 }
                                 
-                                Spacer()
-                                
+                                // 刷新按钮（右对齐）
                                 Button(action: {
                                     Task {
                                         await onRefresh()
@@ -158,6 +161,7 @@ struct SubscriptionInfoCard: View {
                                         .rotationEffect(.degrees(isLoading ? 360 : 0))
                                         .animation(isLoading ? .linear(duration: 1).repeatForever(autoreverses: false) : .default, value: isLoading)
                                 }
+                                .frame(maxWidth: .infinity, alignment: .trailing)
                             }
                         }
                     }
@@ -186,8 +190,10 @@ struct SubscriptionInfoCard: View {
                                     withAnimation(.spring(response: 0.3, dampingFraction: 0.7, blendDuration: 0.5)) {
                                         if gesture.translation.width > threshold || velocity > 100 {
                                             currentIndex = (currentIndex - 1 + subscriptions.count) % subscriptions.count
+                                            impactFeedback.impactOccurred()
                                         } else if gesture.translation.width < -threshold || velocity < -100 {
                                             currentIndex = (currentIndex + 1) % subscriptions.count
+                                            impactFeedback.impactOccurred()
                                         }
                                         self.dragOffset = .zero
                                     }
