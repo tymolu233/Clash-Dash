@@ -282,12 +282,32 @@ struct SpeedChartView: View {
     }
 }
 
+// 添加订阅信息模型
+// struct SubscriptionCardInfo: Identifiable {
+//     let id = UUID()
+//     let name: String?
+//     let expiryDate: Date?
+//     let lastUpdateTime: Date
+//     let usedTraffic: Double
+//     let totalTraffic: Double
+// }
+
+// 订阅信息卡片组件
+
+
 // 2. 更新 OverviewTab
 struct OverviewTab: View {
     let server: ClashServer
     @ObservedObject var monitor: NetworkMonitor
     @StateObject private var settings = OverviewCardSettings()
+    @StateObject private var subscriptionManager: SubscriptionManager
     @Environment(\.colorScheme) var colorScheme
+    
+    init(server: ClashServer, monitor: NetworkMonitor) {
+        self.server = server
+        self.monitor = monitor
+        self._subscriptionManager = StateObject(wrappedValue: SubscriptionManager(server: server))
+    }
     
     private var cardBackgroundColor: Color {
         colorScheme == .dark ? 
@@ -442,6 +462,11 @@ struct OverviewTab: View {
                             
                         case .modeSwitch:
                             ModeSwitchCard(server: server)
+                            
+                        case .subscription:
+                            if !subscriptionManager.subscriptions.isEmpty {
+                                SubscriptionInfoCard(subscriptions: subscriptionManager.subscriptions)
+                            }
                         }
                     }
                 }
@@ -452,6 +477,9 @@ struct OverviewTab: View {
         .background(Color(.systemGroupedBackground))
         .onAppear {
             monitor.resetData() // 重置监控数据
+            Task {
+                await subscriptionManager.fetchSubscriptionInfo() // 获取订阅信息
+            }
         }
     }
 }

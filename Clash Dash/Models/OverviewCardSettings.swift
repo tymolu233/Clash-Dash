@@ -8,6 +8,7 @@ enum OverviewCard: String, CaseIterable, Identifiable, Codable {
     case speedChart = "speedChart"
     case memoryChart = "memoryChart"
     case modeSwitch = "modeSwitch"
+    case subscription = "subscription"
     
     var id: String { self.rawValue }
     
@@ -19,6 +20,7 @@ enum OverviewCard: String, CaseIterable, Identifiable, Codable {
         case .speedChart: return "速率图表"
         case .memoryChart: return "内存图表"
         case .modeSwitch: return "代理模式切换"
+        case .subscription: return "订阅信息"
         }
     }
     
@@ -30,6 +32,7 @@ enum OverviewCard: String, CaseIterable, Identifiable, Codable {
         case .speedChart: return "chart.line.uptrend.xyaxis"
         case .memoryChart: return "memorychip"
         case .modeSwitch: return "switch.2"
+        case .subscription: return "doc.text.fill"
         }
     }
 }
@@ -44,7 +47,13 @@ class OverviewCardSettings: ObservableObject {
     init() {
         // 先初始化存储属性
         cardOrder = OverviewCard.allCases
-        cardVisibility = Dictionary(uniqueKeysWithValues: OverviewCard.allCases.map { ($0, true) })
+        cardVisibility = Dictionary(uniqueKeysWithValues: OverviewCard.allCases.map { card in
+            // 订阅卡片默认隐藏
+            if card == .subscription {
+                return (card, false)
+            }
+            return (card, true)
+        })
         
         // 然后从 AppStorage 加载数据
         if let savedOrder = try? JSONDecoder().decode([OverviewCard].self, from: orderData) {
@@ -53,7 +62,7 @@ class OverviewCardSettings: ObservableObject {
         
         if let savedVisibility = try? JSONDecoder().decode([String: Bool].self, from: visibilityData) {
             cardVisibility = Dictionary(uniqueKeysWithValues: OverviewCard.allCases.map { card in
-                (card, savedVisibility[card.rawValue] ?? true)
+                (card, savedVisibility[card.rawValue] ?? (card == .subscription ? false : true))
             })
         }
     }
