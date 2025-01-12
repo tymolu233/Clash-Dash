@@ -1,5 +1,15 @@
 import Foundation
 
+// 订阅卡片样式
+public enum SubscriptionCardStyle: String, CaseIterable, Codable {
+    case classic = "紧凑"
+    case modern = "简洁"
+    
+    var description: String {
+        return self.rawValue
+    }
+}
+
 // 订阅信息卡片数据模型
 public struct SubscriptionCardInfo: Identifiable, Codable {
     public let id: UUID

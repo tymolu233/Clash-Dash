@@ -33,7 +33,6 @@ struct AppearanceSettingsView: View {
                             .tag(mode)
                     }
                 }
-                
             } header: {
                 SectionHeader(title: "外观设置", systemImage: "paintbrush")
             }

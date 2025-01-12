@@ -45,25 +45,34 @@ class OverviewCardSettings: ObservableObject {
     @Published var cardVisibility: [OverviewCard: Bool]
     
     init() {
-        // 先初始化存储属性
+        // 先初始化存储属性，确保所有卡片都在列表中
         cardOrder = OverviewCard.allCases
         cardVisibility = Dictionary(uniqueKeysWithValues: OverviewCard.allCases.map { card in
-            // 订阅卡片默认隐藏
-            if card == .subscription {
-                return (card, false)
-            }
             return (card, true)
         })
         
-        // 然后从 AppStorage 加载数据
+        // 从 AppStorage 加载顺序数据
         if let savedOrder = try? JSONDecoder().decode([OverviewCard].self, from: orderData) {
-            cardOrder = savedOrder
+            // 确保新添加的卡片也在列表中
+            var newOrder = savedOrder
+            for card in OverviewCard.allCases {
+                if !newOrder.contains(card) {
+                    newOrder.append(card)
+                }
+            }
+            cardOrder = newOrder
+            saveOrder() // 保存更新后的顺序
         }
         
+        // 从 AppStorage 加载可见性数据
         if let savedVisibility = try? JSONDecoder().decode([String: Bool].self, from: visibilityData) {
-            cardVisibility = Dictionary(uniqueKeysWithValues: OverviewCard.allCases.map { card in
-                (card, savedVisibility[card.rawValue] ?? (card == .subscription ? false : true))
-            })
+            var newVisibility: [OverviewCard: Bool] = [:]
+            for card in OverviewCard.allCases {
+                // 如果是保存的数据中没有的新卡片，默认设置为显示
+                newVisibility[card] = savedVisibility[card.rawValue] ?? true
+            }
+            cardVisibility = newVisibility
+            saveVisibility() // 保存更新后的可见性设置
         }
     }
     

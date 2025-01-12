@@ -7,12 +7,14 @@ struct SubscriptionInfoCard: View {
     let onRefresh: () async -> Void
     
     @State private var currentIndex = 0
+    @State private var isButtonPressed = false
+    @State private var dragOffset = CGSize.zero
+    @Namespace private var animation
     @Environment(\.colorScheme) var colorScheme
+    @AppStorage("subscriptionCardStyle") private var cardStyle = SubscriptionCardStyle.classic
     
     private var cardBackgroundColor: Color {
-        colorScheme == .dark ? 
-            Color(.systemGray6) : 
-            Color(.systemBackground)
+        Color(.secondarySystemGroupedBackground)
     }
     
     private func formatTraffic(_ bytes: Double) -> String {
@@ -31,106 +33,345 @@ struct SubscriptionInfoCard: View {
         let diff = now.timeIntervalSince(date)
         
         if diff < 10 {
-            return "刚刚"
+            return "刚刚更新"
         } else if diff < 60 {
-            return "\(Int(diff))秒前"
+            return "\(Int(diff))秒前更新"
         } else if diff < 3600 {
-            return "\(Int(diff / 60))分钟前"
+            return "\(Int(diff / 60))分钟前更新"
         } else if diff < 86400 {
-            return "\(Int(diff / 3600))小时前"
+            return "\(Int(diff / 3600))小时前更新"
         } else {
-            return "\(Int(diff / 86400))天前"
+            return "\(Int(diff / 86400))天前更新"
         }
     }
     
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+    private func getProgressColor(_ percentage: Double) -> Color {
+        switch percentage {
+        case 0..<50:
+            return .green
+        case 50..<80:
+            return .orange
+        default:
+            return .red
+        }
+    }
+    
+    private var modernCardContent: some View {
+        ZStack {
+            if !subscriptions.isEmpty {
+                ForEach(Array(subscriptions.enumerated()), id: \.element.id) { index, subscription in
+                    let offset = CGFloat(index - currentIndex)
+                    let isCurrentCard = index == currentIndex
+                    
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack(alignment: .center, spacing: 16) {
+                            // 左侧信息
+                            VStack(alignment: .leading, spacing: 6) {
+                                // 标题和图标
+                                HStack(spacing: 6) {
+                                    Image(systemName: "network.badge.shield.half.filled")
+                                        .font(.system(size: 18))
+                                        .foregroundStyle(.blue.gradient)
+                                    if let name = subscription.name {
+                                        Text(name)
+                                            .font(.system(size: 18, weight: .medium))
+                                    }
+                                }
+                                
+                                // 剩余时间
+                                if let expiryDate = subscription.expiryDate {
+                                    let remainingDays = Calendar.current.dateComponents([.day], from: Date(), to: expiryDate).day ?? 0
+                                    Text("剩余时间")
+                                        .font(.system(size: 14))
+                                        .foregroundColor(.secondary)
+                                    Text("\(remainingDays) 天")
+                                        .font(.system(size: 22, weight: .medium))
+                                }
+                            }
+                            
+                            Spacer()
+                            
+                            // 右侧百分比显示
+                            VStack(alignment: .trailing, spacing: 4) {
+                                Text("\(Int(subscription.percentageUsed))%")
+                                    .font(.system(size: 42, weight: .medium))
+                                
+                                GeometryReader { geometry in
+                                    ZStack(alignment: .leading) {
+                                        RoundedRectangle(cornerRadius: 2)
+                                            .fill(Color(.systemGray5))
+                                            .frame(height: 4)
+                                        
+                                        RoundedRectangle(cornerRadius: 2)
+                                            .fill(
+                                                getProgressColor(subscription.percentageUsed)
+                                                    .gradient
+                                            )
+                                            .frame(width: geometry.size.width * CGFloat(subscription.usedTraffic / subscription.totalTraffic))
+                                            .frame(height: 4)
+                                    }
+                                }
+                                .frame(width: 90, height: 4)
+                                
+                                Text("\(formatTraffic(subscription.usedTraffic)) / \(formatTraffic(subscription.totalTraffic))")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        
+                        // 更新时间和按钮
+                        if isCurrentCard {
+                            HStack {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "clock")
+                                        .font(.system(size: 10))
+                                        .symbolRenderingMode(.hierarchical)
+                                        .foregroundStyle(.secondary)
+                                    Text(formatUpdateTime(lastUpdateTime))
+                                        .font(.system(size: 12))
+                                }
+                                .foregroundColor(.secondary)
+                                
+                                Spacer()
+                                
+                                if subscriptions.count > 1 {
+                                    HStack(spacing: 4) {
+                                        ForEach(0..<subscriptions.count, id: \.self) { index in
+                                            Circle()
+                                                .fill(index == currentIndex ? Color.blue : Color.gray.opacity(0.3))
+                                                .frame(width: 5, height: 5)
+                                        }
+                                    }
+                                }
+                                
+                                Spacer()
+                                
+                                Button(action: {
+                                    Task {
+                                        await onRefresh()
+                                    }
+                                }) {
+                                    Image(systemName: "arrow.triangle.2.circlepath")
+                                        .font(.system(size: 14))
+                                        .symbolRenderingMode(.hierarchical)
+                                        .foregroundStyle(.blue)
+                                        .rotationEffect(.degrees(isLoading ? 360 : 0))
+                                        .animation(isLoading ? .linear(duration: 1).repeatForever(autoreverses: false) : .default, value: isLoading)
+                                }
+                            }
+                        }
+                    }
+                    .padding(16)
+                    .background(cardBackgroundColor)
+                    .cornerRadius(16)
+                    .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.1),
+                           radius: 8, x: 0, y: 4)
+                    .offset(x: dragOffset.width + offset * 320)
+                    .offset(x: offset * 20)  // 堆叠偏移
+                    .scaleEffect(isCurrentCard ? 1 : 0.92)
+                    .opacity(abs(offset) >= 2 ? 0 : 1 - abs(offset) * 0.3)  // 渐变透明度
+                    .zIndex(isCurrentCard ? 1 : 0)
+                    .gesture(
+                        DragGesture()
+                            .onChanged { gesture in
+                                if subscriptions.count > 1 {
+                                    self.dragOffset = CGSize(width: gesture.translation.width, height: 0)
+                                }
+                            }
+                            .onEnded { gesture in
+                                if subscriptions.count > 1 {
+                                    let threshold: CGFloat = 50
+                                    let velocity = gesture.predictedEndLocation.x - gesture.location.x
+                                    
+                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7, blendDuration: 0.5)) {
+                                        if gesture.translation.width > threshold || velocity > 100 {
+                                            currentIndex = (currentIndex - 1 + subscriptions.count) % subscriptions.count
+                                        } else if gesture.translation.width < -threshold || velocity < -100 {
+                                            currentIndex = (currentIndex + 1) % subscriptions.count
+                                        }
+                                        self.dragOffset = .zero
+                                    }
+                                }
+                            }
+                    )
+                }
+            } else {
+                Text("暂无订阅信息")
+                    .font(.system(size: 14))
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 20)
+                    .padding(16)
+                    .background(cardBackgroundColor)
+                    .cornerRadius(16)
+            }
+        }
+        .animation(.spring(response: 0.4, dampingFraction: 0.8, blendDuration: 0.5), value: currentIndex)
+    }
+    
+    private var classicCardContent: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // 标题栏
             HStack {
-                HStack(spacing: 4) {
-                    Image(systemName: "doc.text.fill")
-                        .font(.system(size: 14))
-                        .foregroundColor(.blue)
+                HStack(spacing: 6) {
+                    Image(systemName: "chart.bar.fill")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(.blue.gradient)
                     Text("订阅信息")
                         .font(.system(size: 14, weight: .medium))
                 }
                 
                 Spacer()
                 
-                if subscriptions.count > 1 {
+                HStack(spacing: 12) {
+                    if subscriptions.count > 1 {
+                        Button(action: {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                currentIndex = (currentIndex + 1) % subscriptions.count
+                                isButtonPressed = true
+                                
+                                // 重置按钮状态
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                    isButtonPressed = false
+                                }
+                            }
+                        }) {
+                            Image(systemName: "arrow.right.circle.fill")
+                                .font(.system(size: 16))
+                                .foregroundStyle(.blue.gradient)
+                                .scaleEffect(isButtonPressed ? 0.8 : 1.0)
+                                .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isButtonPressed)
+                        }
+                    }
+                    
                     Button(action: {
-                        withAnimation {
-                            currentIndex = (currentIndex + 1) % subscriptions.count
+                        Task {
+                            await onRefresh()
                         }
                     }) {
-                        Image(systemName: "arrow.right.circle.fill")
-                            .font(.system(size: 14))
-                            .foregroundColor(.blue)
+                        Image(systemName: "arrow.clockwise.circle.fill")
+                            .font(.system(size: 16))
+                            .foregroundStyle(.blue.gradient)
+                            .rotationEffect(.degrees(isLoading ? 360 : 0))
+                            .animation(isLoading ? .linear(duration: 1).repeatForever(autoreverses: false) : .default, value: isLoading)
                     }
-                }
-                
-                Button(action: {
-                    Task {
-                        await onRefresh()
-                    }
-                }) {
-                    Image(systemName: "arrow.clockwise.circle.fill")
-                        .font(.system(size: 14))
-                        .foregroundColor(.blue)
-                        .rotationEffect(.degrees(isLoading ? 360 : 0))
-                        .animation(isLoading ? Animation.linear(duration: 1).repeatForever(autoreverses: false) : .default, value: isLoading)
                 }
             }
             
-            let subscription = subscriptions[currentIndex]
-            
-            VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    if let name = subscription.name {
-                        Text(name)
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.primary)
-                    }
-                    
-                    Spacer()
-                    
-                    if let expiryDate = subscription.expiryDate {
-                        Text("到期：\(expiryDate, style: .date)")
-                            .font(.system(size: 12))
-                            .foregroundColor(.secondary)
-                    }
-                }
+            if !subscriptions.isEmpty {
+                let subscription = subscriptions[currentIndex]
                 
-                VStack(spacing: 4) {
-                    HStack {
-                        Text("流量：\(formatTraffic(subscription.usedTraffic)) / \(formatTraffic(subscription.totalTraffic))")
-                            .font(.system(size: 12))
-                            .foregroundColor(.secondary)
+                VStack(alignment: .leading, spacing: 10) {
+                    // 订阅名称和到期时间
+                    HStack(alignment: .center) {
+                        if let name = subscription.name {
+                            Text(name)
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundColor(.primary)
+                        }
                         
                         Spacer()
                         
-                        Text("更新：\(formatUpdateTime(lastUpdateTime))")
-                            .font(.system(size: 12))
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    GeometryReader { geometry in
-                        ZStack(alignment: .leading) {
-                            RoundedRectangle(cornerRadius: 2)
-                                .fill(Color(.systemGray5))
-                                .frame(height: 4)
-                            
-                            RoundedRectangle(cornerRadius: 2)
-                                .fill(Color.blue)
-                                .frame(width: geometry.size.width * CGFloat(subscription.usedTraffic / subscription.totalTraffic), height: 4)
+                        if let expiryDate = subscription.expiryDate {
+                            HStack(spacing: 4) {
+                                Image(systemName: "calendar")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondary)
+                                Text(expiryDate, style: .date)
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(
+                                Capsule()
+                                    .fill(Color(.systemGray6))
+                            )
                         }
                     }
-                    .frame(height: 4)
+                    
+                    // 流量使用进度条
+                    VStack(spacing: 6) {
+                        HStack {
+                            Text("流量使用")
+                                .font(.system(size: 12))
+                                .foregroundColor(.secondary)
+                            
+                            Spacer()
+                            
+                            Text("\(formatTraffic(subscription.usedTraffic)) / \(formatTraffic(subscription.totalTraffic))")
+                                .font(.system(size: 12))
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        GeometryReader { geometry in
+                            ZStack(alignment: .leading) {
+                                RoundedRectangle(cornerRadius: 4)
+                                    .fill(Color(.systemGray5))
+                                
+                                RoundedRectangle(cornerRadius: 4)
+                                    .fill(
+                                        getProgressColor(subscription.percentageUsed)
+                                            .gradient
+                                    )
+                                    .frame(width: geometry.size.width * CGFloat(subscription.usedTraffic / subscription.totalTraffic))
+                            }
+                            .frame(height: 8)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 4)
+                                    .stroke(Color(.systemGray4), lineWidth: 0.5)
+                            )
+                        }
+                        .frame(height: 8)
+                        
+                        // 百分比和更新时间
+                        HStack {
+                            Text("\(String(format: "%.1f%%", subscription.percentageUsed)) 已用")
+                                .font(.system(size: 12))
+                                .foregroundColor(.secondary)
+                            
+                            Spacer()
+                            
+                            HStack(spacing: 4) {
+                                Image(systemName: "clock.fill")
+                                    .font(.system(size: 10))
+                                Text(formatUpdateTime(lastUpdateTime))
+                                    .font(.system(size: 12))
+                            }
+                            .foregroundColor(.secondary)
+                        }
+                    }
                 }
+                .transition(.opacity.combined(with: .move(edge: .leading)))
+            } else {
+                Text("暂无订阅信息")
+                    .font(.system(size: 14))
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 20)
             }
         }
-        .padding(12)
-        .background(cardBackgroundColor)
-        .cornerRadius(8)
-        .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(cardBackgroundColor)
+                .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.1),
+                       radius: 8, x: 0, y: 4)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color(.systemGray4).opacity(0.5), lineWidth: 0.5)
+        )
+    }
+    
+    var body: some View {
+        Group {
+            switch cardStyle {
+            case .classic:
+                classicCardContent
+            case .modern:
+                modernCardContent
+            }
+        }
     }
 } 
