@@ -64,6 +64,18 @@ struct SubscriptionInfoCard: View {
                 ForEach(Array(subscriptions.enumerated()), id: \.element.id) { index, subscription in
                     let offset = CGFloat(index - currentIndex)
                     let isCurrentCard = index == currentIndex
+                    let dragAmount = abs(dragOffset.width)
+                    let threshold: CGFloat = 50
+                    
+                    // 计算变形和位移
+                    let scale = isCurrentCard ? 1.0 : 0.85
+                    let xOffset = dragOffset.width + offset * 320
+                    let yOffset = isCurrentCard ? 0.0 : 20.0
+                    
+                    // 计算水滴效果
+                    let progress = min(dragAmount / threshold, 1.0)
+                    let dropScale = isCurrentCard ? (1.0 - progress * 0.1) : scale
+                    let dropOffset = isCurrentCard ? (dragOffset.width > 0 ? 15.0 : -15.0) * progress : 0
                     
                     VStack(alignment: .leading, spacing: 12) {
                         HStack(alignment: .center, spacing: 16) {
@@ -170,10 +182,10 @@ struct SubscriptionInfoCard: View {
                     .cornerRadius(16)
                     .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.1),
                            radius: 8, x: 0, y: 4)
-                    .offset(x: dragOffset.width + offset * 320)
-                    .offset(x: offset * 20)  // 堆叠偏移
-                    .scaleEffect(isCurrentCard ? 1 : 0.92)
-                    .opacity(abs(offset) >= 2 ? 0 : 1 - abs(offset) * 0.3)  // 渐变透明度
+                    .offset(x: xOffset + dropOffset)
+                    .offset(y: yOffset)
+                    .scaleEffect(dropScale)
+                    .opacity(isCurrentCard ? 1.0 : 0.5)
                     .zIndex(isCurrentCard ? 1 : 0)
                     .gesture(
                         DragGesture()
@@ -187,15 +199,20 @@ struct SubscriptionInfoCard: View {
                                     let threshold: CGFloat = 50
                                     let velocity = gesture.predictedEndLocation.x - gesture.location.x
                                     
-                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7, blendDuration: 0.5)) {
-                                        if gesture.translation.width > threshold || velocity > 100 {
-                                            currentIndex = (currentIndex - 1 + subscriptions.count) % subscriptions.count
+                                    if abs(gesture.translation.width) > threshold || abs(velocity) > 100 {
+                                        withAnimation(.interpolatingSpring(stiffness: 150, damping: 15)) {
+                                            if gesture.translation.width > 0 {
+                                                currentIndex = (currentIndex - 1 + subscriptions.count) % subscriptions.count
+                                            } else {
+                                                currentIndex = (currentIndex + 1) % subscriptions.count
+                                            }
                                             impactFeedback.impactOccurred()
-                                        } else if gesture.translation.width < -threshold || velocity < -100 {
-                                            currentIndex = (currentIndex + 1) % subscriptions.count
-                                            impactFeedback.impactOccurred()
+                                            self.dragOffset = .zero
                                         }
-                                        self.dragOffset = .zero
+                                    } else {
+                                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                            self.dragOffset = .zero
+                                        }
                                     }
                                 }
                             }
@@ -212,7 +229,7 @@ struct SubscriptionInfoCard: View {
                     .cornerRadius(16)
             }
         }
-        .animation(.spring(response: 0.4, dampingFraction: 0.8, blendDuration: 0.5), value: currentIndex)
+        .animation(.interpolatingSpring(stiffness: 150, damping: 15), value: currentIndex)
     }
     
     private var classicCardContent: some View {
@@ -235,6 +252,7 @@ struct SubscriptionInfoCard: View {
                             withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                                 currentIndex = (currentIndex + 1) % subscriptions.count
                                 isButtonPressed = true
+                                impactFeedback.impactOccurred()
                                 
                                 // 重置按钮状态
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {

@@ -3,6 +3,7 @@ import SwiftUI
 struct OverviewCardSettingsView: View {
     @StateObject private var settings = OverviewCardSettings()
     @AppStorage("subscriptionCardStyle") private var subscriptionCardStyle = SubscriptionCardStyle.classic
+    @AppStorage("modeSwitchCardStyle") private var modeSwitchCardStyle = ModeSwitchCardStyle.classic
     
     var body: some View {
         List {
@@ -37,13 +38,19 @@ struct OverviewCardSettingsView: View {
             }
             
             Section {
-                Picker("订阅卡片样式", selection: $subscriptionCardStyle) {
+                Picker("订阅信息卡片样式", selection: $subscriptionCardStyle) {
                     ForEach(SubscriptionCardStyle.allCases, id: \.self) { style in
                         Text(style.description).tag(style)
                     }
                 }
+                
+                Picker("代理切换卡片样式", selection: $modeSwitchCardStyle) {
+                    ForEach(ModeSwitchCardStyle.allCases, id: \.self) { style in
+                        Text(style.description).tag(style)
+                    }
+                }
             } header: {
-                SectionHeader(title: "订阅卡片", systemImage: "creditcard.fill")
+                SectionHeader(title: "卡片样式", systemImage: "greetingcard")
             }
         }
         .navigationTitle("概览页面设置")
