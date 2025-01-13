@@ -92,13 +92,13 @@ struct OpenClashRulesView: View {
                                                 await deleteRule(rule, package: server.luciPackage)
                                             }
                                         } label: {
-                                            Label("删除", systemImage: "trash")
+                                            Text("删除")
                                         }
                                         
                                         Button {
                                             editingRule = rule  // 设置要编辑的规则，触发编辑视图
                                         } label: {
-                                            Label("编辑", systemImage: "pencil")
+                                            Text("编辑")
                                         }
                                         .tint(.blue)
                                         
@@ -107,8 +107,7 @@ struct OpenClashRulesView: View {
                                                 await toggleRule(rule, package: server.luciPackage)
                                             }
                                         } label: {
-                                            Label(rule.isEnabled ? "禁用" : "启用", 
-                                                  systemImage: rule.isEnabled ? "livephoto.slash" : "livephoto")
+                                            Text(rule.isEnabled ? "禁用" : "启用")
                                         }
                                         .tint(rule.isEnabled ? .orange : .green)
                                     }
@@ -191,25 +190,18 @@ struct OpenClashRulesView: View {
     }
     
     private func loadRules(package: LuCIPackage = .openClash) async {
-        // print("🔄 开始加载规则...")
         isLoading = true
-        defer { 
-            isLoading = false
-            // print("✅ 规则加载完成")
-        }
+        defer { isLoading = false }
         
         guard let username = server.openWRTUsername,
               let password = server.openWRTPassword else {
-            // print("❌ 错误: 未设置 OpenWRT 用户名或密码")
             errorMessage = "未设置 OpenWRT 用户名或密码"
             showError = true
             return
         }
         
         do {
-            // print("🔑 正在获取认证 token...")
             let token = try await viewModel.getAuthToken(server, username: username, password: password)
-            // print("✅ 成功获取 token")
             
             let scheme = server.openWRTUseSSL ? "https" : "http"
             guard let openWRTUrl = server.openWRTUrl else {
@@ -240,8 +232,6 @@ struct OpenClashRulesView: View {
                     "params": ["uci get mihomo.mixin.mixin_file_content"]
                 ]
             }
-
-            print("📝 准备发送的请求: \(statusPayload)")
             
             statusRequest.httpBody = try JSONSerialization.data(withJSONObject: statusPayload)
             
@@ -252,7 +242,6 @@ struct OpenClashRulesView: View {
                 await MainActor.run {
                     self.isCustomRulesEnabled = enabled
                 }
-                print("📍 自定义规则状态: \(enabled ? "启用" : "禁用")")
             }
             
             // 获取规则内容
@@ -285,83 +274,109 @@ struct OpenClashRulesView: View {
             let response = try JSONDecoder().decode(OpenClashRuleResponse.self, from: data)
             
             if let error = response.error {
-                // print("❌ 服务器返回错误: \(error)")
                 errorMessage = "服务器错误: \(error)"
                 showError = true
                 return
             }
             
             guard let result = response.result else {
-                // print("❌ 服务器返回空结果")
                 errorMessage = "服务器返回空结果"
                 showError = true
                 return
             }
             
-            // 添加日志查看服务器返回的原始内容
-            // print("📥 服务器返回的原始内容:\n\(result)")
-            
             // 解析规则
-            let ruleLines = result.components(separatedBy: CharacterSet.newlines)
-            // print("📝 开始解析规则，总行数: \(ruleLines.count)")
-            
             var parsedRules: [OpenClashRule] = []
             var isInRulesSection = false
+            var currentSection = ""
             
-            for (index, line) in ruleLines.enumerated() {
-                let trimmedLine = line.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
-                if trimmedLine == "rules:" {
-                    isInRulesSection = true
-                    // print("✅ 在第 \(index) 行找到 rules: 标记")
+            let lines = result.components(separatedBy: .newlines)
+            for line in lines {
+                let trimmedLine = line.trimmingCharacters(in: .whitespaces)
+                
+                // 检查 section 开始
+                if trimmedLine.hasSuffix(":") {
+                    currentSection = trimmedLine.dropLast().trimmingCharacters(in: .whitespaces)
+                    isInRulesSection = currentSection == "rules"
                     continue
                 }
                 
-                if isInRulesSection {
-                    if trimmedLine.hasPrefix("-") || trimmedLine.hasPrefix("##-") {
-                        // print("🔍 解析规则行: \(trimmedLine)")
-                        let rule = OpenClashRule(from: trimmedLine)
-                        if !rule.type.isEmpty {
-                            parsedRules.append(rule)
-                            // print("✅ 成功解析规则: \(rule.target)")
-                        }
+                // 如果在 rules section 中且行以 - 开头（包括被注释的规则）
+                if isInRulesSection && (trimmedLine.hasPrefix("-") || trimmedLine.hasPrefix("##-")) {
+                    let rule = OpenClashRule(from: trimmedLine)
+                    if !rule.type.isEmpty {
+                        parsedRules.append(rule)
                     }
                 }
             }
-            
-            // print("📊 规则解析完成，找到 \(parsedRules.count) 条有效规则")
             
             await MainActor.run {
                 self.rules = parsedRules
             }
             
-            // print("📝 解析到 \(parsedRules.count) 条规则")
-            
         } catch {
-            // print("❌ 错误: \(error.localizedDescription)")
             errorMessage = error.localizedDescription
             showError = true
         }
     }
     
-    private func generateRulesContent() -> String {
-        // 添加日志来查看生成的内容
-        var content = "rules:\n"
-        for rule in rules {
-            let prefix = rule.isEnabled ? "- " : "##- "
-            let comment = rule.comment.map { " #\($0)" } ?? ""
-            content += "\(prefix)\(rule.type),\(rule.target),\(rule.action)\(comment)\n"
+    private func generateRulesContent(originalContent: String) -> String {
+        var newContent = ""
+        var isInRulesSection = false
+        var hasFoundRulesSection = false
+        
+        // 分行处理原始内容
+        let lines = originalContent.components(separatedBy: .newlines)
+        for line in lines {
+            let trimmedLine = line.trimmingCharacters(in: .whitespaces)
+            
+            // 检查 section 开始
+            if trimmedLine.hasSuffix(":") {
+                let sectionName = trimmedLine.dropLast().trimmingCharacters(in: .whitespaces)
+                if sectionName == "rules" {
+                    isInRulesSection = true
+                    hasFoundRulesSection = true
+                    newContent += "rules:\n"
+                    
+                    // 添加新的规则
+                    for rule in rules {
+                        let prefix = rule.isEnabled ? "- " : "##- "
+                        let comment = rule.comment.map { " #\($0)" } ?? ""
+                        newContent += "\(prefix)\(rule.type),\(rule.target),\(rule.action)\(comment)\n"
+                    }
+                } else {
+                    isInRulesSection = false
+                    newContent += line + "\n"
+                }
+                continue
+            }
+            
+            // 如果不在 rules section 中，保持原样
+            if !isInRulesSection {
+                newContent += line + "\n"
+            }
+            // 在 rules section 中的行被跳过，因为我们已经添加了新的规则
         }
-        // print("📄 生成的规则内容:\n\(content)")  // 添加这行来查看生成的内容
-        return content
+        
+        // 如果文件中没有找到 rules section，在末尾添加
+        if !hasFoundRulesSection {
+            if !newContent.isEmpty && !newContent.hasSuffix("\n\n") {
+                newContent += "\n"
+            }
+            newContent += "rules:\n"
+            for rule in rules {
+                let prefix = rule.isEnabled ? "- " : "##- "
+                let comment = rule.comment.map { " #\($0)" } ?? ""
+                newContent += "\(prefix)\(rule.type),\(rule.target),\(rule.action)\(comment)\n"
+            }
+        }
+        
+        return newContent
     }
     
     private func saveRules(package: LuCIPackage = .openClash) async throws {
-        // print("💾 开始保存规则...")
         isProcessing = true
-        defer { 
-            isProcessing = false 
-            // print("✅ 规则保存完成")
-        }
+        defer { isProcessing = false }
         
         guard let username = server.openWRTUsername,
               let password = server.openWRTPassword else {
@@ -374,19 +389,17 @@ struct OpenClashRulesView: View {
         }
         let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
         
-        // 使用 viewModel 获取 token
         let token = try await viewModel.getAuthToken(server, username: username, password: password)
         
-        // 构建请求
         guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
             throw NetworkError.invalidURL
         }
         
-        // 生成规则内容
-        let content = generateRulesContent()
-        // print("📄 准备写入的内容:\n\(content)")
+        // 首先读取当前文件内容
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        // 构建写入命令，使用 echo 直接写入
         let filePath: String
         if package == .openClash {
             filePath = "/etc/openclash/custom/openclash_custom_rules.list"
@@ -394,64 +407,40 @@ struct OpenClashRulesView: View {
             filePath = "/etc/mihomo/mixin.yaml"
         }
         
-        let escapedContent = content.replacingOccurrences(of: "'", with: "'\\''")
-        let cmd = "echo '\(escapedContent)' > \(filePath) 2>&1 && echo '写入成功' || echo '写入失败'"
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
-        
-        let command: [String: Any] = [
+        let readCommand: [String: Any] = [
             "method": "exec",
-            "params": [cmd]
+            "params": ["cat \(filePath)"]
         ]
         
-        // print("📝 执行命令: \(cmd)")
-        request.httpBody = try JSONSerialization.data(withJSONObject: command)
+        request.httpBody = try JSONSerialization.data(withJSONObject: readCommand)
+        let (readData, _) = try await URLSession.shared.data(for: request)
+        let readResponse = try JSONDecoder().decode(OpenClashRuleResponse.self, from: readData)
         
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let originalContent = readResponse.result ?? ""
+        let newContent = generateRulesContent(originalContent: originalContent)
         
-        // 添加响应状态码日志
-        if let httpResponse = response as? HTTPURLResponse {
-            // print("📡 服务器响应状态码: \(httpResponse.statusCode)")
-            if let responseString = String(data: data, encoding: .utf8) {
-                // print("📥 服务器响应内容: \(responseString)")
-                
-                if let responseData = try? JSONDecoder().decode(OpenClashRuleResponse.self, from: data) {
-                    if let error = responseData.error {
-                        // print("❌ 服务器返回错误: \(error)")
-                        throw NetworkError.serverError(500)
-                    }
-                    if let result = responseData.result {
-                        // print("📄 命令执行结果: \(result)")
-                        if result.contains("写入失败") {
-                            throw NetworkError.serverError(500)
-                        }
-                    }
-                    
-                    // 验证文件内容
-                    let verifyCmd = "cat \(filePath)"
-                    let verifyPayload: [String: Any] = [
-                        "method": "exec",
-                        "params": [verifyCmd]
-                    ]
-                    request.httpBody = try JSONSerialization.data(withJSONObject: verifyPayload)
-                    
-                    let (verifyData, _) = try await URLSession.shared.data(for: request)
-                    if let verifyResponse = try? JSONDecoder().decode(OpenClashRuleResponse.self, from: verifyData),
-                       let verifyResult = verifyResponse.result {
-                        // print("✅ 文件内容验证:\n\(verifyResult)")
-                    }
-                }
-            }
-        }
+        // 写入新内容
+        let escapedContent = newContent.replacingOccurrences(of: "'", with: "'\\''")
+        let writeCmd = "echo '\(escapedContent)' > \(filePath) 2>&1 && echo '写入成功' || echo '写入失败'"
+        
+        let writeCommand: [String: Any] = [
+            "method": "exec",
+            "params": [writeCmd]
+        ]
+        
+        request.httpBody = try JSONSerialization.data(withJSONObject: writeCommand)
+        let (writeData, response) = try await URLSession.shared.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse,
               httpResponse.statusCode == 200 else {
-            let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 500
-            // print("❌ 服务器返回错误状态码: \(statusCode)")
-            throw NetworkError.serverError(statusCode)
+            throw NetworkError.serverError((response as? HTTPURLResponse)?.statusCode ?? 500)
+        }
+        
+        if let writeResponse = try? JSONDecoder().decode(OpenClashRuleResponse.self, from: writeData),
+           let writeResult = writeResponse.result {
+            if writeResult.contains("写入失败") {
+                throw NetworkError.serverError(500)
+            }
         }
     }
     
@@ -498,24 +487,86 @@ struct OpenClashRulesView: View {
     
     private func typeColor(for type: String) -> Color {
         switch type {
+        // 域名类规则
         case "DOMAIN":
             return .purple        // 纯紫色用于精确域名匹配
         case "DOMAIN-SUFFIX":
             return .indigo       // 靛蓝色用于域名后缀
         case "DOMAIN-KEYWORD":
             return .blue         // 蓝色用于域名关键字
-        case "PROCESS-NAME":
-            return .green        // 绿色用于进程名
-        case "IP-CIDR":
-            return .orange       // 橙色用于目标IP
+        case "DOMAIN-REGEX":
+            return .cyan         // 青色用于域名正则
+        case "GEOSITE":
+            return .mint         // 薄荷色用于地理域名
+            
+        // IP类规则
+        case "IP-CIDR", "IP-CIDR6":
+            return .orange       // 橙色用于IP CIDR
+        case "IP-SUFFIX":
+            return .yellow       // 黄色用于IP后缀
+        case "IP-ASN":
+            return .brown        // 棕色用于ASN
+        case "GEOIP":
+            return .green        // 绿色用于地理IP
+            
+        // 源IP类规则
         case "SRC-IP-CIDR":
-            return .cyan          // XX用于源IP
+            return .red         // 红色用于源IP CIDR
+        case "SRC-IP-SUFFIX":
+            return .pink        // 粉色用于源IP后缀
+        case "SRC-IP-ASN":
+            return .orange      // 橙色用于源IP ASN
+        case "SRC-GEOIP":
+            return .green       // 绿色用于源地理IP
+            
+        // 端口类规则
         case "DST-PORT":
-            return .teal         // 青色用于目标端口
+            return .teal        // 青色用于目标端口
         case "SRC-PORT":
-            return .mint         // 薄荷色用于源端口
+            return .mint        // 薄荷色用于源端口
+            
+        // 入站类规则
+        case "IN-PORT":
+            return .blue        // 蓝色用于入站端口
+        case "IN-TYPE":
+            return .indigo      // 靛蓝色用于入站类型
+        case "IN-USER":
+            return .purple      // 紫色用于入站用户
+        case "IN-NAME":
+            return .cyan        // 青色用于入站名称
+            
+        // 进程类规则
+        case "PROCESS-PATH":
+            return .brown       // 棕色用于进程路径
+        case "PROCESS-PATH-REGEX":
+            return .orange      // 橙色用于进程路径正则
+        case "PROCESS-NAME":
+            return .green       // 绿色用于进程名称
+        case "PROCESS-NAME-REGEX":
+            return .teal        // 青色用于进程名称正则
+        case "UID":
+            return .blue        // 蓝色用于用户ID
+            
+        // 网络类规则
+        case "NETWORK":
+            return .purple      // 紫色用于网络类型
+        case "DSCP":
+            return .indigo      // 靛蓝色用于DSCP
+            
+        // 规则集和逻辑规则
+        case "RULE-SET":
+            return .orange      // 橙色用于规则集
+        case "AND":
+            return .blue        // 蓝色用于逻辑与
+        case "OR":
+            return .green       // 绿色用于逻辑或
+        case "NOT":
+            return .red         // 红色用于逻辑非
+        case "SUB-RULE":
+            return .purple      // 紫色用于子规则
+            
         default:
-            return .secondary
+            return .secondary   // 默认颜色用于未知类型
         }
     }
     

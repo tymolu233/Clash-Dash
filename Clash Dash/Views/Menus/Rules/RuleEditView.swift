@@ -17,6 +17,7 @@ struct RuleEditView: View {
     @State private var errorMessage: String?
     @State private var proxyGroups: [String] = []
     @State private var isLoadingProxies = true
+    @State private var noResolve = false
     
     init(title: String = "添加规则", rule: OpenClashRule? = nil, server: ClashServer, onSave: @escaping (OpenClashRule) -> Void) {
         self.title = title
@@ -28,9 +29,14 @@ struct RuleEditView: View {
         if let rule = rule {
             _selectedType = State(initialValue: RuleType(rawValue: rule.type) ?? .domain)
             _target = State(initialValue: rule.target)
-            _action = State(initialValue: rule.action)
+            _action = State(initialValue: rule.action.replacingOccurrences(of: ",no-resolve", with: ""))
             _comment = State(initialValue: rule.comment ?? "")
+            _noResolve = State(initialValue: rule.action.hasSuffix(",no-resolve"))
         }
+    }
+    
+    private var isNoResolveEnabled: Bool {
+        selectedType == .ipCidr || selectedType == .ipCidr6
     }
     
     private func fetchProxyGroups() {
@@ -94,11 +100,12 @@ struct RuleEditView: View {
         }
         
         // 创建规则
+        let finalAction = noResolve && isNoResolveEnabled ? "\(action),no-resolve" : action
         let newRule = OpenClashRule(
             id: rule?.id ?? UUID(),  // 如果是编辑模式，保持原有ID
             target: target.trimmingCharacters(in: .whitespacesAndNewlines),
             type: selectedType.rawValue,
-            action: action.trimmingCharacters(in: .whitespacesAndNewlines),
+            action: finalAction.trimmingCharacters(in: .whitespacesAndNewlines),
             isEnabled: rule?.isEnabled ?? true,  // 如果是编辑模式，保持原有状态
             comment: comment.isEmpty ? nil : comment.trimmingCharacters(in: .whitespacesAndNewlines)
         )
@@ -244,19 +251,22 @@ struct RuleEditView: View {
                                 )
                             }
                         }
-                        
-                        // VStack(alignment: .leading, spacing: 4) {
-                        //     Label("策略说明", systemImage: "info.circle")
-                        //         .font(.caption)
-                        //         .foregroundColor(.blue)
-                        //     Text("• DIRECT - 直接连接")
-                        //         .font(.caption)
-                        //     Text("• REJECT - 拒绝连接")
-                        //         .font(.caption)
-                        //     Text("• 其他策略需要与配置文件中的策略组名称一致")
-                        //         .font(.caption)
-                        // }
-                        // .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal)
+                    
+                    // no-resolve 开关
+                    VStack(alignment: .leading, spacing: 8) {
+                        Toggle(isOn: $noResolve) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("跳过 DNS 解析")
+                                    .font(.headline)
+                                Text("仅支持关于目标IP的规则，域名开始匹配关于目标IP规则时，mihomo 将触发 dns 解析来检查域名的目标IP是否匹配规则，可以选择 no-resolve 选项以跳过 dns 解析")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .disabled(!isNoResolveEnabled)
+                        .opacity(isNoResolveEnabled ? 1 : 0.5)
                     }
                     .padding(.horizontal)
                     

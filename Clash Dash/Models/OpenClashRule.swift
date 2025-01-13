@@ -9,7 +9,6 @@ struct OpenClashRule: Identifiable, Equatable {
     let comment: String?    // 备注
     
     init(from ruleString: String) {
-        // print("🔍 解析规则字符串: \(ruleString)")
         self.id = UUID()
         // 移除前导空格
         let trimmedString = ruleString.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -24,15 +23,44 @@ struct OpenClashRule: Identifiable, Equatable {
         
         // 分割字符串，获取规则和注释
         let components = cleanString.components(separatedBy: "#")
-        let ruleComponents = components[0].components(separatedBy: ",")
+        let ruleContent = components[0].trimmingCharacters(in: .whitespaces)
         
-        if ruleComponents.count >= 3 {
-            self.type = ruleComponents[0].trimmingCharacters(in: .whitespacesAndNewlines)
-            self.target = ruleComponents[1].trimmingCharacters(in: .whitespacesAndNewlines)
-            self.action = ruleComponents[2].trimmingCharacters(in: .whitespacesAndNewlines)
-            // print("✅ 规则解析成功 - 类型: \(type), 目标: \(target), 动作: \(action)")
+        // 处理规则内容
+        if let firstComma = ruleContent.firstIndex(of: ",") {
+            // 获取规则类型
+            self.type = String(ruleContent[..<firstComma]).trimmingCharacters(in: .whitespaces)
+            
+            // 检查是否包含 no-resolve
+            if ruleContent.hasSuffix(",no-resolve") {
+                // 找到倒数第二个逗号
+                let beforeNoResolve = ruleContent.dropLast(",no-resolve".count)
+                if let lastComma = beforeNoResolve.lastIndex(of: ",") {
+                    // 提取目标和动作
+                    let afterFirstComma = ruleContent[ruleContent.index(after: firstComma)...]
+                    let targetEndIndex = lastComma
+                    self.target = String(afterFirstComma[..<targetEndIndex]).trimmingCharacters(in: .whitespaces)
+                    
+                    // 获取完整的动作（包括 no-resolve）
+                    let actionStart = ruleContent[ruleContent.index(after: lastComma)...]
+                    self.action = String(actionStart).trimmingCharacters(in: .whitespaces)
+                } else {
+                    self.target = ""
+                    self.action = ""
+                }
+            } else {
+                // 找到最后一个逗号
+                if let lastComma = ruleContent.lastIndex(of: ",") {
+                    // 提取目标和动作
+                    let afterFirstComma = ruleContent[ruleContent.index(after: firstComma)...]
+                    let targetEndIndex = lastComma
+                    self.target = String(afterFirstComma[..<targetEndIndex]).trimmingCharacters(in: .whitespaces)
+                    self.action = String(ruleContent[ruleContent.index(after: lastComma)...]).trimmingCharacters(in: .whitespaces)
+                } else {
+                    self.target = ""
+                    self.action = ""
+                }
+            }
         } else {
-            // print("❌ 规则格式无效")
             self.type = ""
             self.target = ""
             self.action = ""
