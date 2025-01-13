@@ -102,7 +102,7 @@ struct MoreView: View {
                         showingSwitchConfig = true
                     } label: {
                         HStack {
-                            Image(systemName: "document.badge.gearshape")
+                            Image(systemName: "filemenu.and.selection")
                                 .foregroundColor(.blue)
                                 .frame(width: 25)
                             Text("配置管理")

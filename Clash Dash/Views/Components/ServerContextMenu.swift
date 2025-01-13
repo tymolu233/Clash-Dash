@@ -101,7 +101,7 @@ struct ServerContextMenu: ViewModifier {
                     HapticManager.shared.impact(.light)
                     onShowSwitchConfig()
                 } label: {
-                    Label("配置管理", systemImage: "document.badge.gearshape")
+                    Label("配置管理", systemImage: "filemenu.and.selection")
                 }
                 
                 Button {
@@ -141,7 +141,7 @@ struct ServerContextMenu: ViewModifier {
                     HapticManager.shared.impact(.light)
                     onShowSwitchConfig()
                 } label: {
-                    Label("配置管理", systemImage: "document.badge.gearshape")
+                    Label("配置管理", systemImage: "filemenu.and.selection")
                 }
                 
                 // Button {

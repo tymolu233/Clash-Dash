@@ -436,7 +436,7 @@ struct ConnectionsView: View {
     
     private func EmptyStateView() -> some View {
         VStack(spacing: 16) {
-            Image(systemName: "network.slash")
+            Image(systemName: "antenna.radiowaves.left.and.right")
                 .font(.system(size: 48))
                 .foregroundColor(.secondary)
             
