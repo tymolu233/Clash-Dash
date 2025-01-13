@@ -99,8 +99,8 @@ struct OpenClashConfigView: View {
                         Task {
                             await loadConfigs()
                             // 添加成功触觉反馈
-                            let successFeedback = UINotificationFeedbackGenerator()
-                            successFeedback.notificationOccurred(.success)
+                            
+                            HapticManager.shared.notification(.success)
                         }
                     } label: {
                         Image(systemName: "arrow.clockwise")
@@ -120,8 +120,8 @@ struct OpenClashConfigView: View {
         .task {
             await loadConfigs()
             // 添加成功的触觉反馈
-            let successFeedback = UINotificationFeedbackGenerator()
-            successFeedback.notificationOccurred(.success)
+            
+            HapticManager.shared.notification(.success)
         }
         .alert("错误", isPresented: $showError) {
             Button("确定", role: .cancel) { }
@@ -159,8 +159,8 @@ struct OpenClashConfigView: View {
                     Task {
                         await loadConfigs()
                         // 添加成功的触觉反馈
-                        let successFeedback = UINotificationFeedbackGenerator()
-                        successFeedback.notificationOccurred(.success)
+                        
+                        HapticManager.shared.notification(.success)
                     }
                 }
             )
@@ -183,7 +183,7 @@ struct OpenClashConfigView: View {
     private func handleConfigSelection(_ config: OpenClashConfig) {
         // 添加触觉反馈
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-        impactFeedback.impactOccurred()
+        HapticManager.shared.impact(.light)
 
         // 首先检查是否是当前启用的配置
         guard config.state != .enabled else { return }
@@ -212,14 +212,14 @@ struct OpenClashConfigView: View {
                 configs = try await viewModel.fetchMihomoTProxyConfigs(server)
             }
             // 添加成功的触觉反馈
-            let successFeedback = UINotificationFeedbackGenerator()
-            successFeedback.notificationOccurred(.success)
+            
+            HapticManager.shared.notification(.success)
         } catch {
             errorMessage = error.localizedDescription
             showError = true
             // 添加失败的触觉反馈
-            let errorFeedback = UINotificationFeedbackGenerator()
-            errorFeedback.notificationOccurred(.error)
+            
+            HapticManager.shared.notification(.error)
         }
     }
     
@@ -259,7 +259,7 @@ struct OpenClashConfigView: View {
     private func handleEditConfig(_ config: OpenClashConfig) {
         // 添加触觉反馈
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-        impactFeedback.impactOccurred()
+        HapticManager.shared.impact(.light)
 
         let maxEditSize: Int64 = 90 * 1024  // 90KB
         configToEdit = config
@@ -282,7 +282,7 @@ struct OpenClashConfigView: View {
     private func handleDeleteConfig(_ config: OpenClashConfig) {
         // 添加触觉反馈
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-        impactFeedback.impactOccurred()
+        HapticManager.shared.impact(.light)
         
         // 如果是当前启用的配置，不允许删除
         guard config.state != .enabled else {
@@ -305,14 +305,14 @@ struct OpenClashConfigView: View {
                     )
                 await loadConfigs()  // 重新加载配置列表
                 // 添加成功触觉反馈
-                let successFeedback = UINotificationFeedbackGenerator()
-                successFeedback.notificationOccurred(.success)
+                
+                HapticManager.shared.notification(.success)
             } catch {
                 errorMessage = error.localizedDescription
                 showError = true
                 // 添加失败触觉反馈
-                let errorFeedback = UINotificationFeedbackGenerator()
-                errorFeedback.notificationOccurred(.error)
+                
+                HapticManager.shared.notification(.error)
             }
         }
     }

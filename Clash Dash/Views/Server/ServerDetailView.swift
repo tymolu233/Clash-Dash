@@ -39,7 +39,7 @@ struct ServerDetailView: View {
             // 概览标签页
             OverviewTab(server: server, monitor: networkMonitor)
                 .onAppear {
-                    impactFeedback.impactOccurred()
+                    HapticManager.shared.impact(.light)
                 }
                 .tabItem {
                     Label("概览", systemImage: "chart.line.uptrend.xyaxis")
@@ -49,7 +49,7 @@ struct ServerDetailView: View {
             // 代理标签页
             ProxyView(server: server)
                 .onAppear {
-                    impactFeedback.impactOccurred()
+                    HapticManager.shared.impact(.light)
                 }
                 .tabItem {
                     Label("代理", systemImage: "globe")
@@ -59,7 +59,7 @@ struct ServerDetailView: View {
             // 规则标签页
             RulesView(server: server)
                 .onAppear {
-                    impactFeedback.impactOccurred()
+                    HapticManager.shared.impact(.light)
                 }
                 .tabItem {
                     Label("规则", systemImage: "ruler")
@@ -69,7 +69,7 @@ struct ServerDetailView: View {
             // 连接标签页
             ConnectionsView(server: server)
                 .onAppear {
-                    impactFeedback.impactOccurred()
+                    HapticManager.shared.impact(.light)
                 }
                 .tabItem {
                     Label("连接", systemImage: "link")
@@ -79,7 +79,7 @@ struct ServerDetailView: View {
             // 更多标签页
             MoreView(server: server)
                 .onAppear {
-                    impactFeedback.impactOccurred()
+                    HapticManager.shared.impact(.light)
                 }
                 .tabItem {
                     Label("更多", systemImage: "ellipsis")

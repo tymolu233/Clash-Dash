@@ -84,7 +84,7 @@ struct GlobalSettingsView: View {
                             .labelsHidden()
                             .frame(width: 100)
                             .onChange(of: speedTestTimeout) { _ in
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                HapticManager.shared.impact(.light)
                             }
                     }
                     

@@ -13,11 +13,6 @@ struct CompactGroupCard: View {
     @State private var showURLTestAlert = false
     @Environment(\.colorScheme) var colorScheme
     
-    // 添加触觉反馈生成器
-    private let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-    private let successFeedback = UINotificationFeedbackGenerator()
-    private let errorFeedback = UINotificationFeedbackGenerator()
-    
     private var cardBackgroundColor: Color {
         colorScheme == .dark ? 
             Color(.systemGray6) : 
@@ -117,7 +112,7 @@ struct CompactGroupCard: View {
         VStack(spacing: 0) {
             Button {
                 // 添加触觉反馈
-                impactFeedback.impactOccurred()
+                HapticManager.shared.impact(.light)
                 
                 // 使用计算的动画时间
                 withAnimation(.spring(
@@ -240,18 +235,18 @@ struct CompactGroupCard: View {
                             )
                             .onTapGesture {
                                 // 添加触觉反馈
-                                impactFeedback.impactOccurred()
+                                HapticManager.shared.impact(.light)
                                 
                                 if group.type == "URLTest" {
                                     showURLTestAlert = true
-                                    errorFeedback.notificationOccurred(.error)
+                                    HapticManager.shared.notification(.error)
                                 } else {
                                     Task {
                                         if currentNodeOrder == nil {
                                             currentNodeOrder = displayedNodes
                                         }
                                         await viewModel.selectProxy(groupName: group.name, proxyName: nodeName)
-                                        successFeedback.notificationOccurred(.success)
+                                        HapticManager.shared.notification(.success)
                                     }
                                 }
                             }

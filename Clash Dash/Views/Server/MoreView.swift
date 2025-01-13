@@ -74,7 +74,7 @@ struct MoreView: View {
             if server.luciPackage == .openClash && server.source == .openWRT {
                 Section("OpenClash 插件控制") {
                     Button {
-                        impactFeedback.impactOccurred()
+                        HapticManager.shared.impact(.light)
                         showingServiceLog = true
                     } label: {
                         HStack {
@@ -86,7 +86,7 @@ struct MoreView: View {
                     }
                     
                     Button {
-                        impactFeedback.impactOccurred()
+                        HapticManager.shared.impact(.light)
                         showingConfigSubscription = true
                     } label: {
                         HStack {
@@ -98,7 +98,7 @@ struct MoreView: View {
                     }
                     
                     Button {
-                        impactFeedback.impactOccurred()
+                        HapticManager.shared.impact(.light)
                         showingSwitchConfig = true
                     } label: {
                         HStack {
@@ -110,7 +110,7 @@ struct MoreView: View {
                     }
                     
                     Button {
-                        impactFeedback.impactOccurred()
+                        HapticManager.shared.impact(.light)
                         showingCustomRules = true
                     } label: {
                         HStack {
@@ -122,7 +122,7 @@ struct MoreView: View {
                     }
                     
                     Button {
-                        impactFeedback.impactOccurred()
+                        HapticManager.shared.impact(.light)
                         showingRestartService = true
                     } label: {
                         HStack {
@@ -139,7 +139,7 @@ struct MoreView: View {
             if server.luciPackage == .mihomoTProxy && server.source == .openWRT {
                 Section("MihomoTProxy 插件控制") {
                     Button {
-                        impactFeedback.impactOccurred()
+                        HapticManager.shared.impact(.light)
                         showingServiceLog = true
                     } label: {
                         HStack {
@@ -151,7 +151,7 @@ struct MoreView: View {
                     }
                     
                     Button {
-                        impactFeedback.impactOccurred()
+                        HapticManager.shared.impact(.light)
                         showingConfigSubscription = true
                     } label: {
                         HStack {
@@ -163,7 +163,7 @@ struct MoreView: View {
                     }
                     
                     // Button {
-                    //     impactFeedback.impactOccurred()
+                    //     HapticManager.shared.impact(.light)
                     //     showingCustomRules = true
                     // } label: {
                     //     HStack {
@@ -175,7 +175,7 @@ struct MoreView: View {
                     // }
                     
                     Button {
-                        impactFeedback.impactOccurred()
+                        HapticManager.shared.impact(.light)
                         showingRestartService = true
                     } label: {
                         HStack {

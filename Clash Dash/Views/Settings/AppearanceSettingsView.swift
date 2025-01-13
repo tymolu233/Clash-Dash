@@ -5,6 +5,7 @@ struct AppearanceSettingsView: View {
     @AppStorage("proxyViewStyle") private var proxyViewStyle = ProxyViewStyle.detailed
     @AppStorage("hideDisconnectedServers") private var hideDisconnectedServers = false
     @AppStorage("enableWiFiBinding") private var enableWiFiBinding = false
+    @AppStorage("enableHapticFeedback") private var enableHapticFeedback = true
     @StateObject private var locationManager = LocationManager()
     @EnvironmentObject private var bindingManager: WiFiBindingManager
     
@@ -33,6 +34,8 @@ struct AppearanceSettingsView: View {
                             .tag(mode)
                     }
                 }
+                
+                Toggle("启用触感反馈", isOn: $enableHapticFeedback)
             } header: {
                 SectionHeader(title: "外观设置", systemImage: "paintbrush")
             }

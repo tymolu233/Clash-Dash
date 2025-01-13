@@ -60,7 +60,7 @@ struct ProxyGroupSortOrderView: View {
             ForEach(ProxyGroupSortOrder.allCases) { order in
                 Button {
                     selection = order
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    HapticManager.shared.impact(.light)
                 } label: {
                     HStack {
                         Text(order.description)

@@ -206,7 +206,7 @@ struct SubscriptionInfoCard: View {
                                             } else {
                                                 currentIndex = (currentIndex + 1) % subscriptions.count
                                             }
-                                            impactFeedback.impactOccurred()
+                                            HapticManager.shared.impact(.light)
                                             self.dragOffset = .zero
                                         }
                                     } else {
@@ -252,7 +252,7 @@ struct SubscriptionInfoCard: View {
                             withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                                 currentIndex = (currentIndex + 1) % subscriptions.count
                                 isButtonPressed = true
-                                impactFeedback.impactOccurred()
+                                HapticManager.shared.impact(.light)
                                 
                                 // 重置按钮状态
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {

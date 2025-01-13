@@ -23,14 +23,14 @@ struct ServerContextMenu: ViewModifier {
                 
                 
                 Button {
-                    impactFeedback.impactOccurred()
+                    HapticManager.shared.impact(.light)
                     onEdit()
                 } label: {
                     Label("编辑", systemImage: "pencil")
                 }
 
                 Button(role: .destructive) {
-                    impactFeedback.impactOccurred()
+                    HapticManager.shared.impact(.light)
                     showingDeleteAlert = true
                 } label: {
                     Label("删除", systemImage: "trash")
@@ -45,7 +45,7 @@ struct ServerContextMenu: ViewModifier {
                     // 上移选项
                     if let index = viewModel.servers.firstIndex(where: { $0.id == server.id }), index > 0 {
                         Button {
-                            impactFeedback.impactOccurred()
+                            HapticManager.shared.impact(.light)
                             viewModel.moveServerUp(server)
                         } label: {
                             Label("上移", systemImage: "arrow.up")
@@ -55,7 +55,7 @@ struct ServerContextMenu: ViewModifier {
                     // 下移选项
                     if let index = viewModel.servers.firstIndex(where: { $0.id == server.id }), index < viewModel.servers.count - 1 {
                         Button {
-                            impactFeedback.impactOccurred()
+                            HapticManager.shared.impact(.light)
                             viewModel.moveServerDown(server)
                         } label: {
                             Label("下移", systemImage: "arrow.down")
@@ -68,7 +68,7 @@ struct ServerContextMenu: ViewModifier {
             
             // 快速启动组
             Button {
-                impactFeedback.impactOccurred()
+                HapticManager.shared.impact(.light)
                 viewModel.setQuickLaunch(server)
             } label: {
                 Label(server.isQuickLaunch ? "取消快速启动" : "设为快速启动", 
@@ -84,35 +84,35 @@ struct ServerContextMenu: ViewModifier {
                 Divider()
 
                 Button {
-                    impactFeedback.impactOccurred()
+                    HapticManager.shared.impact(.light)
                     showingServiceLog = true
                 } label: {
                     Label("运行日志", systemImage: "doc.text.below.ecg")
                 }
                 
                 Button {
-                    impactFeedback.impactOccurred()
+                    HapticManager.shared.impact(.light)
                     onShowConfigSubscription()
                 } label: {
                     Label("订阅管理", systemImage: "cloud")
                 }
                 
                 Button {
-                    impactFeedback.impactOccurred()
+                    HapticManager.shared.impact(.light)
                     onShowSwitchConfig()
                 } label: {
                     Label("配置管理", systemImage: "document.badge.gearshape")
                 }
                 
                 Button {
-                    impactFeedback.impactOccurred()
+                    HapticManager.shared.impact(.light)
                     onShowCustomRules()
                 } label: {
                     Label("附加规则", systemImage: "list.bullet.rectangle")
                 }
                 
                 Button {
-                    impactFeedback.impactOccurred()
+                    HapticManager.shared.impact(.light)
                     onShowRestartService()
                 } label: {
                     Label("重启服务", systemImage: "arrow.clockwise.circle")
@@ -124,35 +124,35 @@ struct ServerContextMenu: ViewModifier {
                 Divider()
 
                 Button {
-                    impactFeedback.impactOccurred()
+                    HapticManager.shared.impact(.light)
                     showingServiceLog = true
                 } label: {
                     Label("运行日志", systemImage: "doc.text.below.ecg")
                 }
                 
                 Button {
-                    impactFeedback.impactOccurred()
+                    HapticManager.shared.impact(.light)
                     onShowConfigSubscription()
                 } label: {
                     Label("订阅管理", systemImage: "cloud")
                 }
                 
                 Button {
-                    impactFeedback.impactOccurred()
+                    HapticManager.shared.impact(.light)
                     onShowSwitchConfig()
                 } label: {
                     Label("配置管理", systemImage: "document.badge.gearshape")
                 }
                 
                 // Button {
-                //     impactFeedback.impactOccurred()
+                //     HapticManager.shared.impact(.light)
                 //     onShowCustomRules()
                 // } label: {
                 //     Label("附加规则", systemImage: "list.bullet.rectangle")
                 // }
                 
                 Button {
-                    impactFeedback.impactOccurred()
+                    HapticManager.shared.impact(.light)
                     onShowRestartService()
                 } label: {
                     Label("重启服务", systemImage: "arrow.clockwise.circle")

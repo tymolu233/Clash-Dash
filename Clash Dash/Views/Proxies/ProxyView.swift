@@ -301,8 +301,8 @@ struct ProxyView: View {
             isRefreshing = false
         }
         
-        let successFeedback = UINotificationFeedbackGenerator()
-        successFeedback.notificationOccurred(.success)
+        
+        HapticManager.shared.notification(.success)
     }
     
     private func sortNodes(_ nodeNames: [String], _ allNodes: [ProxyNode], groupName: String) -> [ProxyNode] {
@@ -574,7 +574,7 @@ struct GroupCard: View {
         .onTapGesture {
             // 添加触觉反馈
             let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-            impactFeedback.impactOccurred()
+            HapticManager.shared.impact(.light)
             
             // 显示选择器
             showingProxySelector = true
@@ -816,7 +816,7 @@ struct ProxyProviderCard: View {
                     Button {
                         Task {
                             // 添加触觉反馈
-                            impactFeedback.impactOccurred()
+                            HapticManager.shared.impact(.light)
                             
                             // print("Updating provider: \(provider.name)")
                             updateStatus = .updating
@@ -825,8 +825,8 @@ struct ProxyProviderCard: View {
                                 await viewModel.updateProxyProvider(providerName: provider.name)
                                 updateStatus = .success
                                 // 成功的触觉反馈
-                                let successFeedback = UINotificationFeedbackGenerator()
-                                successFeedback.notificationOccurred(.success)
+                                
+                                HapticManager.shared.notification(.success)
                                 
                                 try await Task.sleep(nanoseconds: 1_000_000_000)
                                 updateStatus = .none
@@ -834,8 +834,8 @@ struct ProxyProviderCard: View {
                                 // print("Provider update failed: \(error)")
                                 updateStatus = .failure
                                 // 失败时的触觉反馈
-                                let errorFeedback = UINotificationFeedbackGenerator()
-                                errorFeedback.notificationOccurred(.error) 
+                                
+                                HapticManager.shared.notification(.error) 
                                 
                                 try await Task.sleep(nanoseconds: 2_000_000_000)
                                 updateStatus = .none
@@ -866,7 +866,7 @@ struct ProxyProviderCard: View {
                     
                     Button {
                         // 添加触觉反馈
-                        impactFeedback.impactOccurred()
+                        HapticManager.shared.impact(.light)
                         
                         // print("Opening node selector for provider: \(provider.name)")
                         selectedProvider = provider
@@ -924,7 +924,7 @@ struct ProxyProviderCard: View {
         .cardBackground()
         .onTapGesture {
             // 添加触觉反馈
-            impactFeedback.impactOccurred()
+            HapticManager.shared.impact(.light)
             
             // print("Opening node selector for provider: \(provider.name)")
             selectedProvider = provider
@@ -983,7 +983,7 @@ struct ProviderNodeSelector: View {
                         )
                         .onTapGesture {
                             // 添加触觉反馈
-                            impactFeedback.impactOccurred()
+                            HapticManager.shared.impact(.light)
                             
                             Task {
                                 // print("Testing node: \(node.name) in provider: \(provider.name)")
@@ -998,21 +998,21 @@ struct ProviderNodeSelector: View {
                                         )
                                         await viewModel.fetchProxies()
                                         // 添加成功的触觉反馈
-                                        let successFeedback = UINotificationFeedbackGenerator()
-                                        successFeedback.notificationOccurred(.success)
+                                        
+                                        HapticManager.shared.notification(.success)
 
                                     } onCancel: {
                                         // print("Node test cancelled: \(node.name)")
                                         testingNodes.remove(node.name)
                                         // 添加失败的触觉反馈
-                                        let errorFeedback = UINotificationFeedbackGenerator()
-                                        errorFeedback.notificationOccurred(.error)
+                                        
+                                        HapticManager.shared.notification(.error)
                                     }
                                 } catch {
                                     print("Node test error: \(error)")
                                     // 添加失败的触觉反馈
-                                    let errorFeedback = UINotificationFeedbackGenerator()
-                                    errorFeedback.notificationOccurred(.error)
+                                    
+                                    HapticManager.shared.notification(.error)
                                 }
                                 
                                 testingNodes.remove(node.name)
@@ -1029,7 +1029,7 @@ struct ProviderNodeSelector: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         // 添加触觉反馈
-                        impactFeedback.impactOccurred()
+                        HapticManager.shared.impact(.light)
                         
                         Task {
                             // print("Testing all nodes in provider: \(provider.name)")
@@ -1040,20 +1040,20 @@ struct ProviderNodeSelector: View {
                                     await viewModel.healthCheckProvider(providerName: provider.name)
                                     await viewModel.fetchProxies()
                                     // 添加成功的触觉反馈
-                                    let successFeedback = UINotificationFeedbackGenerator()
-                                    successFeedback.notificationOccurred(.success)
+                                    
+                                    HapticManager.shared.notification(.success)
                                 } onCancel: {
                                     // print("Provider test cancelled")
                                     isTestingAll = false
                                     // 添加失败的触觉反馈
-                                    let errorFeedback = UINotificationFeedbackGenerator()
-                                    errorFeedback.notificationOccurred(.error)
+                                    
+                                    HapticManager.shared.notification(.error)
                                 }
                             } catch {
                                 // print("Provider test error: \(error)")
                                 // 添加失败的触觉反馈
-                                let errorFeedback = UINotificationFeedbackGenerator()
-                                errorFeedback.notificationOccurred(.error)
+                                
+                                HapticManager.shared.notification(.error)
                             }
                             
                             isTestingAll = false
@@ -1073,7 +1073,7 @@ struct ProviderNodeSelector: View {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("关闭") {
                         // 添加触觉反馈
-                        impactFeedback.impactOccurred()
+                        HapticManager.shared.impact(.light)
                         dismiss()
                     }
                 }
@@ -1236,7 +1236,7 @@ struct ProxySelectorSheet: View {
                             .onTapGesture {
                                 // 添加触觉反馈
                                 let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-                                impactFeedback.impactOccurred()
+                                HapticManager.shared.impact(.light)
                                 
                                 if group.type == "URLTest" {
                                     showURLTestAlert = true
@@ -1250,8 +1250,8 @@ struct ProxySelectorSheet: View {
                                         }
 
                                         // 添加成功的触觉反馈
-                                        let successFeedback = UINotificationFeedbackGenerator()
-                                        successFeedback.notificationOccurred(.success)
+                                        
+                                        HapticManager.shared.notification(.success)
 
                                         // 移除自动关闭
                                         // dismiss()
@@ -1294,13 +1294,13 @@ struct ProxySelectorSheet: View {
                     Button {
                         // 添加触觉反馈
                         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-                        impactFeedback.impactOccurred()
+                        HapticManager.shared.impact(.light)
                         
                         Task {
                             await viewModel.testGroupSpeed(groupName: group.name)
                             // 添加成功的触觉反馈
-                            let successFeedback = UINotificationFeedbackGenerator()
-                            successFeedback.notificationOccurred(.success)
+                            
+                            HapticManager.shared.notification(.success)
                         }
                     } label: {
                         Label("测速", systemImage: "bolt.horizontal")
@@ -1312,7 +1312,7 @@ struct ProxySelectorSheet: View {
                     Button("关闭") {
                         // 添加触觉反馈
                         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-                        impactFeedback.impactOccurred()
+                        HapticManager.shared.impact(.light)
                         
                         dismiss()
                     }

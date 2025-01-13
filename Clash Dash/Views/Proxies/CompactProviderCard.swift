@@ -12,10 +12,7 @@ struct CompactProviderCard: View {
     @Environment(\.colorScheme) var colorScheme
     
     // 添加触觉反馈生成器
-    private let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-    private let successFeedback = UINotificationFeedbackGenerator()
-    private let errorFeedback = UINotificationFeedbackGenerator()
-    
+
     private var cardBackgroundColor: Color {
         colorScheme == .dark ? 
             Color(.systemGray6) : 
@@ -83,7 +80,7 @@ struct CompactProviderCard: View {
         VStack(spacing: 0) {
             Button {
                 // 添加触觉反馈
-                impactFeedback.impactOccurred()
+                HapticManager.shared.impact(.light)
                 
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                     isExpanded.toggle()
@@ -184,7 +181,7 @@ struct CompactProviderCard: View {
             .contextMenu {
                 Button {
                     // 添加触觉反馈
-                    impactFeedback.impactOccurred()
+                    HapticManager.shared.impact(.light)
                     
                     Task {
                         await MainActor.run {
@@ -201,7 +198,7 @@ struct CompactProviderCard: View {
                                 await viewModel.fetchProxies()
                                 
                                 await MainActor.run {
-                                    successFeedback.notificationOccurred(.success)
+                                    HapticManager.shared.notification(.success)
                                     isUpdating = false
                                     withAnimation {
                                         showingUpdateSuccess = true
@@ -215,13 +212,13 @@ struct CompactProviderCard: View {
                             } onCancel: {
                                 Task { @MainActor in
                                     isUpdating = false
-                                    errorFeedback.notificationOccurred(.error)
+                                    HapticManager.shared.notification(.error)
                                 }
                             }
                         } catch {
                             await MainActor.run {
                                 isUpdating = false
-                                errorFeedback.notificationOccurred(.error)
+                                HapticManager.shared.notification(.error)
                             }
                         }
                     }
@@ -252,7 +249,7 @@ struct CompactProviderCard: View {
                             )
                             .onTapGesture {
                                 // 添加触觉反馈
-                                impactFeedback.impactOccurred()
+                                HapticManager.shared.impact(.light)
                                 
                                 Task {
                                     testingNodes.insert(node.name)
@@ -263,13 +260,13 @@ struct CompactProviderCard: View {
                                                 providerName: provider.name,
                                                 proxyName: node.name
                                             )
-                                            successFeedback.notificationOccurred(.success)
+                                            HapticManager.shared.notification(.success)
                                         } onCancel: {
                                             testingNodes.remove(node.name)
-                                            errorFeedback.notificationOccurred(.error)
+                                            HapticManager.shared.notification(.error)
                                         }
                                     } catch {
-                                        errorFeedback.notificationOccurred(.error)
+                                        HapticManager.shared.notification(.error)
                                     }
                                     
                                     testingNodes.remove(node.name)

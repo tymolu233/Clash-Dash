@@ -510,7 +510,7 @@ struct ConnectionsView: View {
                                     onClose: {
                                         // 添加触觉反馈
                                         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-                                        impactFeedback.impactOccurred()
+                                        HapticManager.shared.impact(.light)
                                         viewModel.closeConnection(connection.id)
                                     },
                                     selectedConnection: $selectedConnection

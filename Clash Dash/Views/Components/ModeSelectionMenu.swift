@@ -11,7 +11,7 @@ struct ModeSelectionMenu: View {
     var body: some View {
         Menu {
             Button {
-                impactFeedback.impactOccurred()
+                HapticManager.shared.impact(.light)
                 settingsViewModel.updateConfig("mode", value: "rule", server: server) { 
                     settingsViewModel.mode = "rule"
                     onModeChange("rule")
@@ -32,7 +32,7 @@ struct ModeSelectionMenu: View {
             }
             
             Button {
-                impactFeedback.impactOccurred()
+                HapticManager.shared.impact(.light)
                 settingsViewModel.updateConfig("mode", value: "direct", server: server) { 
                     settingsViewModel.mode = "direct"
                     onModeChange("direct")
@@ -53,7 +53,7 @@ struct ModeSelectionMenu: View {
             }
             
             Button {
-                impactFeedback.impactOccurred()
+                HapticManager.shared.impact(.light)
                 settingsViewModel.updateConfig("mode", value: "global", server: server) { 
                     settingsViewModel.mode = "global"
                     onModeChange("global")

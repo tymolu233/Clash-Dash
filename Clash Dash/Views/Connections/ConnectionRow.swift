@@ -123,7 +123,7 @@ struct ConnectionRow: View {
     var body: some View {
         Button {
             // 添加触觉反馈
-            impactFeedback.impactOccurred()
+            HapticManager.shared.impact(.light)
             selectedConnection = connection
         } label: {
             VStack(alignment: .leading, spacing: 8) {
@@ -158,7 +158,7 @@ struct ConnectionRow: View {
                     if connection.isAlive {
                         Button {
                             // 添加触觉反馈
-                            impactFeedback.impactOccurred()
+                            HapticManager.shared.impact(.light)
                             onClose()
                         } label: {
                             Image(systemName: "xmark.circle.fill")

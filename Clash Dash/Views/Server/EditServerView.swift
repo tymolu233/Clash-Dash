@@ -92,7 +92,7 @@ struct EditServerView: View {
                 Section {
                     Toggle("添加 OpenWRT 控制", isOn: $isOpenWRT)
                         .onChange(of: isOpenWRT) { newValue in
-                            impactFeedback.impactOccurred()
+                            HapticManager.shared.impact(.light)
                         }
                     
                     if isOpenWRT {

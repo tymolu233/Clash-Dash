@@ -170,7 +170,7 @@ struct ConnectionDetailView: View {
                         .contextMenu {
                             Button(action: {
                                 UIPasteboard.general.string = value
-                                impactFeedback.impactOccurred()
+                                HapticManager.shared.impact(.light)
                             }) {
                                 Label("复制", systemImage: "doc.on.doc")
                             }
@@ -190,7 +190,7 @@ struct ConnectionDetailView: View {
                         .contextMenu {
                             Button(action: {
                                 UIPasteboard.general.string = value
-                                impactFeedback.impactOccurred()
+                                HapticManager.shared.impact(.light)
                             }) {
                                 Label("复制", systemImage: "doc.on.doc")
                             }

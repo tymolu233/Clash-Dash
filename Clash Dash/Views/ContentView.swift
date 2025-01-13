@@ -72,7 +72,7 @@ struct ContentView: View {
                             
                             Menu {
                                 Button(action: {
-                                    impactFeedback.impactOccurred()
+                                    HapticManager.shared.impact(.light)
                                     showingAddSheet = true
                                 }) {
                                     Label("添加控制器", systemImage: "plus.circle")
@@ -85,7 +85,7 @@ struct ContentView: View {
                                     .background(Color.blue)
                                     .cornerRadius(22)
                                     .onTapGesture {
-                                        impactFeedback.impactOccurred()
+                                        HapticManager.shared.impact(.light)
                                     }
                             }
                             .padding(.top, 20)
@@ -131,7 +131,7 @@ struct ContentView: View {
                                 ServerDetailView(server: server)
                                     .onAppear {
                                         // 添加触觉反馈
-                                        impactFeedback.impactOccurred()
+                                        HapticManager.shared.impact(.light)
                                     }
                             } label: {
                                 ServerRowView(server: server)
@@ -149,7 +149,7 @@ struct ContentView: View {
                             }
                             .buttonStyle(PlainButtonStyle())
                             .onTapGesture {
-                                impactFeedback.impactOccurred()
+                                HapticManager.shared.impact(.light)
                             }
                         }
                     }
@@ -185,7 +185,7 @@ struct ContentView: View {
                         )
                         
                         Button {
-                            impactFeedback.impactOccurred()
+                            HapticManager.shared.impact(.light)
                             showingSourceCode = true
                         } label: {
                             HStack {
@@ -227,7 +227,7 @@ struct ContentView: View {
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button(action: {
-                        impactFeedback.impactOccurred()
+                        HapticManager.shared.impact(.light)
                         showingAddSheet = true
                     }) {
                         Image(systemName: "plus.circle.fill")

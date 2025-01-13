@@ -29,7 +29,7 @@ struct ModeSwitchCard: View {
                     Button {
                         withAnimation(.spring(response: 0.2, dampingFraction: 0.8)) {
                             selectedMode = mode.0
-                            impactFeedback.impactOccurred()
+                            HapticManager.shared.impact(.light)
                         }
                         updateMode(mode.0)
                     } label: {
@@ -88,7 +88,7 @@ struct ModeSwitchCard: View {
                     Button {
                         withAnimation(.spring(response: 0.2, dampingFraction: 0.8)) {
                             selectedMode = mode.0
-                            impactFeedback.impactOccurred()
+                            HapticManager.shared.impact(.light)
                         }
                         updateMode(mode.0)
                     } label: {
