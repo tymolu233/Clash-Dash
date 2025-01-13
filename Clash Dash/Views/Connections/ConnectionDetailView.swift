@@ -115,7 +115,7 @@ struct ConnectionDetailView: View {
     }
     
     // 添加触觉反馈生成器
-    private let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+    
     
     // 格式化时间的辅助方法
     private func formatDate(_ date: Date) -> String {

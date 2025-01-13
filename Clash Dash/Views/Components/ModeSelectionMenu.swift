@@ -6,7 +6,7 @@ struct ModeSelectionMenu: View {
     var onModeChange: (String) -> Void
     
     // 添加触觉反馈生成器
-    private let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+    
     
     var body: some View {
         Menu {

@@ -13,7 +13,7 @@ struct SubscriptionInfoCard: View {
     @Environment(\.colorScheme) var colorScheme
     @AppStorage("subscriptionCardStyle") private var cardStyle = SubscriptionCardStyle.classic
     
-    private let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+    
     
     private var cardBackgroundColor: Color {
         Color(.secondarySystemGroupedBackground)

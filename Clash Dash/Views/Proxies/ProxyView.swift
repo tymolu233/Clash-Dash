@@ -208,7 +208,7 @@ struct ProxyView: View {
     @AppStorage("hideProxyProviders") private var hideProxyProviders = false
     
     // 添加触觉反馈生成器
-    private let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+    
     
     init(server: ClashServer) {
         self.server = server
@@ -719,7 +719,7 @@ struct ProxyProviderCard: View {
     }
     
     // 添加触觉反馈生成器
-    private let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+    
     
     private var trafficInfo: (used: String, total: String, percentage: Double)? {
         guard let info = provider.subscriptionInfo,
@@ -965,7 +965,7 @@ struct ProviderNodeSelector: View {
     @State private var testingNodes = Set<String>()
     
     // 添加触觉反馈生成器
-    private let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+    
     
     private let columns = [GridItem(.flexible()), GridItem(.flexible())]
     

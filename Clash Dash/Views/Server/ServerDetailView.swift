@@ -19,7 +19,7 @@ struct ServerDetailView: View {
     @StateObject private var subscriptionManager: SubscriptionManager
     
     // 添加触觉反馈生成器
-    private let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+    
     
     init(server: ClashServer) {
         self.server = server

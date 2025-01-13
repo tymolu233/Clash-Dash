@@ -32,7 +32,7 @@ struct ContentView: View {
     }
 
     // 添加触觉反馈生成器
-    private let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+    
     
     // 添加过滤后的服务器列表计算属性
     private var filteredServers: [ClashServer] {

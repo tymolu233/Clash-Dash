@@ -16,7 +16,7 @@ struct ConnectionRow: View {
     }
     
     // 添加触觉反馈生成器
-    private let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+    
     
     // 添加格式化速度的辅助方法
     private func formatSpeed(_ bytesPerSecond: Double) -> String {

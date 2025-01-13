@@ -170,7 +170,7 @@ struct AddServerView: View {
     @State private var luciPackage: LuCIPackage = .openClash
     
     // 添加触觉反馈生成器
-    private let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+    
     
     private func checkIfHostname(_ urlString: String) -> Bool {
         let ipPattern = "^(?:[0-9]{1,3}\\.){3}[0-9]{1,3}$"

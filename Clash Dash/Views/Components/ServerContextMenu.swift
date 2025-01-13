@@ -14,7 +14,7 @@ struct ServerContextMenu: ViewModifier {
     var onShowRestartService: () -> Void
     
     // 添加触觉反馈生成器
-    private let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+    
     
     func body(content: Content) -> some View {
         content.contextMenu {

@@ -8,7 +8,7 @@ struct ModeSwitchCard: View {
     @Environment(\.colorScheme) private var colorScheme
     @AppStorage("modeSwitchCardStyle") private var cardStyle = ModeSwitchCardStyle.classic
     
-    private let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+    
     
     private var cardBackgroundColor: Color {
         colorScheme == .dark ? 
