@@ -27,8 +27,7 @@ struct CompactProviderCard: View {
     private var usageInfo: String? {
         let currentProvider = viewModel.providers.first { $0.name == provider.name } ?? provider
         guard let info = currentProvider.subscriptionInfo,
-              // 添加判断：只有当总流量不为 0 时才显示使用信息
-              info.total > 0 else { return nil }
+              info.total > 0 || info.upload > 0 || info.download > 0 else { return nil }
         let used = Double(info.upload + info.download)
         return "\(formatBytes(Int64(used))) / \(formatBytes(info.total))"
     }
@@ -48,10 +47,10 @@ struct CompactProviderCard: View {
         
         // 如果有订阅信息且不全为 0，返回更新时间和到期时间
         if let info = currentProvider.subscriptionInfo,
-           info.expire > 0 && info.total > 0 {
+           info.expire > 0 || info.total > 0 || info.upload > 0 || info.download > 0 {
             return (
                 update: relativeFormatter.localizedString(for: updateDate, relativeTo: Date()),
-                expire: formatExpireDate(info.expire)
+                expire: info.expire > 0 ? formatExpireDate(info.expire) : ""
             )
         }
         

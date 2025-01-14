@@ -4,6 +4,7 @@ struct OverviewCardSettingsView: View {
     @StateObject private var settings = OverviewCardSettings()
     @AppStorage("subscriptionCardStyle") private var subscriptionCardStyle = SubscriptionCardStyle.classic
     @AppStorage("modeSwitchCardStyle") private var modeSwitchCardStyle = ModeSwitchCardStyle.classic
+    @AppStorage("showWaveEffect") private var showWaveEffect = false
     
     var body: some View {
         List {
@@ -49,6 +50,8 @@ struct OverviewCardSettingsView: View {
                         Text(style.description).tag(style)
                     }
                 }
+                
+                Toggle("速度卡片波浪效果", isOn: $showWaveEffect)
             } header: {
                 SectionHeader(title: "卡片样式", systemImage: "greetingcard")
             }

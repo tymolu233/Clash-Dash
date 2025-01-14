@@ -13,7 +13,11 @@ struct SubscriptionInfoCard: View {
     @Environment(\.colorScheme) var colorScheme
     @AppStorage("subscriptionCardStyle") private var cardStyle = SubscriptionCardStyle.classic
     
-    
+    private let dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy年MM月dd日"
+        return formatter
+    }()
     
     private var cardBackgroundColor: Color {
         Color(.secondarySystemGroupedBackground)
@@ -48,8 +52,9 @@ struct SubscriptionInfoCard: View {
     }
     
     private func getProgressColor(_ percentage: Double) -> Color {
-        switch percentage {
-        case 0..<50:
+        let remainingPercentage = 100 - percentage
+        switch remainingPercentage {
+        case 80..<100:
             return .green
         case 50..<80:
             return .orange
@@ -122,7 +127,7 @@ struct SubscriptionInfoCard: View {
                                                 getProgressColor(subscription.percentageUsed)
                                                     .opacity(0.8)
                                             )
-                                            .frame(width: geometry.size.width * CGFloat(subscription.usedTraffic / subscription.totalTraffic))
+                                            .frame(width: geometry.size.width * CGFloat(subscription.remainingTraffic / subscription.totalTraffic))
                                             .frame(height: 3)
                                     }
                                 }
@@ -301,7 +306,7 @@ struct SubscriptionInfoCard: View {
                                 Image(systemName: "calendar")
                                     .font(.system(size: 12))
                                     .foregroundColor(.secondary)
-                                Text(expiryDate, style: .date)
+                                Text("\(dateFormatter.string(from: expiryDate))")
                                     .font(.system(size: 12))
                                     .foregroundColor(.secondary)
                             }
@@ -338,7 +343,7 @@ struct SubscriptionInfoCard: View {
                                         getProgressColor(subscription.percentageUsed)
                                             .gradient
                                     )
-                                    .frame(width: geometry.size.width * CGFloat(subscription.usedTraffic / subscription.totalTraffic))
+                                    .frame(width: geometry.size.width * CGFloat(subscription.remainingTraffic / subscription.totalTraffic))
                             }
                             .frame(height: 8)
                             .overlay(
@@ -350,7 +355,7 @@ struct SubscriptionInfoCard: View {
                         
                         // 百分比和更新时间
                         HStack {
-                            Text("\(String(format: "%.1f%%", subscription.percentageUsed)) 已用")
+                            Text("\(String(format: "%.1f%%", 100 - subscription.percentageUsed)) 剩余")
                                 .font(.system(size: 12))
                                 .foregroundColor(.secondary)
                             

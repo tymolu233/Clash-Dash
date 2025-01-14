@@ -230,7 +230,7 @@ struct ProxyView: View {
                             // 代理提供者部分
                             if !hideProxyProviders {
                                 let httpProviders = viewModel.providers
-                                    .filter { ["HTTP", "file"].contains($0.vehicleType.uppercased()) }
+                                    .filter { ["HTTP", "FILE"].contains($0.vehicleType.uppercased()) }
                                     .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
                                 
                                 if !httpProviders.isEmpty {
@@ -256,7 +256,7 @@ struct ProxyView: View {
                         // 代理提供者部分
                         if !hideProxyProviders {
                             let httpProviders = viewModel.providers
-                                .filter { ["HTTP", "file"].contains($0.vehicleType.uppercased()) }
+                                .filter { ["HTTP", "FILE"].contains($0.vehicleType.uppercased()) }
                                 .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
                             
                             if !httpProviders.isEmpty {
@@ -709,6 +709,11 @@ struct ProxyProviderCard: View {
     @State private var isUpdating = false
     @State private var updateStatus: UpdateStatus = .none
     @State private var selectedProvider: Provider?
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var cardBackgroundColor: Color {
+        colorScheme == .dark ? Color(.systemGray6) : Color(.systemBackground)
+    }
     
     // 添加更新状态枚举
     private enum UpdateStatus {
@@ -920,8 +925,10 @@ struct ProxyProviderCard: View {
                 }
             }
         }
-        .padding()
-        .cardBackground()
+        .padding(12)
+        .background(cardBackgroundColor)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .shadow(color: Color.black.opacity(0.03), radius: 1, x: 0, y: 1)
         .onTapGesture {
             // 添加触觉反馈
             HapticManager.shared.impact(.light)
@@ -1351,6 +1358,7 @@ struct ProxyNodeCard: View {
                     .font(.system(.subheadline, design: .rounded))
                     .bold()
                     .lineLimit(1)
+                    .truncationMode(.tail)
                 
                 Spacer()
                 
@@ -1367,7 +1375,7 @@ struct ProxyNodeCard: View {
                 if let group = viewModel.groups.first(where: { $0.name == nodeName }) {
                     Text("代理组")
                         .font(.caption2)
-                        .padding(.horizontal, 6)
+                        .padding(.horizontal, 4)
                         .padding(.vertical, 2)
                         .background(.blue.opacity(0.1))
                         .foregroundStyle(.blue)
@@ -1375,7 +1383,9 @@ struct ProxyNodeCard: View {
                 } else {
                     Text(node?.type ?? "Special")
                         .font(.caption2)
-                        .padding(.horizontal, 6)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .padding(.horizontal, 4)
                         .padding(.vertical, 2)
                         .background(.blue.opacity(0.1))
                         .foregroundStyle(.blue)
@@ -1387,7 +1397,7 @@ struct ProxyNodeCard: View {
                 if nodeName == "REJECT" {
                     Text("阻断")
                         .font(.caption)
-                        .padding(.horizontal, 6)
+                        .padding(.horizontal, 4)
                         .padding(.vertical, 2)
                         .background(.red.opacity(0.1))
                         .foregroundStyle(.red)
@@ -1403,7 +1413,7 @@ struct ProxyNodeCard: View {
                     if delay > 0 {
                         Text("\(delay) ms")
                             .font(.caption)
-                            .padding(.horizontal, 6)
+                            .padding(.horizontal, 4)
                             .padding(.vertical, 2)
                             .background(getDelayColor(delay).opacity(0.1))
                             .foregroundStyle(getDelayColor(delay))
@@ -1412,7 +1422,7 @@ struct ProxyNodeCard: View {
                     } else {
                         Text("超时")
                             .font(.caption)
-                            .padding(.horizontal, 6)
+                            .padding(.horizontal, 4)
                             .padding(.vertical, 2)
                             .background(.secondary.opacity(0.1))
                             .foregroundStyle(.secondary)
