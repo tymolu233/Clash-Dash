@@ -112,7 +112,7 @@ struct SubscriptionInfoCard: View {
                             
                             // 右侧百分比显示
                             VStack(alignment: .trailing, spacing: 4) {
-                                Text("\(Int(subscription.percentageUsed))%")
+                                Text("\(Int(100 - subscription.percentageUsed))%")
                                     .font(.system(size: 42, weight: .medium))
                                 
                                 // 简化的进度条设计
