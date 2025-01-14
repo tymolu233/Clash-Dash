@@ -10,6 +10,7 @@ struct GlobalSettingsView: View {
     @AppStorage("speedTestTimeout") private var speedTestTimeout = 5000
     @AppStorage("pinBuiltinProxies") private var pinBuiltinProxies = false
     @AppStorage("hideProxyProviders") private var hideProxyProviders = false
+    @AppStorage("smartProxyGroupDisplay") private var smartProxyGroupDisplay = false
     @State private var showClearCacheAlert = false
     
     var body: some View {
@@ -50,6 +51,12 @@ struct GlobalSettingsView: View {
                     title: "隐藏代理提供者",
                     subtitle: "在代理页面中不显示代理提供者信息",
                     isOn: $hideProxyProviders
+                )
+
+                SettingToggleRow(
+                    title: "Global 代理组显示控制",
+                    subtitle: "规则/直连模式下隐藏 GLOBAL 组，全局模式下仅显示 GLOBAL 组",
+                    isOn: $smartProxyGroupDisplay
                 )
             } header: {
                 SectionHeader(title: "代理组排序设置", systemImage: "arrow.up.arrow.down")

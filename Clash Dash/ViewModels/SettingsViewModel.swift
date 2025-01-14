@@ -91,6 +91,13 @@ class SettingsViewModel: ObservableObject {
         
         request.httpMethod = "PATCH"
         
+        // 如果是模式更新，保存到 UserDefaults
+        if path == "mode" {
+            if let modeValue = value as? String {
+                UserDefaults.standard.set(modeValue, forKey: "currentMode")
+            }
+        }
+        
         // 构建嵌套的 payload 结构
         let payload: [String: Any]
         if path.contains(".") {
