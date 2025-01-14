@@ -988,13 +988,13 @@ struct StatusCard: View {
                         isDownload: title == "下载"
                     )
                 }
-                // if title.contains("总量") {
-                //     WaterDropEffect(
-                //         color: color,
-                //         monitor: monitor,
-                //         isUpload: title.contains("上传")
-                //     )
-                // }
+                if title.contains("总量") {
+                    WaterDropEffect(
+                        color: color,
+                        monitor: monitor,
+                        isUpload: title.contains("上传")
+                    )
+                }
             }
         )
         .cornerRadius(12)
