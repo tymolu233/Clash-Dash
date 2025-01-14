@@ -10,6 +10,8 @@ class NetworkMonitor: ObservableObject {
     @Published var memoryUsage = "0 MB"
     @Published var speedHistory: [SpeedRecord] = []
     @Published var memoryHistory: [MemoryRecord] = []
+    @Published var rawTotalUpload: Int = 0
+    @Published var rawTotalDownload: Int = 0
     
     private var trafficTask: URLSessionWebSocketTask?
     private var memoryTask: URLSessionWebSocketTask?
@@ -32,6 +34,8 @@ class NetworkMonitor: ObservableObject {
             self.memoryUsage = "0 MB"
             self.speedHistory.removeAll()
             self.memoryHistory.removeAll()
+            self.rawTotalUpload = 0
+            self.rawTotalDownload = 0
         }
     }
     
@@ -346,6 +350,8 @@ class NetworkMonitor: ObservableObject {
                 self?.activeConnections = connections.connections.count
                 self?.totalUpload = self?.formatBytes(connections.uploadTotal) ?? "0 MB"
                 self?.totalDownload = self?.formatBytes(connections.downloadTotal) ?? "0 MB"
+                self?.rawTotalUpload = connections.uploadTotal
+                self?.rawTotalDownload = connections.downloadTotal
             }
         } catch {
             // print("解析连接数据失败: \(error)")
