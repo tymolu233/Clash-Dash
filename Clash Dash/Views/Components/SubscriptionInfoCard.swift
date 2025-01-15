@@ -52,9 +52,9 @@ struct SubscriptionInfoCard: View {
     }
     
     private func getProgressColor(_ percentage: Double) -> Color {
-        let remainingPercentage = 100 - percentage
+        let remainingPercentage = 100.0 - percentage
         switch remainingPercentage {
-        case 80..<100:
+        case 80..<200:
             return .green
         case 50..<80:
             return .orange

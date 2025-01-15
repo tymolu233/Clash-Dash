@@ -56,7 +56,7 @@ struct ServerDetailView: View {
                     Label("代理", systemImage: "globe")
                 }
                 .tag(1)
-            
+                
             // 规则标签页
             RulesView(server: server)
                 .onAppear {

@@ -219,6 +219,11 @@ struct ModeSwitchCard: View {
                 if (response as? HTTPURLResponse)?.statusCode == 204 {
                     await MainActor.run {
                         lastChangedMode = mode
+                        // 保存当前模式到 UserDefaults
+                        UserDefaults.standard.set(mode, forKey: "currentMode")
+                        // 发送通知以刷新代理组显示
+                        NotificationCenter.default.post(name: NSNotification.Name("RefreshProxyGroups"), object: nil)
+                        
                         withAnimation {
                             showingModeChangeSuccess = true
                         }
