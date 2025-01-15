@@ -633,6 +633,7 @@ struct WaterDrop: Identifiable {
     var heightParameter: CGFloat // b parameter
     var accumulatedData: Int  // 累积的数据量
     var shouldFall: Bool  // 是否应该下落
+    var acceleration: Double = 0  // 添加加速度属性
 }
 
 struct TeardropShape: Shape {
@@ -680,31 +681,42 @@ struct TeardropShape: Shape {
     }
 }
 
+struct WaterSplash: Identifiable {
+    let id = UUID()
+    var position: CGPoint
+    var width: CGFloat
+    var height: CGFloat
+    var opacity: Double
+    var createdAt: Date
+    var delayStart: Date  // 添加延迟开始时间
+}
+
 struct WaterDropEffect: View {
     let color: Color
     @ObservedObject var monitor: NetworkMonitor
     let isUpload: Bool  // 是否是上传总量
     @State private var drops: [WaterDrop] = []
-    @State private var waterLevel: CGFloat = 0
     @State private var timer: Timer?
     @State private var lastValue: Int = 0  // 使用原始数据
     @State private var timeWindowStart: Date = Date()  // 时间窗口开始时间
     @State private var currentDifference: Int = 0  // 当前时间窗口内的累积差值
     @State private var dropGenerationProgress: CGFloat = 0  // 水滴生成进度
+    @State private var splashes: [WaterSplash] = []
+    private let splashDuration: TimeInterval = 0.8  // 水花效果持续时间
     
     private let timeWindowDuration: TimeInterval = 2.0  // 2秒时间窗口
     private let dropGenerationDuration: TimeInterval = 2.0  // 水滴生成时间
-    private let minDropSize: CGFloat = 10  // 最小水滴大小
-    private let maxDropSize: CGFloat = 30  // 最大水滴大小
+    private let minDropSize: CGFloat = 2  // 最小水滴大小
+    private let maxDropSize: CGFloat = 20  // 最大水滴大小
     private let maxDataThreshold: Int = 10 * 1024 * 1024  // 10MB 阈值
-    private let animationInterval: TimeInterval = 0.008  // 动画更新间隔
+    private let animationInterval: TimeInterval = 0.005  // 动画更新间隔
     private let scaleStepFactor: CGFloat = 0.02  // 缩放变化步长
     private let sizeStepFactor: CGFloat = 0.03  // 大小变化步长
-    private let initialDropSize: CGFloat = 2  // 初始水滴大小（非常小的点）
     
     private func calculateDropParameters(accumulatedData: Int) -> (CGFloat, CGFloat, CGFloat) {
         // 修改进度计算方式，使其更容易达到最大值
-        let mbAccumulated = Double(accumulatedData) / Double(1024 * 1024)
+        let cappedData = min(accumulatedData, 10 * 1024 * 1024)  // 限制在10MB
+        let mbAccumulated = Double(cappedData) / Double(1024 * 1024)
         var progress: CGFloat
         if mbAccumulated >= 10 {
             progress = 1.0  // 达到10MB时直接使用最大值
@@ -712,14 +724,20 @@ struct WaterDropEffect: View {
             // 使用更直接的比例计算，让大小增长更明显
             let baseProgress = CGFloat(mbAccumulated / 10.0)  // 线性增长
             // 使用 pow 函数让初期增长更快
-            progress = CGFloat(pow(Double(baseProgress), 0.7))
+            progress = CGFloat(pow(Double(baseProgress), 0.5))
         }
         
         let size = minDropSize + (maxDropSize - minDropSize) * progress
         
-        // 形状参数也使用相同的进度
-        let widthParameter = 1.0 + progress * 0.5  // 1.0 到 1.5
-        let heightParameter = 2.5 + progress * 1.0  // 2.5 到 3.5
+        // 形状参数使用固定的最小和最大值
+        let minWidthParameter: CGFloat = 1.0
+        let maxWidthParameter: CGFloat = 1.5
+        let minHeightParameter: CGFloat = 2.5
+        let maxHeightParameter: CGFloat = 3.5
+        
+        // 根据进度计算形状参数
+        let widthParameter = minWidthParameter + (maxWidthParameter - minWidthParameter) * progress
+        let heightParameter = minHeightParameter + (maxHeightParameter - minHeightParameter) * progress
         
         return (size, widthParameter, heightParameter)
     }
@@ -736,33 +754,48 @@ struct WaterDropEffect: View {
         let randomX = CGFloat.random(in: 10...90)
         let (targetSize, targetWidth, targetHeight) = calculateDropParameters(accumulatedData: data)
         
+        // 如果初始数据量大，直接创建对应大小的水滴
+        let initialSize = data >= maxDataThreshold ? targetSize : minDropSize
+        let initialWidth = data >= maxDataThreshold ? targetWidth : 1.0
+        let initialHeight = data >= maxDataThreshold ? targetHeight : 2.5
+        
         return WaterDrop(
             position: CGPoint(x: randomX, y: 0),
-            size: initialDropSize,  // 总是从最小的点开始
+            size: initialSize,
             opacity: 0.8,
             speed: Double.random(in: 80...160),
-            scale: 1.0,  // 从完整比例开始，因为我们用size来控制大小
-            isGrowing: true,
-            widthParameter: 1.0,  // 从基础形状开始
-            heightParameter: 2.5,
+            scale: 1.0,
+            isGrowing: data < maxDataThreshold,  // 只有小水滴需要生长
+            widthParameter: initialWidth,
+            heightParameter: initialHeight,
             accumulatedData: data,
-            shouldFall: false
+            shouldFall: data >= maxDataThreshold,  // 大水滴直接开始下落
+            acceleration: 0.5
         )
     }
     
     var body: some View {
         GeometryReader { geometry in
             ZStack {
+                // 水面效果
+                ForEach(splashes) { splash in
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(color)
+                        .frame(width: splash.width, height: splash.height)
+                        .position(x: splash.position.x, y: splash.position.y)
+                        .opacity(splash.opacity)
+                }
+                
                 // 水滴连接线
                 ForEach(drops) { drop in
                     if !drop.shouldFall && !drop.isGrowing {
                         Path { path in
                             let startY: CGFloat = 0
-                            let endY = drop.position.y - drop.size * 0.65
+                            let endY = drop.position.y + drop.size * 0.3  // 直接连接到水滴的中心位置
                             path.move(to: CGPoint(x: drop.position.x, y: startY))
                             path.addLine(to: CGPoint(x: drop.position.x, y: endY))
                         }
-                        .stroke(color.opacity(0.3), lineWidth: 1)
+                        .stroke(color.opacity(0.5), lineWidth: max(0.2, 1.5 * (1.0 - abs(drop.position.y) / 6.0)))  // 根据浮动位置动态调整线宽
                     }
                 }
                 
@@ -775,18 +808,12 @@ struct WaterDropEffect: View {
                         .position(drop.position)
                         .opacity(drop.opacity)
                 }
-                
-                // 底部积水
-                // Rectangle()
-                //     .fill(color.opacity(0.3))
-                //     .frame(height: waterLevel)
-                //     .frame(maxHeight: geometry.size.height * 0.3)
-                //     .frame(maxWidth: .infinity)
-                //     .position(x: geometry.size.width/2, y: geometry.size.height - waterLevel/2)
             }
             .onAppear {
+                // 初始化时记录当前值，但不计入差值计算
                 lastValue = isUpload ? monitor.rawTotalUpload : monitor.rawTotalDownload
                 timeWindowStart = Date()
+                currentDifference = 0  // 确保初始差值为0
                 
                 timer = Timer.scheduledTimer(withTimeInterval: animationInterval, repeats: true) { _ in
                     withAnimation(.linear(duration: animationInterval)) {
@@ -794,7 +821,10 @@ struct WaterDropEffect: View {
                         let difference = currentValue - lastValue
                         
                         if difference > 0 {
-                            currentDifference += difference
+                            // 只有在非初始状态下才累积差值
+                            if lastValue > 0 {
+                                currentDifference += difference
+                            }
                             
                             // 检查时间窗口
                             let now = Date()
@@ -860,7 +890,7 @@ struct WaterDropEffect: View {
                                 
                                 // 平滑地更新大小
                                 let currentSize = drop.size
-                                let sizeProgress = (currentSize - initialDropSize) / (targetSize - initialDropSize)
+                                let sizeProgress = (currentSize - minDropSize) / (targetSize - minDropSize)
                                 
                                 // 使用 easeOut 效果使初始增长更快
                                 let easedProgress = 1 - pow(1 - sizeProgress, 3)
@@ -881,14 +911,52 @@ struct WaterDropEffect: View {
                                     drop.isGrowing = false
                                 }
                             } else if drop.shouldFall {
-                                // 水滴下落阶段
+                                // 水滴下落阶段，设置统一的下落大小
+                                // if drop.size != maxDropSize {
+                                //     drop.size = maxDropSize  // 所有下落的水滴使用相同的大小
+                                //     drop.widthParameter = 1.5  // 统一的形状参数
+                                //     drop.heightParameter = 3.5
+                                // }
+                                
+                                drop.speed += drop.acceleration  // 应用加速度
                                 drop.position.y += drop.speed/120
                                 
-                                // 水滴接近底部时更平滑地变扁
-                                if drop.position.y >= geometry.size.height - waterLevel - drop.size {
-                                    let distanceToWater = geometry.size.height - waterLevel - drop.position.y
-                                    let squashFactor = min(1 - (distanceToWater / drop.size), 0.2)
-                                    drop.scale = 1.0 - squashFactor
+                                // 下落过程中的变形效果
+                                let fallProgress = min(drop.position.y / (geometry.size.height * 0.7), 1.0)
+                                let maxWidthIncrease: CGFloat = 0.02  // 最大宽度增加1%
+                                let maxHeightDecrease: CGFloat = 0.02  // 最大高度减少1%
+                                
+                                // 使用 easeInOut 效果使变形更自然
+                                let easedProgress = 1 - pow(1 - fallProgress, 2)
+                                
+                                // 应用变形
+                                drop.widthParameter = 1.5 * (1 + maxWidthIncrease * easedProgress)
+                                drop.heightParameter = 3.5 * (1 - maxHeightDecrease * easedProgress)
+                                
+                                // 接近底部时逐渐降低透明度和变形
+                                if drop.position.y >= geometry.size.height - drop.size * 2 {
+                                    let distanceToBottom: CGFloat = CGFloat(geometry.size.height) - drop.position.y
+                                    let squashProgress = 1.0 - (distanceToBottom / (drop.size * 2))  // 0到1的进度
+                                    
+                                    // 逐渐增加宽度和减小高度
+                                    drop.widthParameter = drop.widthParameter * (1 + squashProgress * 0.8)
+                                    drop.heightParameter = drop.heightParameter * (1 - squashProgress * 0.9)
+                                    
+                                    // 同时降低透明度
+                                    drop.opacity = Double(max(0, distanceToBottom / (drop.size * 3)))
+                                    
+                                    // 在这里创建和更新水面效果
+                                    if splashes.isEmpty {
+                                        let splash = WaterSplash(
+                                            position: CGPoint(x: geometry.size.width/2, y: geometry.size.height),
+                                            width: geometry.size.width,
+                                            height: 0,
+                                            opacity: 0.3,
+                                            createdAt: Date(),
+                                            delayStart: Date().addingTimeInterval(0.05)  // 添加0.05秒延迟
+                                        )
+                                        splashes.append(splash)
+                                    }
                                 }
                             } else {
                                 // 水滴悬停，浮动幅度与大小相关
@@ -896,12 +964,9 @@ struct WaterDropEffect: View {
                                 drop.position.y = floatOffset
                             }
                             
-                            // 检查是否碰到水面
-                            if drop.position.y >= geometry.size.height - waterLevel {
+                            // 检查是否碰到底部
+                            if drop.position.y >= geometry.size.height {
                                 drops.remove(at: i)
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
-                                    waterLevel = min(waterLevel + drop.size/4, geometry.size.height * 0.3)
-                                }
                                 break
                             }
                             
@@ -910,6 +975,36 @@ struct WaterDropEffect: View {
                         
                         // 清理超出范围的水滴
                         drops.removeAll { $0.position.y > geometry.size.height }
+                        
+                        // 更新水面效果
+                        for i in splashes.indices {
+                            let now = Date()
+                            let timeSinceCreation = now.timeIntervalSince(splashes[i].createdAt)
+                            
+                            // 检查是否已经到达延迟开始时间
+                            if now < splashes[i].delayStart {
+                                continue  // 如果还没到延迟时间，保持初始状态
+                            }
+                            
+                            let timeSinceDelay = now.timeIntervalSince(splashes[i].delayStart)
+                            let progress = timeSinceDelay / splashDuration
+                            
+                            if progress >= 1.0 {
+                                splashes.remove(at: i)
+                                break
+                            }
+                            
+                            // 水面高度和透明度动画
+                            let normalizedProgress = progress * 2 * .pi
+                            let dampingFactor = 1 - progress
+                            
+                            let oscillation = sin(normalizedProgress * 3) * dampingFactor
+                            let baseHeight = 1 - pow(progress - 0.5, 2) * 4
+                            
+                            let finalHeight = max(0, baseHeight + oscillation * 0.3)
+                            splashes[i].height = 8 * finalHeight
+                            splashes[i].opacity = max(0, 1 - progress * 1.2)
+                        }
                         
                         lastValue = currentValue
                     }
@@ -932,6 +1027,7 @@ struct StatusCard: View {
     @Environment(\.colorScheme) var colorScheme
     @ObservedObject var monitor: NetworkMonitor
     @AppStorage("showWaveEffect") private var showWaveEffect = true
+    @AppStorage("showWaterDropEffect") private var showWaterDropEffect = true
     
     private var cardBackgroundColor: Color {
         colorScheme == .dark ? 
@@ -988,7 +1084,7 @@ struct StatusCard: View {
                         isDownload: title == "下载"
                     )
                 }
-                if title.contains("总量") {
+                if showWaterDropEffect && title.contains("总量") {
                     WaterDropEffect(
                         color: color,
                         monitor: monitor,
@@ -1092,6 +1188,6 @@ struct ProxyGroupRow: View {
 
 #Preview {
     NavigationStack {
-        ServerDetailView(server: ClashServer(name: "测试服务器", url: "10.1.1.2", port: "9090", secret: "123456"))
+        ServerDetailView(server: ClashServer(name: "测试服务器", url: "10.1.1.166", port: "8099", secret: "123456"))
     }
 } 

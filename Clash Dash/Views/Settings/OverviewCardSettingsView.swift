@@ -5,6 +5,7 @@ struct OverviewCardSettingsView: View {
     @AppStorage("subscriptionCardStyle") private var subscriptionCardStyle = SubscriptionCardStyle.classic
     @AppStorage("modeSwitchCardStyle") private var modeSwitchCardStyle = ModeSwitchCardStyle.classic
     @AppStorage("showWaveEffect") private var showWaveEffect = false
+    @AppStorage("showWaterDropEffect") private var showWaterDropEffect = true
     
     var body: some View {
         List {
@@ -52,6 +53,13 @@ struct OverviewCardSettingsView: View {
                 }
                 
                 Toggle("速度卡片波浪效果", isOn: $showWaveEffect)
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Toggle("总流量卡片水滴效果", isOn: $showWaterDropEffect)
+                    Text("一滴水滴约为 10MB 的流量")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
             } header: {
                 SectionHeader(title: "卡片样式", systemImage: "greetingcard")
             }
