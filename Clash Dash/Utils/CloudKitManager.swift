@@ -76,29 +76,29 @@ class CloudKitManager: ObservableObject {
                 switch status {
                 case .available:
                     iCloudStatus = "可用"
-                    logger.log("iCloud 状态: 可用")
+                    logger.info("iCloud 状态: 可用")
                 case .noAccount:
                     iCloudStatus = "未登录 iCloud 账号"
-                    logger.log("iCloud 状态: 未登录")
+                    logger.warning("iCloud 状态: 未登录")
                 case .restricted:
                     iCloudStatus = "iCloud 访问受限"
-                    logger.log("iCloud 状态: 受限")
+                    logger.warning("iCloud 状态: 受限")
                 case .couldNotDetermine:
                     iCloudStatus = "无法确定 iCloud 状态"
-                    logger.log("iCloud 状态: 未知")
+                    logger.warning("iCloud 状态: 未知")
                 case .temporarilyUnavailable:
                     iCloudStatus = "暂时不可用"
-                    logger.log("iCloud 状态: 暂时不可用")
+                    logger.warning("iCloud 状态: 暂时不可用")
                 @unknown default:
                     iCloudStatus = "未知状态"
-                    logger.log("iCloud 状态: 未知默认值")
+                    logger.warning("iCloud 状态: 未知默认值")
                 }
             }
         } catch {
             await MainActor.run {
                 iCloudStatus = "检查失败: \(error.localizedDescription)"
             }
-            logger.log("检查 iCloud 状态失败: \(error.localizedDescription)")
+            logger.error("检查 iCloud 状态失败: \(error.localizedDescription)")
         }
     }
     
@@ -266,11 +266,61 @@ class CloudKitManager: ObservableObject {
         }
     }
     
+    // private func checkRecordType() async throws {
+    //     let database = container.privateCloudDatabase
+    //     do {
+    //         // 尝试查询记录类型
+    //         let query = CKQuery(recordType: recordType, predicate: NSPredicate(value: true))
+    //         _ = try await database.records(matching: query, resultsLimit: 1)
+    //     } catch let error as CKError {
+    //         if error.code == .unknownItem || error.code == .serverRecordChanged {
+    //             // 记录类型不存在，尝试创建一个空记录来初始化记录类型
+    //             logger.warning("记录类型不存在，尝试创建...")
+                
+    //             // 创建一个空记录，包含所有必要的字段
+    //             let record = CKRecord(recordType: recordType)
+    //             record["timestamp"] = Date()
+    //             record["allData"] = "{}".data(using: .utf8)
+                
+    //             // 在保存之前先检查环境
+    //             let environment = ProcessInfo.processInfo.environment["CLOUDKIT_ENVIRONMENT"]
+    //             logger.debug("当前 CloudKit 环境: \(environment ?? "Production")")
+                
+    //             do {
+    //                 _ = try await database.save(record)
+    //                 logger.info("成功创建记录类型")
+    //             } catch let saveError as CKError {
+    //                 // 如果是权限错误，提供更详细的错误信息
+    //                 if saveError.code == .serverRejectedRequest {
+    //                     logger.error("创建记录类型失败，可能需要在 CloudKit Dashboard 中手动创建")
+    //                     throw NSError(
+    //                         domain: "CloudKitManager",
+    //                         code: saveError.errorCode,
+    //                         userInfo: [
+    //                             NSLocalizedDescriptionKey: """
+    //                             需要在 CloudKit Dashboard 中为 Production 环境创建记录类型。
+    //                             请前往 CloudKit Dashboard:
+    //                             1. 选择 Production 环境
+    //                             2. 创建名为 "AppData" 的记录类型
+    //                             3. 添加 "timestamp" (DateTime) 和 "allData" (Bytes) 字段
+    //                             """
+    //                         ]
+    //                     )
+    //                 } else {
+    //                     throw saveError
+    //                 }
+    //             }
+    //         } else {
+    //             throw error
+    //         }
+    //     }
+    // }
+    
     func syncToCloud() async throws {
         // 先检查 iCloud 状态
         await checkICloudStatus()
         guard iCloudStatus == "可用" else {
-            logger.log("iCloud 不可用，无法同步")
+            logger.error("iCloud 不可用，无法同步")
             throw NSError(domain: "CloudKitManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "iCloud 不可用：\(iCloudStatus)"])
         }
         
@@ -288,18 +338,18 @@ class CloudKitManager: ObservableObject {
         
         do {
             // 先删除旧记录
-            // logger.info("开始删除旧记录")
+            logger.info("开始删除旧记录")
             let query = CKQuery(recordType: recordType, predicate: NSPredicate(value: true))
             let (results, _) = try await database.records(matching: query)
-            // logger.info("找到 \(results.count) 条旧记录")
+            logger.info("找到 \(results.count) 条旧记录")
             for recordID in results.map({ $0.0 }) {
                 try await database.deleteRecord(withID: recordID)
             }
             
             // 获取所有数据
             let allData = getAllUserDefaults()
-            // logger.info("获取到所有数据: \(allData.count) 个键值对")
-            // logger.info("数据内容: \(String(describing: allData))")
+            logger.debug("获取到所有数据: \(allData.count) 个键值对")
+            logger.debug("数据内容: \(String(describing: allData))")
             
             // 创建记录
             let record = CKRecord(recordType: recordType)
@@ -307,16 +357,16 @@ class CloudKitManager: ObservableObject {
             if let dataEncoded = try? JSONSerialization.data(withJSONObject: allData) {
                 record["allData"] = dataEncoded
             } else {
-                // logger.error("数据编码失败")
+                logger.error("数据编码失败")
                 throw NSError(domain: "CloudKitManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "数据编码失败"])
             }
             
             record["timestamp"] = Date()
             
             // 保存到 iCloud
-            // logger.info("开始保存到 iCloud")
+            logger.info("开始保存到 iCloud")
             let savedRecord = try await database.save(record)
-            logger.log("成功保存到 iCloud，记录 ID: \(savedRecord.recordID.recordName)")
+            logger.info("成功保存到 iCloud，记录 ID: \(savedRecord.recordID.recordName)")
             
             // 更新最后同步时间
             let syncTime = Date()
@@ -324,10 +374,10 @@ class CloudKitManager: ObservableObject {
                 self.lastSyncTime = syncTime
                 defaults.set(syncTime, forKey: "lastCloudKitSyncTime")
             }
-            logger.log("同步完成")
+            logger.info("同步完成")
             
         } catch {
-            logger.log("同步失败: \(error.localizedDescription)")
+            logger.error("同步失败: \(error.localizedDescription)")
             throw error
         }
     }
@@ -336,7 +386,7 @@ class CloudKitManager: ObservableObject {
         // 先检查 iCloud 状态
         await checkICloudStatus()
         guard iCloudStatus == "可用" else {
-            logger.log("iCloud 不可用，无法同步")
+            logger.error("iCloud 不可用，无法同步")
             throw NSError(domain: "CloudKitManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "iCloud 不可用：\(iCloudStatus)"])
         }
         
@@ -354,34 +404,34 @@ class CloudKitManager: ObservableObject {
         
         do {
             // 查询最新的数据
-            logger.log("开始从 iCloud 查询数据")
+            logger.info("开始从 iCloud 查询数据")
             let query = CKQuery(recordType: recordType, predicate: NSPredicate(value: true))
             query.sortDescriptors = [NSSortDescriptor(key: "timestamp", ascending: false)]
             
             let (results, _) = try await database.records(matching: query, resultsLimit: 1)
             guard let recordID = results.first?.0 else {
-                logger.log("未找到任何记录")
+                logger.warning("未找到任何记录")
                 throw NSError(domain: "CloudKitManager", code: 5, userInfo: [NSLocalizedDescriptionKey: "未找到任何记录"])
             }
             
-            logger.log("找到记录，ID: \(recordID.recordName)")
+            logger.info("找到记录，ID: \(recordID.recordName)")
             let record = try await database.record(for: recordID)
             
             // 恢复数据
             guard let allData = record["allData"] as? Data else {
-                // logger.error("记录中缺少必要的数据")
+                logger.error("记录中缺少必要的数据")
                 throw NSError(domain: "CloudKitManager", code: 6, userInfo: [NSLocalizedDescriptionKey: "记录数据不完整"])
             }
             
             try await MainActor.run {
                 if let dataDict = try JSONSerialization.jsonObject(with: allData) as? [String: Any] {
                     var restoredCount = 0
-                    // logger.info("开始恢复数据，共有 \(dataDict.count) 个键值对")
+                    logger.info("开始恢复数据，共有 \(dataDict.count) 个键值对")
                     
                     for (key, value) in dataDict {
                         // 确保不恢复被排除的键
                         if excludedKeys.contains(key) {
-                            // logger.debug("跳过被排除的键: \(key)")
+                            logger.debug("跳过被排除的键: \(key)")
                             continue
                         }
                         
@@ -391,25 +441,25 @@ class CloudKitManager: ObservableObject {
                                 let convertedValue = convertJSONSafeToValue(value)
                                 defaults.set(convertedValue, forKey: key)
                                 restoredCount += 1
-                                // logger.info("恢复全局设置: \(key) = \(self.formatValueForLog(convertedValue))")
+                                logger.debug("恢复全局设置: \(key) = \(self.formatValueForLog(convertedValue))")
                             }
                         } else if serverKeys.contains(key) {
                             if syncServers {
                                 let convertedValue = convertJSONSafeToValue(value)
                                 defaults.set(convertedValue, forKey: key)
                                 restoredCount += 1
-                                // logger.info("恢复服务器设置: \(key) = \(self.formatValueForLog(convertedValue))")
+                                logger.debug("恢复服务器设置: \(key) = \(self.formatValueForLog(convertedValue))")
                             }
                         } else if appearanceKeys.contains(key) {
                             if syncAppearance {
                                 let convertedValue = convertJSONSafeToValue(value)
                                 defaults.set(convertedValue, forKey: key)
                                 restoredCount += 1
-                                // logger.info("恢复外观设置: \(key) = \(self.formatValueForLog(convertedValue))")
+                                logger.debug("恢复外观设置: \(key) = \(self.formatValueForLog(convertedValue))")
                             }
                         }
                     }
-                    // logger.info("总共恢复了 \(restoredCount) 个设置")
+                    logger.info("总共恢复了 \(restoredCount) 个设置")
                 }
             }
             
@@ -425,10 +475,10 @@ class CloudKitManager: ObservableObject {
                 // 专门发送 WiFi 绑定更新通知
                 NotificationCenter.default.post(name: NSNotification.Name("WiFiBindingsUpdated"), object: nil)
             }
-            logger.log("同步完成")
+            logger.info("同步完成")
             
         } catch {
-            logger.log("同步失败: \(error.localizedDescription)")
+            logger.error("同步失败: \(error.localizedDescription)")
             throw error
         }
     }

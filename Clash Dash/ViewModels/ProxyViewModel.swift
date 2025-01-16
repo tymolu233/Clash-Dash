@@ -153,6 +153,7 @@ class ProxyViewModel: ObservableObject {
             // 1. 获取 proxies 数据
             guard let proxiesRequest = makeRequest(path: "proxies") else { 
                 // print("❌ 创建 proxies 请求失败")
+                logger.error("创建 proxies 请求失败")
                 return 
             }
             // print("📡 发送 proxies 请求...")
@@ -161,6 +162,7 @@ class ProxyViewModel: ObservableObject {
             // 2. 获取 providers 数据
             guard let providersRequest = makeRequest(path: "providers/proxies") else { 
                 // print("❌ 创建 providers 请求失败")
+                logger.error("创建 providers 请求失败")
                 return 
             }
             // print("📡 发送 providers 请求...")
@@ -171,6 +173,7 @@ class ProxyViewModel: ObservableObject {
             // 3. 处理 proxies 数据
             if let proxiesResponse = try? JSONDecoder().decode(ProxyResponse.self, from: proxiesData) {
                 // logger.log("✅ 成功解析 proxies 数据")
+                logger.info("成功解析 proxies 数据")
                 let proxyNodes = proxiesResponse.proxies.map { name, proxy in
                     ProxyNode(
                         id: proxy.id ?? UUID().uuidString,
@@ -208,12 +211,14 @@ class ProxyViewModel: ObservableObject {
                 //     }
                 // }
             } else {
-                logger.log("❌ 解析 proxies 数据失败")
+                // print("❌ 解析 proxies 数据失败")
+                logger.error("解析 proxies 数据失败")
             }
             
             // 4. 处理 providers 数据
             if let providersResponse = try? JSONDecoder().decode(ProxyProvidersResponse.self, from: providersData) {
                 // print("✅ 成功解析 providers 数据")
+                logger.info("成功解析 providers 数据")
                 // print("📦 代理提供者数量: \(providersResponse.providers.count)")
                 
                 // 更新 providers 属性时保持固定排序
@@ -275,7 +280,7 @@ class ProxyViewModel: ObservableObject {
             objectWillChange.send()
             
         } catch {
-            logger.log("❌ 获取代理错误: \(error)")
+            logger.error("获取代理错误: \(error)")
         }
     }
     
@@ -335,30 +340,38 @@ class ProxyViewModel: ObservableObject {
         if let urlError = error as? URLError {
             switch urlError.code {
             case .secureConnectionFailed:
-                logger.log("SSL 连接失败：服务器 SSL 证书无")
+                // print("SSL 连接失败：服务器 SSL 证书无效")
+                logger.error("SSL 连接失败：服务器 SSL 证书无效")
             case .serverCertificateHasBadDate:
-                logger.log("SSL 错误：服务器证书已过期")
+                // print("SSL 错误：服务器证书已过期")
+                logger.error("SSL 错误：服务器证书已过期")
             case .serverCertificateUntrusted:
-                logger.log("SSL 错误：服务器证书不受信任")
+                // print("SSL 错误：服务器证书不受信任")
+                logger.error("SSL 错误：服务器证书不受信任")
             case .serverCertificateNotYetValid:
-                logger.log("SSL 错误：服务器证书尚未生效")
+                // print("SSL 错误：服务器证书尚未生效")
+                logger.error("SSL 错误：服务器证书尚未生效")
             case .cannotConnectToHost:
-                logger.log("无法连接到服务器：\(server.clashUseSSL ? "HTTPS" : "HTTP") 连接失败")
+                // print("无法连接到服务器：\(server.clashUseSSL ? "HTTPS" : "HTTP") 连接失败")
+                logger.error("无法连接到服务器：\(server.clashUseSSL ? "HTTPS" : "HTTP") 连接失败")
             default:
-                logger.log("网络错误：\(urlError.localizedDescription)")
+                // print("网络错误：\(urlError.localizedDescription)")
+                logger.error("网络错误：\(urlError.localizedDescription)")
             }
         } else {
-            logger.log("其他错误：\(error.localizedDescription)")
+            // print("其他错误：\(error.localizedDescription)")
+            logger.error("其他错误：\(error.localizedDescription)")
         }
     }
     
     @MainActor
     func selectProxy(groupName: String, proxyName: String) async {
-        logger.log("🔄 开始切换代理 - 组:\(groupName), 新节点:\(proxyName)")
+        logger.info("开始切换代理 - 组:\(groupName), 新节点:\(proxyName)")
         
         // 不需要在这里进行 URL 编码，因为 makeRequest 已经处理了
         guard var request = makeRequest(path: "proxies/\(groupName)") else { 
             // print("❌ 创建请求失败")
+            logger.error("创建请求失败")
             return 
         }
         
@@ -368,7 +381,7 @@ class ProxyViewModel: ObservableObject {
         
         do {
             let (_, response) = try await URLSession.shared.data(for: request)
-            logger.log("✅ 切换请求成功")
+            logger.info("切换请求成功")
             
             if server.clashUseSSL,
                let httpsResponse = response as? HTTPURLResponse,
@@ -379,7 +392,7 @@ class ProxyViewModel: ObservableObject {
             
             // 检查是否需要断开旧连接
             if UserDefaults.standard.bool(forKey: "autoDisconnectOldProxy") {
-                logger.log("🔌 正在断开旧连接...")
+                logger.info("正在断开旧连接...")
                 // 获取当前活跃的连接
                 guard var connectionsRequest = makeRequest(path: "connections") else { return }
                 let (data, _) = try await URLSession.shared.data(for: connectionsRequest)
@@ -525,10 +538,10 @@ class ProxyViewModel: ObservableObject {
                 history: nodes[index].history
             )
             nodes[index] = updatedNode
-            logger.log("✅ 节点延迟已更新 - 原延迟:\(oldDelay), 新延迟:\(delay)")
+            logger.info("节点延迟已更新 - 原延迟:\(oldDelay), 新延迟:\(delay)")
             objectWillChange.send()
         } else {
-            logger.log("⚠️ 未找到要更新的节点: \(nodeName)")
+            logger.error("⚠️ 未找到要更新的节点: \(nodeName)")
         }
     }
     
@@ -628,7 +641,7 @@ class ProxyViewModel: ObservableObject {
                     
                     // 如果找到了最佳节点，切换到该节点
                     if !bestNode.isEmpty {
-                        logger.log("🔄 URL-Test 组测速完成，自动切换到最佳节点: \(bestNode) (延迟: \(lowestDelay)ms)")
+                        logger.info("🔄 URL-Test 组测速完成，自动切换到最佳节点: \(bestNode) (延迟: \(lowestDelay)ms)")
                         await selectProxy(groupName: groupName, proxyName: bestNode)
                     }
                 }
@@ -678,6 +691,7 @@ class ProxyViewModel: ObservableObject {
             if let httpResponse = response as? HTTPURLResponse,
                (200...299).contains(httpResponse.statusCode) {
                 // print("代理提供者 \(providerName) 更新成功")
+                logger.info("代理提供者 \(providerName) 更新成功")
                 
                 // 等待一小段时间确保服务器处理完成
                 try? await Task.sleep(nanoseconds: 500_000_000) // 0.5秒
@@ -693,7 +707,7 @@ class ProxyViewModel: ObservableObject {
                     }
                 }
             } else {
-                logger.log("代理提供者 \(providerName) 更新失败")
+                logger.error("代理提供者 \(providerName) 更新失败")
             }
         } catch {
             handleNetworkError(error)

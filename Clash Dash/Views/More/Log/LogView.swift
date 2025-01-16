@@ -101,31 +101,6 @@ struct LogRow: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            // 头部信息
-            HStack(spacing: 8) {
-                // 日志类型标签
-                HStack(spacing: 4) {
-                    Circle()
-                        .fill(log.type.color)
-                        .frame(width: 8, height: 8)
-                    
-                    Text(log.type.displayText)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(log.type.color)
-                }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(log.type.color.opacity(0.1))
-                .cornerRadius(8)
-                
-                // 时间戳
-                Text(Self.timeFormatter.string(from: log.timestamp))
-                    .font(.system(size: 13))
-                    .foregroundColor(.secondary)
-                
-                Spacer()
-            }
-            
             // 日志内容
             Text(log.payload)
                 .font(.system(size: 14, design: .monospaced))
@@ -133,12 +108,66 @@ struct LogRow: View {
                 .lineLimit(nil)
                 .fixedSize(horizontal: false, vertical: true)
                 .textSelection(.enabled)
+            
+            // 时间和级别指示器
+            HStack(alignment: .center, spacing: 4) {
+                Text(log.type.displayText)
+                    .font(.caption2.weight(.medium))
+                    .foregroundColor(log.type.color)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(log.type.color.opacity(0.1))
+                    .cornerRadius(4)
+                
+                Text(Self.timeFormatter.string(from: log.timestamp))
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+                
+                Spacer()
+                
+                Menu {
+                    Button {
+                        UIPasteboard.general.string = log.payload
+                    } label: {
+                        Label("复制", systemImage: "doc.on.doc")
+                    }
+                    
+                    Button {
+                        let dateFormatter = DateFormatter()
+                        dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+                        let timeString = dateFormatter.string(from: log.timestamp)
+                        UIPasteboard.general.string = "[\(timeString)] [\(log.type.displayText)] \(log.payload)"
+                    } label: {
+                        Label("复制（含时间）", systemImage: "document.badge.clock")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .foregroundColor(.secondary)
+                        .font(.caption)
+                }
+            }
         }
         .padding(.vertical, 12)
         .padding(.horizontal, 14)
         .background(Color(.systemBackground))
         .cornerRadius(12)
         .shadow(color: Color.black.opacity(0.03), radius: 3, x: 0, y: 1)
+        .contextMenu {
+            Button {
+                UIPasteboard.general.string = log.payload
+            } label: {
+                Label("复制", systemImage: "doc.on.doc")
+            }
+            
+            Button {
+                let dateFormatter = DateFormatter()
+                dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+                let timeString = dateFormatter.string(from: log.timestamp)
+                UIPasteboard.general.string = "[\(timeString)] [\(log.type.displayText)] \(log.payload)"
+            } label: {
+                Label("复制（含时间）", systemImage: "document.badge.clock")
+            }
+        }
     }
 }
 

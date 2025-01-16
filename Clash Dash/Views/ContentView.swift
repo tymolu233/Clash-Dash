@@ -273,7 +273,7 @@ struct ContentView: View {
                     .cornerRadius(16)
                     
                     // 版本信息
-                    Text("Ver: 1.3.2 Build 2")
+                    Text("Ver: 1.3.2 Build 3")
                         .foregroundColor(.secondary)
                         .font(.footnote)
                         .padding(.top, 8)
@@ -350,15 +350,15 @@ struct ContentView: View {
             if enableWiFiBinding {
                 NEHotspotNetwork.fetchCurrent { network in
                     if let network = network {
-                        logger.log("检测到 Wi-Fi: \(network.ssid)")
+                        logger.debug("检测到 Wi-Fi: \(network.ssid)")
                         currentWiFiSSID = network.ssid
                     } else {
-                        logger.log("未检测到 Wi-Fi 连接")
+                        logger.debug("未检测到 Wi-Fi 连接")
                         currentWiFiSSID = ""
                     }
                 }
             } else {
-                logger.log("Wi-Fi 绑定功能未启用，跳过获取 Wi-Fi 信息")
+                logger.debug("Wi-Fi 绑定功能未启用，跳过获取 Wi-Fi 信息")
                 currentWiFiSSID = ""
             }
             
@@ -420,7 +420,7 @@ struct ContentView: View {
         // 添加对 WiFiBindingManager 变化的监听
         .onChange(of: bindingManager.bindings) { newBindings in
             print("📝 Wi-Fi 绑定发生变化，新的绑定数量: \(newBindings.count)")
-            logger.log("Wi-Fi 绑定发生变化，新的绑定数量: \(newBindings.count)")
+            logger.debug("Wi-Fi 绑定发生变化，新的绑定数量: \(newBindings.count)")
             // 强制刷新 filteredServers
             withAnimation {
                 // print("🔄 触发强制刷新")

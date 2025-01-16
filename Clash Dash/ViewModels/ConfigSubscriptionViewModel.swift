@@ -80,7 +80,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
             throw NetworkError.invalidURL
         }
         let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
-        logger.log("🔗 订阅 - 请求 URL: \(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)")
+        logger.debug("🔗 订阅 - 请求 URL: \(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)")
         guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
             throw NetworkError.invalidURL
         }
@@ -476,20 +476,21 @@ class ConfigSubscriptionViewModel: ObservableObject {
                 }
                 
                 // print("✅ UCI命令执行成功")
+                logger.info("UCI命令执行成功")
                 
                 // 提交更改
                 try await commitChanges(token: token)
                 // print("✅ 更改已提交")
-                logger.log("✅ 更改已提交")
+                logger.info("更改已提交")
                 
                 // 重新加载订阅列表
                 await loadSubscriptions()
                 // print("✅ 订阅列表已刷新")
-                logger.log("✅ 订阅列表已刷新")
+                logger.info("订阅列表已刷新")
                 
             } catch {
                 // print("❌ 添加订阅失败: \(error.localizedDescription)")
-                logger.log("❌ 添加订阅失败: \(error.localizedDescription)")
+                logger.error("添加订阅失败: \(error.localizedDescription)")
                 errorMessage = error.localizedDescription
                 showError = true
             }
@@ -549,16 +550,16 @@ class ConfigSubscriptionViewModel: ObservableObject {
                 }
                 
                 // print("✅ UCI命令执行成功")
-                logger.log("✅ UCI命令执行成功")
+                logger.info("UCI命令执行成功")
                 
                 // 重新加载订阅列表
                 await loadSubscriptions()
                 // print("✅ 订阅列表已刷新")
-                logger.log("✅ 订阅列表已刷新")
+                logger.info("订阅列表已刷新")
                 
             } catch {
                 // print("❌ 添加订阅失败: \(error.localizedDescription)")
-                logger.log("❌ 添加订阅失败: \(error.localizedDescription)")
+                logger.error("添加订阅失败: \(error.localizedDescription)")
                 errorMessage = error.localizedDescription
                 showError = true
             }
@@ -598,7 +599,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
         if packageName == "openclash" {
             do {
                 // print("🔄 开始更新订阅: \(subscription.name)")
-                logger.log("🔄 开始更新订阅: \(subscription.name)")
+                logger.info("🔄 开始更新订阅: \(subscription.name)")
                 // print("📝 当前订阅状态:")
                 // printSubscriptionState(subscription)
                 
@@ -760,7 +761,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
                     // 重新加载订阅列表
                     await loadSubscriptions()
                     // print("✅ 订阅列表已刷新")
-                    logger.log("✅ 订阅列表已刷新")
+                    logger.info("订阅列表已刷新")
                 }
                 
             } catch {
@@ -771,7 +772,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
         } else {
             do {
                 // print("🔄 开始更新 MihomoTProxy 订阅: \(subscription.name)")
-                logger.log("🔄 开始更新 MihomoTProxy 订阅: \(subscription.name)")
+                logger.info("🔄 开始更新 MihomoTProxy 订阅: \(subscription.name)")
                 
                 let token = try await getAuthToken()
                 
@@ -822,16 +823,16 @@ class ConfigSubscriptionViewModel: ObservableObject {
                 }
                 
                 // print("✅ UCI命令执行成功")
-                logger.log("✅ UCI命令执行成功")
+                logger.info("UCI命令执行成功")
                 
                 // 重新加载订阅列表
                 await loadSubscriptions()
                 // print("✅ 订阅列表已刷新")
-                logger.log("✅ 订阅列表已刷新")
+                logger.info("订阅列表已刷新")
                 
             } catch {
                 // print("❌ 更新订阅失败: \(error.localizedDescription)")
-                logger.log("❌ 更新订阅失败: \(error.localizedDescription)")
+                logger.error("更新订阅失败: \(error.localizedDescription)")
                 errorMessage = error.localizedDescription
                 showError = true
             }
@@ -1094,12 +1095,14 @@ class ConfigSubscriptionViewModel: ObservableObject {
                 }
                 
                 // print("✅ 删除成功")
+                logger.info("删除成功")
                 
                 // 重新加载订阅列表
                 await loadSubscriptions()
                 
             } catch {
                 // print("❌ 删除订阅失败: \(error.localizedDescription)")
+                logger.error("删除订阅失败: \(error.localizedDescription)")
                 errorMessage = error.localizedDescription
                 showError = true
             }
@@ -1150,14 +1153,14 @@ class ConfigSubscriptionViewModel: ObservableObject {
                 }
                 
                 // print("✅ 删除成功")
-                logger.log("✅ 删除成功")
+                logger.info("删除成功")
                 
                 // 重新加载订阅列表
                 await loadSubscriptions()
                 
             } catch {
                 // print("❌ 删除订阅失败: \(error.localizedDescription)")
-                logger.log("❌ 删除订阅失败: \(error.localizedDescription)")
+                logger.error("删除订阅失败: \(error.localizedDescription)")
                 errorMessage = error.localizedDescription
                 showError = true
             }
@@ -1167,7 +1170,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
     
     // 添加更新所有订阅的方法
     func updateAllSubscriptions() async throws {
-        logger.log("🔄 开始更新全部订阅")
+        logger.info("开始更新全部订阅")
         isUpdating = true
         defer { isUpdating = false }
         
@@ -1306,7 +1309,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
     
     // 更新 MihomoTProxy 订阅
     func updateMihomoTProxySubscription(_ subscriptionId: String) async throws -> ConfigSubscription? {
-        logger.log("🔄 开始更新 MihomoTProxy 订阅: \(subscriptionId)")
+        logger.info("开始更新 MihomoTProxy 订阅: \(subscriptionId)")
         
         let token = try await getAuthToken()
         

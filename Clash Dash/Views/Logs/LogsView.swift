@@ -101,12 +101,20 @@ struct LogEntryView: View {
     let entry: LogManager.LogEntry
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 8) {
             Text(entry.message)
                 .font(.system(.body, design: .monospaced))
                 .foregroundColor(.primary)
             
-            HStack {
+            HStack(spacing: 8) {
+                Text(entry.levelInfo.0)
+                    .font(.caption2.weight(.medium))
+                    .foregroundColor(entry.levelInfo.1)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(entry.levelInfo.1.opacity(0.1))
+                    .cornerRadius(4)
+                
                 Text(entry.timestamp, style: .date)
                     .font(.caption2)
                     .foregroundColor(.secondary)
@@ -116,7 +124,7 @@ struct LogEntryView: View {
                     .foregroundColor(.secondary)
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 8)
         .contextMenu {
             Button {
                 UIPasteboard.general.string = entry.message
@@ -128,9 +136,9 @@ struct LogEntryView: View {
                 let dateFormatter = DateFormatter()
                 dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
                 let timeString = dateFormatter.string(from: entry.timestamp)
-                UIPasteboard.general.string = "[\(timeString)] \(entry.message)"
+                UIPasteboard.general.string = "[\(timeString)] [\(entry.levelInfo.0)] \(entry.message)"
             } label: {
-                Label("复制（含时间）", systemImage: "document.badge.clock")
+                Label("复制（含时间和级别）", systemImage: "info.square")
             }
         }
     }

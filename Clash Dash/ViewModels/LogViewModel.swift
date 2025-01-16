@@ -88,8 +88,8 @@ class LogViewModel: ObservableObject {
     func setLogLevel(_ level: String) {
         guard self.logLevel != level else { return }
         self.logLevel = level
-        print("📝 切换实时日志级别到: \(level)")
-        logger.log("切换实时日志级别到: \(level)")
+        // print("📝 切换实时日志级别到: \(level)")
+        logger.info("切换实时日志级别到: \(level)")
         
         Task { @MainActor in
             // 先断开现有连接
@@ -159,14 +159,14 @@ class LogViewModel: ObservableObject {
             return
         }
         
-        print("📡 开始连接到服务器: \(server.url):\(server.port)")
-        logger.log("📡 日志 - 开始连接到服务器: \(server.url):\(server.port)")
+        // print("📡 开始连接到服务器: \(server.url):\(server.port)")
+        logger.info("开始连接到服务器: \(server.url):\(server.port)")
         
         currentServer = server
         
         guard let request = makeWebSocketRequest(server: server) else {
-            print("❌ 无法创建 WebSocket 请求")
-            logger.log("❌ 日志 - 无法创建 WebSocket 请求")
+            // print("❌ 无法创建 WebSocket 请求")
+            logger.error("无法创建 WebSocket 请求")
             return
         }
         
@@ -187,8 +187,8 @@ class LogViewModel: ObservableObject {
         // 只在非取消错误时处理
         guard !error.isCancellationError else { return }
         
-        print("❌ WebSocket 错误: \(error.localizedDescription)")
-        logger.log("❌ 日志 - WebSocket 错误: \(error.localizedDescription)")
+        // print("❌ WebSocket 错误: \(error.localizedDescription)")
+        logger.error("WebSocket 错误: \(error.localizedDescription)")
         
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
@@ -201,23 +201,23 @@ class LogViewModel: ObservableObject {
                 if let urlError = error as? URLError {
                     switch urlError.code {
                     case .secureConnectionFailed, .serverCertificateUntrusted:
-                        print("❌ SSL/证书错误，停止重连")
-                        logger.log("❌ 日志 - SSL/证书错误，停止重连")
+                        // print("❌ SSL/证书错误，停止重连")
+                        logger.error("SSL/证书错误，停止重连")
                         self.connectionRetryCount = self.maxRetryCount
                     default:
                         if self.connectionRetryCount < self.maxRetryCount {
                             self.reconnect()
                         } else {
-                            print("⚠️ 达到最大重试次数，停止重连")
-                            logger.log("⚠️ 日志 - 达到最大重试次数，停止重连")
+                            // print("⚠️ 达到最大重试次数，停止重连")
+                            logger.warning("达到最大重试次数，停止重连")
                         }
                     }
                 } else {
                     if self.connectionRetryCount < self.maxRetryCount {
                         self.reconnect()
                     } else {
-                        print("⚠️ 达到最大重试次数，停止重连")
-                        logger.log("⚠️ 日志 - 达到最大重试次数，停止重连")
+                        // print("⚠️ 达到最大重试次数，停止重连")
+                        logger.warning("达到最大重试次数，停止重连")
                     }
                 }
             }
@@ -310,8 +310,8 @@ class LogViewModel: ObservableObject {
         
         connectionRetryCount += 1
         
-        print("🔄 准备重新连接... (第 \(connectionRetryCount) 次重试)")
-        logger.log("🔄 日志 - 准备重新连接... (第 \(connectionRetryCount) 次重试)")
+        // print("🔄 准备重新连接... (第 \(connectionRetryCount) 次重试)")
+        logger.info("准备重新连接... (第 \(connectionRetryCount) 次重试)")
         
         reconnectTask = Task { [weak self] in
             guard let self = self else { return }
@@ -320,8 +320,8 @@ class LogViewModel: ObservableObject {
             
             // 使用指数退避延迟
             let delay = self.getReconnectDelay()
-            print("⏳ 等待 \(delay/1_000_000_000) 秒后重试...")
-            logger.log("⏳ 日志 - 等待 \(delay/1_000_000_000) 秒后重试...")
+            // print("⏳ 等待 \(delay/1_000_000_000) 秒后重试...")
+            logger.debug("等待 \(delay/1_000_000_000) 秒后重试...")
             
             try? await Task.sleep(nanoseconds: delay)
             

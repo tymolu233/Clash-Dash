@@ -120,27 +120,27 @@ class SettingsViewModel: ObservableObject {
         do {
             request.httpBody = try JSONSerialization.data(withJSONObject: payload)
             if let bodyString = String(data: request.httpBody!, encoding: .utf8) {
-                logger.log("配置更新请求: \(bodyString)")
+                logger.debug("配置更新请求: \(bodyString)")
             }
         } catch {
-            logger.log("配置更新失败: \(error.localizedDescription)")
+            logger.error("配置更新失败: \(error.localizedDescription)")
             return
         }
         
         URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
             if let httpResponse = response as? HTTPURLResponse {
                 if httpResponse.statusCode == 204 {
-                    logger.log("配置更新成功：\(path) = \(value)")
+                    logger.info("配置更新成功：\(path) = \(value)")
                     DispatchQueue.main.async {
                         completion?()
                     }
                 } else {
-                    logger.log("配置更新失败：状态码 \(httpResponse.statusCode)")
+                    logger.error("配置更新失败：状态码 \(httpResponse.statusCode)")
                 }
             }
             
             if let error = error {
-                logger.log("配置更新错误：\(error.localizedDescription)")
+                logger.error("配置更新错误：\(error.localizedDescription)")
             }
         }.resume()
     }
@@ -159,9 +159,9 @@ class SettingsViewModel: ObservableObject {
         URLSession.shared.dataTask(with: request) { _, response, error in
             if let httpResponse = response as? HTTPURLResponse,
                (200...299).contains(httpResponse.statusCode) {
-                print("配置重载成功")
+                logger.info("配置重载成功")
             } else if let error = error {
-                print("配置重载失败：\(error.localizedDescription)")
+                logger.error("配置重载失败：\(error.localizedDescription)")
             }
         }.resume()
     }
@@ -179,9 +179,9 @@ class SettingsViewModel: ObservableObject {
         URLSession.shared.dataTask(with: request) { _, response, error in
             if let httpResponse = response as? HTTPURLResponse,
                (200...299).contains(httpResponse.statusCode) {
-                print("GEO 数据库更新成功")
+                logger.info("GEO 数据库更新成功")
             } else if let error = error {
-                print("GEO 数据库更新失败：\(error.localizedDescription)")
+                logger.error("GEO 数据库更新失败：\(error.localizedDescription)")
             }
         }.resume()
     }
@@ -199,9 +199,9 @@ class SettingsViewModel: ObservableObject {
         URLSession.shared.dataTask(with: request) { _, response, error in
             if let httpResponse = response as? HTTPURLResponse,
                (200...299).contains(httpResponse.statusCode) {
-                print("FakeIP 缓存清除成功")
+                logger.info("FakeIP 缓存清除成功")
             } else if let error = error {
-                print("FakeIP 缓存清除失败：\(error.localizedDescription)")
+                logger.error("FakeIP 缓存清除失败：\(error.localizedDescription)")
             }
         }.resume()
     }
@@ -219,9 +219,9 @@ class SettingsViewModel: ObservableObject {
         URLSession.shared.dataTask(with: request) { _, response, error in
             if let httpResponse = response as? HTTPURLResponse,
                (200...299).contains(httpResponse.statusCode) {
-                print("核心重启成功")
+                logger.info("核心重启成功")
             } else if let error = error {
-                print("核心重启失败：\(error.localizedDescription)")
+                logger.error("核心重启失败：\(error.localizedDescription)")
             }
         }.resume()
     }
@@ -239,9 +239,9 @@ class SettingsViewModel: ObservableObject {
         URLSession.shared.dataTask(with: request) { _, response, error in
             if let httpResponse = response as? HTTPURLResponse,
                (200...299).contains(httpResponse.statusCode) {
-                print("核心更新成功")
+                logger.info("核心更新成功")
             } else if let error = error {
-                print("核心更新失败：\(error.localizedDescription)")
+                logger.error("核心更新失败：\(error.localizedDescription)")
             }
         }.resume()
     }
