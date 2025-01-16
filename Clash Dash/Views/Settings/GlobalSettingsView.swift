@@ -177,12 +177,12 @@ struct GlobalSettingsView: View {
                         HStack {
                             Label("立即同步到 iCloud", systemImage: "arrow.clockwise.icloud")
                             Spacer()
-                            if cloudKitManager.isSyncing {
+                            if cloudKitManager.isUploadingSyncing {
                                 ProgressView()
                             }
                         }
                     }
-                    .disabled(cloudKitManager.isSyncing || cloudKitManager.iCloudStatus != "可用")
+                    .disabled(cloudKitManager.isUploadingSyncing || cloudKitManager.isDownloadingSyncing || cloudKitManager.iCloudStatus != "可用")
                     
                     Button {
                         Task {
@@ -197,12 +197,12 @@ struct GlobalSettingsView: View {
                         HStack {
                             Label("从 iCloud 恢复", systemImage: "icloud.and.arrow.down")
                             Spacer()
-                            if cloudKitManager.isSyncing {
+                            if cloudKitManager.isDownloadingSyncing {
                                 ProgressView()
                             }
                         }
                     }
-                    .disabled(cloudKitManager.isSyncing || cloudKitManager.iCloudStatus != "可用")
+                    .disabled(cloudKitManager.isUploadingSyncing || cloudKitManager.isDownloadingSyncing || cloudKitManager.iCloudStatus != "可用")
                 }
             } header: {
                 SectionHeader(title: "iCloud 同步", systemImage: "icloud")

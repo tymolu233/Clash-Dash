@@ -11,6 +11,8 @@ class CloudKitManager: ObservableObject {
     private let recordType = "AppData"
     
     @Published var isSyncing = false
+    @Published var isUploadingSyncing = false
+    @Published var isDownloadingSyncing = false
     @Published var lastSyncTime: Date?
     @Published var iCloudStatus: String = "未检查"
     
@@ -327,11 +329,13 @@ class CloudKitManager: ObservableObject {
         
         await MainActor.run {
             isSyncing = true
+            isUploadingSyncing = true
         }
         
         defer {
             Task { @MainActor in
                 isSyncing = false
+                isUploadingSyncing = false
             }
         }
         
@@ -393,11 +397,13 @@ class CloudKitManager: ObservableObject {
         
         await MainActor.run {
             isSyncing = true
+            isDownloadingSyncing = true
         }
         
         defer {
             Task { @MainActor in
                 isSyncing = false
+                isDownloadingSyncing = false
             }
         }
         
