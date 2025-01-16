@@ -196,7 +196,7 @@ struct ModeSwitchCard: View {
             if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
                let mode = json["mode"] as? String {
                 await MainActor.run {
-                    selectedMode = mode
+                    selectedMode = mode.lowercased()
                 }
             }
         } catch {

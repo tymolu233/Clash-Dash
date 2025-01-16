@@ -20,7 +20,7 @@ struct ModeSelectionMenu: View {
                         try? await Task.sleep(nanoseconds: 1_000_000_000) // 等待1秒
                         await MainActor.run {
                             settingsViewModel.getCurrentMode(server: server) { currentMode in
-                                settingsViewModel.mode = currentMode
+                                settingsViewModel.mode = currentMode.lowercased()
                                 // 发送通知以刷新服务器卡片
                                 NotificationCenter.default.post(name: NSNotification.Name("RefreshServerMode"), object: nil)
                             }
@@ -41,7 +41,7 @@ struct ModeSelectionMenu: View {
                         try? await Task.sleep(nanoseconds: 1_000_000_000) // 等待1秒
                         await MainActor.run {
                             settingsViewModel.getCurrentMode(server: server) { currentMode in
-                                settingsViewModel.mode = currentMode
+                                settingsViewModel.mode = currentMode.lowercased()
                                 // 发送通知以刷新服务器卡片
                                 NotificationCenter.default.post(name: NSNotification.Name("RefreshServerMode"), object: nil)
                             }
@@ -62,7 +62,7 @@ struct ModeSelectionMenu: View {
                         try? await Task.sleep(nanoseconds: 1_000_000_000) // 等待1秒
                         await MainActor.run {
                             settingsViewModel.getCurrentMode(server: server) { currentMode in
-                                settingsViewModel.mode = currentMode
+                                settingsViewModel.mode = currentMode.lowercased()
                                 // 发送通知以刷新服务器卡片
                                 NotificationCenter.default.post(name: NSNotification.Name("RefreshServerMode"), object: nil)
                             }
@@ -73,12 +73,12 @@ struct ModeSelectionMenu: View {
                 Label("全局模式", systemImage: settingsViewModel.mode == "global" ? "checkmark" : "circle")
             }
         } label: {
-            Label(ModeUtils.getModeText(settingsViewModel.mode), 
-                  systemImage: ModeUtils.getModeIcon(settingsViewModel.mode))
+            Label(ModeUtils.getModeText(settingsViewModel.mode.lowercased()), 
+                  systemImage: ModeUtils.getModeIcon(settingsViewModel.mode.lowercased()))
         }
         .onAppear {
             settingsViewModel.getCurrentMode(server: server) { currentMode in
-                settingsViewModel.mode = currentMode
+                settingsViewModel.mode = currentMode.lowercased()
             }
         }
     }

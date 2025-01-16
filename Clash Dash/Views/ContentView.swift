@@ -45,6 +45,16 @@ struct ContentView: View {
         }
     }
     
+    // 添加隐藏的服务器列表计算属性
+    private var hiddenServers: [ClashServer] {
+        return viewModel.servers.filter { server in
+            viewModel.isServerHidden(server, currentWiFiSSID: currentWiFiSSID)
+        }
+    }
+    
+    // 添加展开/收起状态
+    @State private var showHiddenServers = false
+    
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -152,6 +162,59 @@ struct ContentView: View {
                                 HapticManager.shared.impact(.light)
                             }
                         }
+                        
+                        // 添加隐藏控制器展开/收起部分
+                        if !hiddenServers.isEmpty {
+                            Button(action: {
+                                withAnimation {
+                                    showHiddenServers.toggle()
+                                    HapticManager.shared.impact(.light)
+                                }
+                            }) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: showHiddenServers ? "chevron.up" : "chevron.down")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    Text(showHiddenServers ? "收起隐藏的 \(hiddenServers.count) 个控制器" : "展开隐藏的 \(hiddenServers.count) 个控制器")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                }
+                                .padding(.vertical, 8)
+                            }
+                            .padding(.top, 4)
+                            
+                            if showHiddenServers {
+                                VStack(spacing: 12) {
+                                    ForEach(hiddenServers) { server in
+                                        NavigationLink {
+                                            ServerDetailView(server: server)
+                                                .onAppear {
+                                                    HapticManager.shared.impact(.light)
+                                                }
+                                        } label: {
+                                            ServerRowView(server: server)
+                                                .serverContextMenu(
+                                                    viewModel: viewModel,
+                                                    settingsViewModel: settingsViewModel,
+                                                    server: server,
+                                                    showMoveOptions: false,  // 禁用移动选项
+                                                    onEdit: { editingServer = server },
+                                                    onModeChange: { mode in showModeChangeSuccess(mode: mode) },
+                                                    onShowConfigSubscription: { showConfigSubscriptionView(for: server) },
+                                                    onShowSwitchConfig: { showSwitchConfigView(for: server) },
+                                                    onShowCustomRules: { showCustomRulesView(for: server) },
+                                                    onShowRestartService: { showRestartServiceView(for: server) }
+                                                )
+                                                .opacity(0.6)
+                                        }
+                                        .buttonStyle(PlainButtonStyle())
+                                        .onTapGesture {
+                                            HapticManager.shared.impact(.light)
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                     
                     // 设置卡片
@@ -210,7 +273,7 @@ struct ContentView: View {
                     .cornerRadius(16)
                     
                     // 版本信息
-                    Text("Ver: 1.3.1 Build 4")
+                    Text("Ver: 1.3.1 Build 6")
                         .foregroundColor(.secondary)
                         .font(.footnote)
                         .padding(.top, 8)

@@ -6,6 +6,7 @@ struct ServerContextMenu: ViewModifier {
     @State private var showingDeleteAlert = false
     @State private var showingServiceLog = false
     let server: ClashServer
+    let showMoveOptions: Bool
     var onEdit: () -> Void
     var onModeChange: (String) -> Void
     var onShowConfigSubscription: () -> Void
@@ -37,7 +38,7 @@ struct ServerContextMenu: ViewModifier {
                 }
             }
             
-            if viewModel.servers.count > 1 {
+            if viewModel.servers.count > 1 && showMoveOptions {
                 Divider()
                 
                 // 添加上移和下移选项
@@ -180,6 +181,7 @@ extension View {
         viewModel: ServerViewModel,
         settingsViewModel: SettingsViewModel,
         server: ClashServer,
+        showMoveOptions: Bool = true,
         onEdit: @escaping () -> Void,
         onModeChange: @escaping (String) -> Void,
         onShowConfigSubscription: @escaping () -> Void,
@@ -191,6 +193,7 @@ extension View {
             viewModel: viewModel,
             settingsViewModel: settingsViewModel,
             server: server,
+            showMoveOptions: showMoveOptions,
             onEdit: onEdit,
             onModeChange: onModeChange,
             onShowConfigSubscription: onShowConfigSubscription,

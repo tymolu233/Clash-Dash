@@ -55,7 +55,7 @@ class SettingsViewModel: ObservableObject {
     }
     
     private func updateUIFromConfig(_ config: ClashConfig) {
-        self.mode = config.mode
+        self.mode = config.mode.lowercased()
         self.logLevel = config.logLevel
         self.allowLan = config.allowLan
         self.sniffing = config.sniffing ?? false
