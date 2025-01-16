@@ -26,20 +26,41 @@ class WiFiBindingManager: ObservableObject {
     private let storageKey = "wifi_bindings"
     private let enableKey = "enableWiFiBinding"
     private let defaultServersKey = "default_servers"
+    private var notificationObserver: NSObjectProtocol?
     
     var isEnabled: Bool {
         get { defaults.bool(forKey: enableKey) }
     }
     
     init() {
-        // print("🏁 初始化 WiFiBindingManager")
         logger.log("初始化 WiFiBindingManager")
         if isEnabled {
             loadBindings()
             loadDefaultServers()
         } else {
-            // print("⚠️ Wi-Fi 绑定功能未启用，跳过加载绑定数据")
             logger.log("Wi-Fi 绑定功能未启用，跳过加载绑定数据")
+        }
+        
+        // 添加通知监听
+        notificationObserver = NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("WiFiBindingsUpdated"),
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            logger.log("收到 WiFi 绑定更新通知")
+            guard let self = self else { return }
+            if self.isEnabled {
+                self.loadBindings()
+                self.loadDefaultServers()
+                self.objectWillChange.send()
+            }
+        }
+    }
+    
+    deinit {
+        // 移除通知监听
+        if let observer = notificationObserver {
+            NotificationCenter.default.removeObserver(observer)
         }
     }
     

@@ -273,7 +273,7 @@ struct ContentView: View {
                     .cornerRadius(16)
                     
                     // 版本信息
-                    Text("Ver: 1.3.1 Build 6")
+                    Text("Ver: 1.3.1 Build 7")
                         .foregroundColor(.secondary)
                         .font(.footnote)
                         .padding(.top, 8)
@@ -431,6 +431,14 @@ struct ContentView: View {
                 // print("🔄 开始刷新服务器状态")
                 await viewModel.checkAllServersStatus()
                 // print("✅ 服务器状态刷新完成")
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ControllersUpdated"))) { _ in
+            Task { @MainActor in
+                await viewModel.loadServers()
+                // 添加触觉反馈
+                let impact = UIImpactFeedbackGenerator(style: .medium)
+                impact.impactOccurred()
             }
         }
     }
