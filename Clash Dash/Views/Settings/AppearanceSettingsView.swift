@@ -1,24 +1,37 @@
 import SwiftUI
 
+enum ConnectionRowStyle: String, CaseIterable, Identifiable {
+    case classic
+    case modern
+    
+    var id: String { rawValue }
+    
+    var description: String {
+        switch self {
+        case .classic: return "详细"
+        case .modern: return "简约"
+        }
+    }
+}
+
 struct AppearanceSettingsView: View {
     @AppStorage("appThemeMode") private var appThemeMode = AppThemeMode.system
     @AppStorage("proxyViewStyle") private var proxyViewStyle = ProxyViewStyle.detailed
     @AppStorage("hideDisconnectedServers") private var hideDisconnectedServers = false
     @AppStorage("enableWiFiBinding") private var enableWiFiBinding = false
     @AppStorage("enableHapticFeedback") private var enableHapticFeedback = true
+    @AppStorage("connectionRowStyle") private var connectionRowStyle = ConnectionRowStyle.classic
     @StateObject private var locationManager = LocationManager()
     @EnvironmentObject private var bindingManager: WiFiBindingManager
     
     var body: some View {
         Form {
             Section {
-                NavigationLink {
-                    OverviewCardSettingsView()
-                } label: {
-                    SettingRow(
-                        title: "概览页面设置",
-                        value: ""
-                    )
+                Picker("主题模式", selection: $appThemeMode) {
+                    ForEach(AppThemeMode.allCases) { mode in
+                        Text(mode.description)
+                            .tag(mode)
+                    }
                 }
                 
                 Picker("代理视图样式", selection: $proxyViewStyle) {
@@ -27,17 +40,30 @@ struct AppearanceSettingsView: View {
                             .tag(style)
                     }
                 }
-                
-                Picker("主题模式", selection: $appThemeMode) {
-                    ForEach(AppThemeMode.allCases) { mode in
-                        Text(mode.description)
-                            .tag(mode)
+
+                Picker("连接视图样式", selection: $connectionRowStyle) {
+                    ForEach(ConnectionRowStyle.allCases) { style in
+                        Text(style.description)
+                            .tag(style)
                     }
                 }
-                
-                Toggle("启用触感反馈", isOn: $enableHapticFeedback)
+
+                NavigationLink {
+                    OverviewCardSettingsView()
+                } label: {
+                    SettingRow(
+                        title: "概览页面设置",
+                        value: ""
+                    )
+                }
             } header: {
                 SectionHeader(title: "外观设置", systemImage: "paintbrush")
+            }
+            
+            Section {
+                Toggle("启用触感反馈", isOn: $enableHapticFeedback)
+            } header: {
+                SectionHeader(title: "触感反馈", systemImage: "hand.tap")
             }
             
             Section {

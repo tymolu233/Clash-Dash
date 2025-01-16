@@ -503,22 +503,29 @@ struct ConnectionsView: View {
                     ScrollView {
                         LazyVStack(spacing: 0) {
                             ForEach(filteredConnections) { connection in
-                                ConnectionRow(
-                                    connection: connection,
-                                    viewModel: viewModel,
-                                    tagViewModel: tagViewModel,
-                                    onClose: {
-                                        // 添加触觉反馈
-                                        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-                                        HapticManager.shared.impact(.light)
-                                        viewModel.closeConnection(connection.id)
-                                    },
-                                    selectedConnection: $selectedConnection
-                                )
-                                .transition(.asymmetric(
-                                    insertion: .move(edge: .top).combined(with: .opacity),
-                                    removal: .move(edge: .bottom).combined(with: .opacity)
-                                ))
+                                if viewModel.connectionRowStyle == .modern {
+                                    ModernConnectionRow(
+                                        connection: connection,
+                                        viewModel: viewModel,
+                                        tagViewModel: tagViewModel,
+                                        onClose: {
+                                            HapticManager.shared.impact(.light)
+                                            viewModel.closeConnection(connection.id)
+                                        },
+                                        selectedConnection: $selectedConnection
+                                    )
+                                } else {
+                                    ConnectionRow(
+                                        connection: connection,
+                                        viewModel: viewModel,
+                                        tagViewModel: tagViewModel,
+                                        onClose: {
+                                            HapticManager.shared.impact(.light)
+                                            viewModel.closeConnection(connection.id)
+                                        },
+                                        selectedConnection: $selectedConnection
+                                    )
+                                }
                             }
                         }
                         .padding(.vertical, 8)

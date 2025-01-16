@@ -3,6 +3,7 @@ import Combine
 import SwiftUI  // 添加这行
 
 class ConnectionsViewModel: ObservableObject {
+    @AppStorage("connectionRowStyle") var connectionRowStyle = ConnectionRowStyle.classic
     enum ConnectionState: Equatable {
         case disconnected
         case connecting

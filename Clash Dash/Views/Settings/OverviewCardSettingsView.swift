@@ -12,9 +12,9 @@ struct OverviewCardSettingsView: View {
             Section {
                 ForEach(settings.cardOrder) { card in
                     HStack {
-                        Image(systemName: "line.3.horizontal")
-                            .foregroundColor(.gray)
-                            .font(.system(size: 14))
+                        // Image(systemName: "line.3.horizontal")
+                        //     .foregroundColor(.gray)
+                        //     .font(.system(size: 14))
                         
                         Image(systemName: card.icon)
                             .foregroundColor(.accentColor)
@@ -55,7 +55,7 @@ struct OverviewCardSettingsView: View {
                 Toggle("速度卡片波浪效果", isOn: $showWaveEffect)
                 
                 VStack(alignment: .leading, spacing: 4) {
-                    Toggle("总流量卡片水滴效果", isOn: $showWaterDropEffect)
+                    Toggle("流量卡片水滴效果", isOn: $showWaterDropEffect)
                     Text("一滴水滴约为 10MB 的流量")
                         .font(.caption)
                         .foregroundColor(.secondary)

@@ -120,6 +120,29 @@ struct ConnectionRow: View {
         .padding(.vertical, 4)
     }
     
+    // 添加代理链显示组件
+    private func ProxyChainView(_ chains: [String]) -> some View {
+        let reversedChains = chains.reversed()
+        return Group {
+            if !chains.isEmpty {
+                HStack(spacing: 4) {
+                    ForEach(Array(reversedChains.enumerated()), id: \.element) { index, chain in
+                        if index > 0 {
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 9, weight: .regular))
+                                .foregroundColor(.secondary)
+                        }
+                        Text(chain)
+                            .font(.system(size: 12, weight: .regular))
+                            .foregroundColor(.secondary)
+                            .fixedSize(horizontal: true, vertical: false)
+                    }
+                }
+                .fixedSize(horizontal: true, vertical: false)
+            }
+        }
+    }
+    
     var body: some View {
         Button {
             // 添加触觉反馈
@@ -174,18 +197,26 @@ struct ConnectionRow: View {
                     Image(systemName: "globe.americas.fill")
                         .foregroundColor(.accentColor)
                         .frame(width: 16, height: 16)
-                    Text("\(connection.metadata.host.isEmpty ? (connection.metadata.destinationIP ?? "") : connection.metadata.host):\(connection.metadata.destinationPort)")
-                        .foregroundColor(.primary)
+                    HStack(spacing: 0) {
+                        Text(connection.metadata.host.isEmpty ? (connection.metadata.destinationIP ?? "") : connection.metadata.host)
+                            .foregroundColor(.primary)
+                            .font(.system(size: 16, weight: .medium))
+                        Text(":\(connection.metadata.destinationPort)")
+                            .foregroundColor(.secondary)
+                            .font(.system(size: 14, weight: .regular))
+                    }
                 }
-                .font(.system(size: 16, weight: .medium))
                 
                 // 第三行：规则链
                 HStack(spacing: 6) {
                     Image(systemName: "arrow.triangle.branch")
                         .foregroundColor(.orange)
                         .frame(width: 16, height: 16)
-                    Text(connection.formattedChains)
-                        .foregroundColor(.secondary)
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        ProxyChainView(connection.chains)
+                            .id(connection.id)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .font(.callout)
                 
