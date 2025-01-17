@@ -13,6 +13,7 @@ struct GlobalSettingsView: View {
     @AppStorage("hideProxyProviders") private var hideProxyProviders = false
     @AppStorage("smartProxyGroupDisplay") private var smartProxyGroupDisplay = false
     @AppStorage("enableCloudSync") private var enableCloudSync = false
+    @AppStorage("autoSpeedTestBeforeSwitch") private var autoSpeedTestBeforeSwitch = true
     @State private var showClearCacheAlert = false
     @State private var showSyncErrorAlert = false
     @State private var syncErrorMessage = ""
@@ -25,6 +26,12 @@ struct GlobalSettingsView: View {
                     title: "自动断开旧连接",
                     subtitle: "切换代理时自动断开旧的连接",
                     isOn: $autoDisconnectOldProxy
+                )
+                
+                SettingToggleRow(
+                    title: "切换前自动测速",
+                    subtitle: "在切换到新的代理节点前获取最新延迟",
+                    isOn: $autoSpeedTestBeforeSwitch
                 )
             } header: {
                 SectionHeader(title: "切换代理设置", systemImage: "network")

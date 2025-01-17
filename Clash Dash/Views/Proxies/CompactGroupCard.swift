@@ -8,6 +8,7 @@ struct CompactGroupCard: View {
     @AppStorage("hideUnavailableProxies") private var hideUnavailableProxies = false
     @AppStorage("proxyGroupSortOrder") private var proxyGroupSortOrder = ProxyGroupSortOrder.default
     @AppStorage("pinBuiltinProxies") private var pinBuiltinProxies = false
+    @AppStorage("autoSpeedTestBeforeSwitch") private var autoSpeedTestBeforeSwitch = true
     @State private var currentNodeOrder: [String]?
     @State private var displayedNodes: [String] = []
     @State private var showURLTestAlert = false

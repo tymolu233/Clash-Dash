@@ -1251,13 +1251,8 @@ struct ProxySelectorSheet: View {
                                     Task {
                                         // 先切换节点
                                         await viewModel.selectProxy(groupName: group.name, proxyName: nodeName)
-                                        // 如果节点是 REJECT，则测试延迟
-                                        if nodeName != "REJECT" {
-                                            await viewModel.testNodeDelay(nodeName: nodeName)
-                                        }
-
-                                        // 添加成功的触觉反馈
                                         
+                                        // 添加成功的触觉反馈
                                         HapticManager.shared.notification(.success)
 
                                         // 移除自动关闭

@@ -368,9 +368,28 @@ class ProxyViewModel: ObservableObject {
     func selectProxy(groupName: String, proxyName: String) async {
         logger.info("开始切换代理 - 组:\(groupName), 新节点:\(proxyName)")
         
+        // 检查是否需要自动测速
+        let shouldAutoTest = UserDefaults.standard.bool(forKey: "autoSpeedTestBeforeSwitch")
+        logger.debug("自动测速设置状态: \(shouldAutoTest)")
+        
+        if shouldAutoTest {
+            logger.debug("准备进行自动测速")
+            // 只有在需要测速时才获取实际节点并测速
+            let nodeToTest = await getActualNode(proxyName)
+            logger.debug("获取到实际节点: \(nodeToTest)")
+            
+            if nodeToTest != "REJECT" {
+                logger.debug("开始测试节点延迟")
+                await testNodeDelay(nodeName: nodeToTest)
+            } else {
+                logger.debug("跳过 REJECT 节点的测速")
+            }
+        } else {
+            logger.debug("自动测速已关闭，跳过测速步骤")
+        }
+        
         // 不需要在这里进行 URL 编码，因为 makeRequest 已经处理了
         guard var request = makeRequest(path: "proxies/\(groupName)") else { 
-            // print("❌ 创建请求失败")
             logger.error("创建请求失败")
             return 
         }
@@ -386,7 +405,6 @@ class ProxyViewModel: ObservableObject {
             if server.clashUseSSL,
                let httpsResponse = response as? HTTPURLResponse,
                httpsResponse.statusCode == 400 {
-                // print("❌ SSL 连接失败")
                 return
             }
             
@@ -410,29 +428,17 @@ class ProxyViewModel: ObservableObject {
                             let (_, closeResponse) = try await URLSession.shared.data(for: closeRequest)
                             if let closeHttpResponse = closeResponse as? HTTPURLResponse,
                                closeHttpResponse.statusCode == 204 {
-                                // print("成功关闭连接: \(connection.id)")
+                                logger.debug("成功关闭连接: \(connection.id)")
                             }
                         }
                     }
                 }
             }
             
-            // 获取实际需要测试的节点
-            let nodeToTest = await getActualNode(proxyName)
-            // print("🎯 获取到实际节点: \(nodeToTest)")
-            
-            // 如果不是 REJECT 且不是 DIRECT，则测试延迟
-            if nodeToTest != "REJECT" {
-                // print("⏱️ 开始测试节点延迟")
-                await testNodeDelay(nodeName: nodeToTest)
-            }
-            
-            // print("🔄 开始刷新代理数据")
             await fetchProxies()
-            // print("✅ 代理切换流程完成")
+            logger.info("代理切换完成")
             
         } catch {
-            // print("❌ 切换代理时发生错误: \(error)")
             handleNetworkError(error)
         }
     }
@@ -502,7 +508,7 @@ class ProxyViewModel: ObservableObject {
             }
             
             if let delayResponse = try? JSONDecoder().decode(DelayResponse.self, from: data) {
-                // print("📊 节点 \(nodeName) 的新延迟: \(delayResponse.delay)")
+                logger.debug("📊 节点 \(nodeName) 的新延迟: \(delayResponse.delay)")
                 // 更新节点延迟
                 updateNodeDelay(nodeName: nodeName, delay: delayResponse.delay)
                 testingNodes.remove(nodeName)
