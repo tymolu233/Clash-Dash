@@ -73,6 +73,11 @@ struct ModernConnectionRow: View {
         return String(format: "%.2f%@", size, units[unitIndex])
     }
     
+    // 获取客户端标签
+    private func getClientTag(for ip: String) -> String? {
+        return tagViewModel.tags.first { $0.ip == ip }?.name
+    }
+    
     private func TrafficLabel(_ bytes: Int, icon: String, color: Color) -> some View {
         HStack(spacing: 4) {
             Image(systemName: icon)
@@ -85,20 +90,25 @@ struct ModernConnectionRow: View {
     }
     
     private func ProxyChainView(_ chains: [String]) -> some View {
-        let reversedChains = chains.reversed()
-        return Group {
+        Group {
             if !chains.isEmpty {
                 HStack(spacing: 4) {
-                    ForEach(Array(reversedChains.enumerated()), id: \.element) { index, chain in
-                        if index > 0 {
-                            Image(systemName: "chevron.left")
-                                .font(.system(size: 9, weight: .regular))
-                                .foregroundColor(theme.chainArrow)
-                        }
-                        Text(chain)
+                    // 显示源IP或标签名
+                    let sourceTag = getClientTag(for: connection.metadata.sourceIP)
+                    Text(sourceTag ?? connection.metadata.sourceIP)
+                        .font(.system(size: 12, weight: .regular))
+                        .foregroundColor(theme.chain)
+                    
+                    // 箭头
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 9, weight: .regular))
+                        .foregroundColor(theme.chainArrow)
+                    
+                    // 显示最后一个代理节点
+                    if let lastProxy = chains.first {
+                        Text(lastProxy)
                             .font(.system(size: 12, weight: .regular))
                             .foregroundColor(theme.chain)
-                            .fixedSize(horizontal: true, vertical: false)
                     }
                 }
                 .fixedSize(horizontal: true, vertical: false)

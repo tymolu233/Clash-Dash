@@ -298,7 +298,7 @@ struct ConnectionDetailView: View {
             Section {
                 DetailRow(title: "规则类型", value: currentConnection.rule)
                 DetailRow(title: "规则内容", value: currentConnection.rulePayload)
-                DetailRow(title: "代理链", value: currentConnection.chains.isEmpty ? "N/A" : currentConnection.chains.joined(separator: " → "))
+                DetailRow(title: "代理链", value: currentConnection.chains.isEmpty ? "N/A" : currentConnection.chains.reversed().joined(separator: " → "))
             } header: {
                 Text("规则信息")
             }
