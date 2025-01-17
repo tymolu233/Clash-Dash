@@ -273,7 +273,7 @@ struct ContentView: View {
                     .cornerRadius(16)
                     
                     // 版本信息
-                    Text("Ver: 1.3.2 Build 5")
+                    Text("Ver: 1.3.2 Build 6")
                         .foregroundColor(.secondary)
                         .font(.footnote)
                         .padding(.top, 8)
