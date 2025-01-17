@@ -1474,9 +1474,20 @@ struct ProxyNodeCard: View {
 // 更新 DelayColor 构造，增加颜色饱和度
 struct DelayColor {
     // 延迟范围常量
-    static let lowRange = 0...240
-    static let mediumRange = 241...500
-    static let highThreshold = 500
+    static var lowRange: ClosedRange<Int> {
+        let threshold = UserDefaults.standard.integer(forKey: "lowDelayThreshold")
+        return 0...(threshold == 0 ? 240 : threshold)
+    }
+    
+    static var mediumRange: ClosedRange<Int> {
+        let lowThreshold = UserDefaults.standard.integer(forKey: "lowDelayThreshold")
+        let mediumThreshold = UserDefaults.standard.integer(forKey: "mediumDelayThreshold")
+        return (lowThreshold == 0 ? 241 : lowThreshold + 1)...(mediumThreshold == 0 ? 500 : mediumThreshold)
+    }
+    
+    static var highThreshold: Int {
+        UserDefaults.standard.integer(forKey: "mediumDelayThreshold")
+    }
     
     static func color(for delay: Int) -> Color {
         switch delay {

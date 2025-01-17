@@ -21,6 +21,10 @@ struct AppearanceSettingsView: View {
     @AppStorage("enableWiFiBinding") private var enableWiFiBinding = false
     @AppStorage("enableHapticFeedback") private var enableHapticFeedback = true
     @AppStorage("connectionRowStyle") private var connectionRowStyle = ConnectionRowStyle.classic
+    @AppStorage("lowDelayThreshold") private var lowDelayThreshold = 240
+    @AppStorage("mediumDelayThreshold") private var mediumDelayThreshold = 500
+    @State private var lowDelaySliderValue: Double = 0
+    @State private var mediumDelaySliderValue: Double = 0
     @StateObject private var locationManager = LocationManager()
     @EnvironmentObject private var bindingManager: WiFiBindingManager
     
@@ -58,6 +62,43 @@ struct AppearanceSettingsView: View {
                 }
             } header: {
                 SectionHeader(title: "外观设置", systemImage: "paintbrush")
+            }
+            
+            Section {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Text("延迟阈值范围")
+                        Spacer()
+                        Text("\(lowDelayThreshold)-\(mediumDelayThreshold) ms")
+                            .monospacedDigit()
+                    }
+                    
+                    DualSlider(
+                        lowValue: $lowDelaySliderValue,
+                        highValue: $mediumDelaySliderValue,
+                        range: 100...800,
+                        step: 10,
+                        lowColor: DelayColor.low,
+                        highColor: DelayColor.medium
+                    )
+                    .onChange(of: lowDelaySliderValue) { newValue in
+                        lowDelayThreshold = Int(newValue)
+                    }
+                    .onChange(of: mediumDelaySliderValue) { newValue in
+                        mediumDelayThreshold = Int(newValue)
+                    }
+                    
+                    Text("低于\(lowDelayThreshold)ms显示为绿色，\(lowDelayThreshold)ms到\(mediumDelayThreshold)ms之间显示为黄色，高于\(mediumDelayThreshold)ms显示为橙色")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 4)
+                .onAppear {
+                    lowDelaySliderValue = Double(lowDelayThreshold)
+                    mediumDelaySliderValue = Double(mediumDelayThreshold)
+                }
+            } header: {
+                SectionHeader(title: "延迟阈值设置", systemImage: "speedometer")
             }
             
             Section {

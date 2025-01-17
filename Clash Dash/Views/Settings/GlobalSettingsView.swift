@@ -3,6 +3,101 @@ import CoreHaptics
 import CoreLocation
 import CloudKit
 
+struct DualSlider: View {
+    @Binding var lowValue: Double
+    @Binding var highValue: Double
+    let range: ClosedRange<Double>
+    let step: Double
+    let lowColor: Color
+    let highColor: Color
+    
+    private var trackWidth: CGFloat {
+        let width = UIScreen.main.bounds.width - 40 // Form 的左右边距
+        return width
+    }
+    
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack(alignment: .leading) {
+                // 背景轨道
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(Color(.systemGray5))
+                    .frame(height: 4)
+                
+                // 低延迟区域（绿色到黄色）
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(LinearGradient(
+                        colors: [DelayColor.low, DelayColor.medium],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    ))
+                    .frame(width: max(0, lowValue - range.lowerBound) / (range.upperBound - range.lowerBound) * geometry.size.width,
+                           height: 4)
+                
+                // 中延迟区域（黄色到橙色）
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(LinearGradient(
+                        colors: [DelayColor.medium, DelayColor.high],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    ))
+                    .frame(width: max(0, highValue - lowValue) / (range.upperBound - range.lowerBound) * geometry.size.width,
+                           height: 4)
+                    .offset(x: max(0, lowValue - range.lowerBound) / (range.upperBound - range.lowerBound) * geometry.size.width)
+                
+                // 高延迟区域（橙色到红色）
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(LinearGradient(
+                        colors: [DelayColor.high, .red],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    ))
+                    .frame(width: max(0, range.upperBound - highValue) / (range.upperBound - range.lowerBound) * geometry.size.width,
+                           height: 4)
+                    .offset(x: max(0, highValue - range.lowerBound) / (range.upperBound - range.lowerBound) * geometry.size.width)
+                
+                // 低值滑块
+                Circle()
+                    .fill(.white)
+                    .shadow(radius: 1)
+                    .frame(width: 24, height: 24)
+                    .offset(x: max(0, lowValue - range.lowerBound) / (range.upperBound - range.lowerBound) * (geometry.size.width - 24))
+                    .gesture(
+                        DragGesture()
+                            .onChanged { value in
+                                let ratio = value.location.x / geometry.size.width
+                                var newValue = range.lowerBound + (range.upperBound - range.lowerBound) * ratio
+                                // 应用步进值
+                                newValue = (newValue / step).rounded() * step
+                                // 确保在范围内且不超过高值
+                                lowValue = min(max(newValue, range.lowerBound), highValue - step)
+                            }
+                    )
+                
+                // 高值滑块
+                Circle()
+                    .fill(.white)
+                    .shadow(radius: 1)
+                    .frame(width: 24, height: 24)
+                    .offset(x: max(0, highValue - range.lowerBound) / (range.upperBound - range.lowerBound) * (geometry.size.width - 24))
+                    .gesture(
+                        DragGesture()
+                            .onChanged { value in
+                                let ratio = value.location.x / geometry.size.width
+                                var newValue = range.lowerBound + (range.upperBound - range.lowerBound) * ratio
+                                // 应用步进值
+                                newValue = (newValue / step).rounded() * step
+                                // 确保在范围内且不小于低值
+                                highValue = max(min(newValue, range.upperBound), lowValue + step)
+                            }
+                    )
+            }
+            .frame(maxHeight: .infinity)
+        }
+        .frame(height: 44)
+    }
+}
+
 struct GlobalSettingsView: View {
     @AppStorage("autoDisconnectOldProxy") private var autoDisconnectOldProxy = false
     @AppStorage("hideUnavailableProxies") private var hideUnavailableProxies = false
