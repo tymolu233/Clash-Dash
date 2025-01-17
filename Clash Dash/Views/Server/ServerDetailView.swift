@@ -34,7 +34,7 @@ struct ServerDetailView: View {
     var body: some View {
         TabView(selection: $selectedTab) {
             // 概览标签页
-            OverviewTab(server: server, monitor: networkMonitor)
+            OverviewTab(server: server, monitor: networkMonitor, selectedTab: $selectedTab)
                 .onAppear {
                     HapticManager.shared.impact(.light)
                 }

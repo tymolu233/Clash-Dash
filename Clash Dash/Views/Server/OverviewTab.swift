@@ -8,10 +8,12 @@ struct OverviewTab: View {
     @StateObject private var settings = OverviewCardSettings()
     @StateObject private var subscriptionManager: SubscriptionManager
     @Environment(\.colorScheme) var colorScheme
+    @Binding var selectedTab: Int
     
-    init(server: ClashServer, monitor: NetworkMonitor) {
+    init(server: ClashServer, monitor: NetworkMonitor, selectedTab: Binding<Int>) {
         self.server = server
         self.monitor = monitor
+        self._selectedTab = selectedTab
         self._subscriptionManager = StateObject(wrappedValue: SubscriptionManager(server: server))
     }
     
@@ -109,6 +111,10 @@ struct OverviewTab: View {
                                     color: .orange,
                                     monitor: monitor
                                 )
+                                .onTapGesture {
+                                    selectedTab = 3
+                                    HapticManager.shared.impact(.light)
+                                }
                                 StatusCard(
                                     title: "内存使用",
                                     value: monitor.memoryUsage,
