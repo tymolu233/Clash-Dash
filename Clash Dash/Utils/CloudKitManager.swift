@@ -55,7 +55,9 @@ class CloudKitManager: ObservableObject {
         "wifi_bindings",
         "speedChartStyle",
         "connectionRowStyle",
-        "default_servers"
+        "default_servers",
+        "lowDelayThreshold",
+        "mediumDelayThreshold"
     ]
     
     private let excludedKeys = Set([
