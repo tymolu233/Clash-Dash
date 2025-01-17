@@ -541,11 +541,17 @@ struct Connection: Codable {
     }
 }
 
-struct SpeedRecord: Identifiable {
+struct SpeedRecord: Identifiable, Equatable {
     let id = UUID()
     let timestamp: Date
     let upload: Double
     let download: Double
+    
+    static func == (lhs: SpeedRecord, rhs: SpeedRecord) -> Bool {
+        lhs.timestamp == rhs.timestamp &&
+        lhs.upload == rhs.upload &&
+        lhs.download == rhs.download
+    }
 }
 
 struct MemoryRecord: Identifiable {

@@ -6,6 +6,7 @@ struct OverviewCardSettingsView: View {
     @AppStorage("modeSwitchCardStyle") private var modeSwitchCardStyle = ModeSwitchCardStyle.classic
     @AppStorage("showWaveEffect") private var showWaveEffect = false
     @AppStorage("showWaterDropEffect") private var showWaterDropEffect = true
+    @AppStorage("speedChartStyle") private var speedChartStyle = SpeedChartStyle.line
     
     var body: some View {
         List {
@@ -48,6 +49,12 @@ struct OverviewCardSettingsView: View {
                 
                 Picker("代理切换卡片样式", selection: $modeSwitchCardStyle) {
                     ForEach(ModeSwitchCardStyle.allCases, id: \.self) { style in
+                        Text(style.description).tag(style)
+                    }
+                }
+                
+                Picker("速率图表样式", selection: $speedChartStyle) {
+                    ForEach(SpeedChartStyle.allCases, id: \.self) { style in
                         Text(style.description).tag(style)
                     }
                 }

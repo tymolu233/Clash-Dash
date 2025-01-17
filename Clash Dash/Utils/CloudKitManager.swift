@@ -53,6 +53,7 @@ class CloudKitManager: ObservableObject {
         "showSubscriptionCard",
         "enableWiFiBinding",
         "wifi_bindings",
+        "speedChartStyle",
         "connectionRowStyle",
         "default_servers"
     ]
