@@ -153,7 +153,7 @@ private struct LineChartView: View {
                         }
                     }
                     .frame(width: geometry.size.width * 2)  // 图表宽度是容器的两倍
-                    .offset(x: -geometry.size.width * 0.5)  // 向左偏移半个容器宽度
+                    .offset(x: -geometry.size.width * 0.7)  // 向左偏移半个容器宽度
                     .chartYScale(domain: 0...maxValue)
                     .chartXAxis {
                         // 隐藏X轴标签，因为索引数字对用户没有意义
