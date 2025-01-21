@@ -105,4 +105,7 @@ send_request "GET" "/providers/rules" "规则提供者信息"
 # 6. 获取连接信息
 send_request "GET" "/connections" "连接信息"
 
+# 7. 获取配置信息
+send_request "GET" "/configs" "配置信息"
+
 log "success" "测试完成，详细日志已保存到 clash_debug.log" 
