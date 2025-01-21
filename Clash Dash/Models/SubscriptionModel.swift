@@ -443,8 +443,8 @@ class OpenClashClient: ClashClient {
                ["HTTP", "FILE"].contains(vehicleType.uppercased()),
                let subInfo = provider.subscriptionInfo {
                 
-                let total = Double(subInfo.Total)/1024/1024/1024
-                let used = Double(subInfo.Upload + subInfo.Download)/1024/1024/1024
+                let total = Double(subInfo.Total)
+                let used = Double(subInfo.Upload + subInfo.Download)
                 let expireDate = Date(timeIntervalSince1970: subInfo.Expire)
                 
                 // 只有当 total 和 expireDate 都不为0时才添加订阅信息
@@ -453,8 +453,8 @@ class OpenClashClient: ClashClient {
                         name: name,
                         expiryDate: expireDate,
                         lastUpdateTime: Date(),
-                        usedTraffic: used * 1024 * 1024 * 1024,  // 转换为字节
-                        totalTraffic: total * 1024 * 1024 * 1024  // 转换为字节
+                        usedTraffic: used,  // API 返回的已经是字节单位
+                        totalTraffic: total  // API 返回的已经是字节单位
                     )
                 }
             }
@@ -722,8 +722,8 @@ class MihomoClient: ClashClient {
                         name: name,
                         expiryDate: expireDate,
                         lastUpdateTime: Date(),
-                        usedTraffic: used * 1024 * 1024 * 1024,  // 转换为字节
-                        totalTraffic: total * 1024 * 1024 * 1024  // 转换为字节
+                        usedTraffic: used,  // API 返回的已经是字节单位
+                        totalTraffic: total  // API 返回的已经是字节单位
                     )
                 }
             }

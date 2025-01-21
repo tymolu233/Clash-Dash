@@ -239,7 +239,9 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             return
         }
 
-        request.timeoutInterval = 2 // 设置请求超时时间为2秒
+        // 使用 UserDefaults 获取超时设置
+        let timeout = UserDefaults.standard.double(forKey: "serverStatusTimeout")
+        request.timeoutInterval = timeout  // 使用设置的超时时间
         
         do {
             let session = makeURLSession(for: server)
@@ -262,6 +264,12 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                 return
             }
             
+            // 添加状态码日志
+            logger.debug("检查服务器状态响应码: \(httpResponse.statusCode)")
+            if let responseData = String(data: data, encoding: .utf8) {
+                logger.debug("响应内容: \(responseData)")
+            }
+            
             switch httpResponse.statusCode {
             case 200:
                 do {
@@ -282,11 +290,14 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                         updateServer(updatedServer)
                         logger.info("更新：\(updatedServer.name ?? server.url) 状态为 OK")
                     } else {
+                        logger.error("解析响应失败: \(error)")
                         updateServerStatus(server, status: .error, message: "无效的响应格式")
                         logger.error("服务器地址：\(server.url):\(server.port) ：无效的响应格式")
                     }
                 }
             case 401:
+                // 添加更详细的认证信息日志
+                logger.debug("认证头信息: \(String(describing: request.allHTTPHeaderFields))")
                 updateServerStatus(server, status: .unauthorized, message: "认证失败，请检查密钥")
                 logger.warning("服务器地址：\(server.url):\(server.port) ：认证失败，请检查密钥")
             case 404:
@@ -301,25 +312,32 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             }
         } catch let urlError as URLError {
             // print("🚫 URLError: \(urlError.localizedDescription)")
-            logger.error("服务器地址：\(server.url):\(server.port) ：URLError: \(urlError.localizedDescription)")
+            logger.debug("服务器地址：\(server.url):\(server.port) ：URLError: \(urlError.localizedDescription)")
             switch urlError.code {
             case .timedOut:
+                logger.warning("请求超时，请检查控制器是否可访问，或者在全局设置中调整最大超时时间。")
                 updateServerStatus(server, status: .error, message: "请求超时")
             case .cancelled:
+                logger.warning("请求被取消")
                 updateServerStatus(server, status: .error, message: "请求被取消")
             case .secureConnectionFailed:
+                logger.warning("SSL/TLS 连接失败")
                 updateServerStatus(server, status: .error, message: "SSL/TLS 连接失败")
             case .serverCertificateUntrusted:
+                logger.warning("证书不信任")
                 updateServerStatus(server, status: .error, message: "证书不信任")
             case .cannotConnectToHost:
+                logger.warning("无法连接到服务器")
                 updateServerStatus(server, status: .error, message: "无法连接到服务器")
             case .notConnectedToInternet:
+                logger.warning("网络未连接")
                 updateServerStatus(server, status: .error, message: "网络未连接")
             default:
+                logger.warning("网络错误")
                 updateServerStatus(server, status: .error, message: "网络错误")
             }
         } catch {
-            // print("❌ 未知错误: \(error)")
+            logger.error("未知错误: \(error)")
             updateServerStatus(server, status: .error, message: "未知错误")
         }
     }
@@ -1798,5 +1816,12 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         }
         
         return jsonResponse
+    }
+    
+    @MainActor
+    func moveServer(from: Int, to: Int) {
+        let item = servers.remove(at: from)
+        servers.insert(item, at: to)
+        saveServers()
     }
 } 

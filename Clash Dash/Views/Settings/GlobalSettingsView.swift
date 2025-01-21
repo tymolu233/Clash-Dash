@@ -109,6 +109,7 @@ struct GlobalSettingsView: View {
     @AppStorage("smartProxyGroupDisplay") private var smartProxyGroupDisplay = false
     @AppStorage("enableCloudSync") private var enableCloudSync = false
     @AppStorage("autoSpeedTestBeforeSwitch") private var autoSpeedTestBeforeSwitch = true
+    @AppStorage("serverStatusTimeout") private var serverStatusTimeout = 2.0  // 默认2秒
     @State private var showClearCacheAlert = false
     @State private var showSyncErrorAlert = false
     @State private var syncErrorMessage = ""
@@ -207,6 +208,32 @@ struct GlobalSettingsView: View {
                 }
             } header: {
                 SectionHeader(title: "测速设置", systemImage: "speedometer")
+            }
+
+            Section {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("状态检查超时")
+                        Spacer()
+                        Text(String(format: "%.1f 秒", serverStatusTimeout))
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    Slider(
+                        value: $serverStatusTimeout,
+                        in: 0.5...10.0,
+                        step: 0.5
+                    )
+                    .onChange(of: serverStatusTimeout) { _ in
+                        HapticManager.shared.impact(.light)
+                    }
+                    
+                    Text("检查服务器状态时的最大等待时间")
+                        .caption()
+                }
+            } header: {
+                SectionHeader(title: "控制器状态检查设置", systemImage: "timer")
             }
             
             Section {
@@ -313,6 +340,8 @@ struct GlobalSettingsView: View {
                     Text("上次同步时间：\(cloudKitManager.lastSyncTime?.formatted() ?? "从未同步")")
                 }
             }
+            
+            
         }
         .navigationTitle("全局配置")
         .navigationBarTitleDisplayMode(.inline)

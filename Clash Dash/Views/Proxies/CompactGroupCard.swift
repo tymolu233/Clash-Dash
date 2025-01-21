@@ -227,45 +227,44 @@ struct CompactGroupCard: View {
                     Divider()
                         .padding(.horizontal, 16)
                     
-                    VStack(spacing: 0) {
-                        ForEach(displayedNodes, id: \.self) { nodeName in
-                            ProxyNodeRow(
-                                nodeName: nodeName,
-                                isSelected: nodeName == group.now,
-                                delay: viewModel.getNodeDelay(nodeName: nodeName)
-                            )
-                            .onTapGesture {
-                                // 添加触觉反馈
-                                HapticManager.shared.impact(.light)
-                                
-                                if group.type == "URLTest" {
-                                    showURLTestAlert = true
-                                    HapticManager.shared.notification(.error)
-                                } else {
-                                    Task {
-                                        if currentNodeOrder == nil {
-                                            currentNodeOrder = displayedNodes
+                    ScrollView {
+                        LazyVStack(spacing: 0) {
+                            ForEach(displayedNodes, id: \.self) { nodeName in
+                                ProxyNodeRow(
+                                    nodeName: nodeName,
+                                    isSelected: nodeName == group.now,
+                                    delay: viewModel.getNodeDelay(nodeName: nodeName)
+                                )
+                                .onTapGesture {
+                                    // 添加触觉反馈
+                                    HapticManager.shared.impact(.light)
+                                    
+                                    if group.type == "URLTest" {
+                                        showURLTestAlert = true
+                                        HapticManager.shared.notification(.error)
+                                    } else {
+                                        Task {
+                                            if currentNodeOrder == nil {
+                                                currentNodeOrder = displayedNodes
+                                            }
+                                            await viewModel.selectProxy(groupName: group.name, proxyName: nodeName)
+                                            HapticManager.shared.notification(.success)
                                         }
-                                        await viewModel.selectProxy(groupName: group.name, proxyName: nodeName)
-                                        HapticManager.shared.notification(.success)
                                     }
                                 }
-                            }
-                            
-                            if nodeName != displayedNodes.last {
-                                Divider()
-                                    .padding(.horizontal, 16)
+                                
+                                if nodeName != displayedNodes.last {
+                                    Divider()
+                                        .padding(.horizontal, 16)
+                                }
                             }
                         }
+                        .padding(.vertical, 8)
                     }
-                    .padding(.vertical, 8)
+                    .frame(maxHeight: 500) // 限制最大高度
                 }
                 .background(cardBackgroundColor)
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .mask {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .padding(.top, -16)
-                }
             }
         }
         .background(cardBackgroundColor)

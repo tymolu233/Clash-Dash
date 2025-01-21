@@ -27,6 +27,17 @@ struct ContentView: View {
 
     private let logger = LogManager.shared
 
+    @State private var isDragging = false
+    @State private var draggedServer: ClashServer?
+    @Namespace private var animation
+    @State private var draggedOffset: CGFloat = 0
+    @State private var dragTargetIndex: Int?
+    @State private var dragDirection: DragDirection = .none
+
+    private enum DragDirection {
+        case up, down, none
+    }
+
     init() {
         _viewModel = StateObject(wrappedValue: ServerViewModel())
     }
@@ -55,6 +66,91 @@ struct ContentView: View {
     // 添加展开/收起状态
     @State private var showHiddenServers = false
     
+    // 添加一个新的私有视图来处理单个服务器行
+    private func serverRowView(for server: ClashServer, index: Int) -> some View {
+        let isTarget = dragTargetIndex == index && draggedServer?.id != server.id
+        let offset: CGFloat = {
+            guard isTarget else { return 0 }
+            if let draggedServer = draggedServer,
+               let draggedIndex = viewModel.servers.firstIndex(where: { $0.id == draggedServer.id }) {
+                return draggedIndex > index ? 80 : -80
+            }
+            return 0
+        }()
+        
+        return NavigationLink(destination: ServerDetailView(server: server)) {
+            ServerRowView(server: server)
+                .serverContextMenu(
+                    viewModel: viewModel,
+                    settingsViewModel: settingsViewModel,
+                    server: server,
+                    onEdit: { editingServer = server },
+                    onModeChange: { mode in showModeChangeSuccess(mode: mode) },
+                    onShowConfigSubscription: { showConfigSubscriptionView(for: server) },
+                    onShowSwitchConfig: { showSwitchConfigView(for: server) },
+                    onShowCustomRules: { showCustomRulesView(for: server) },
+                    onShowRestartService: { showRestartServiceView(for: server) }
+                )
+                .matchedGeometryEffect(id: server.id, in: animation)
+                .offset(y: offset)
+                .animation(.easeInOut(duration: 0.3), value: offset)
+        }
+        .buttonStyle(PlainButtonStyle())
+        .onDrag {
+            self.draggedServer = server
+            self.isDragging = true
+            let provider = NSItemProvider(object: server.id.uuidString as NSString)
+            provider.suggestedName = "松手完成排序"
+            return provider
+        }
+        .dropDestination(for: String.self) { items, location in
+            guard let draggedServer = self.draggedServer,
+                  let fromIndex = viewModel.servers.firstIndex(where: { $0.id == draggedServer.id }),
+                  let toIndex = viewModel.servers.firstIndex(where: { $0.id == server.id }) else {
+                return false
+            }
+            
+            if fromIndex != toIndex {
+                withAnimation(.easeInOut) {
+                    viewModel.moveServer(from: fromIndex, to: toIndex)
+                    HapticManager.shared.impact(.medium)
+                }
+            }
+            self.isDragging = false
+            self.dragTargetIndex = nil
+            self.dragDirection = .none
+            return true
+        } isTargeted: { isTargeted in
+            if isTargeted {
+                if let draggedServer = self.draggedServer,
+                   let draggedIndex = viewModel.servers.firstIndex(where: { $0.id == draggedServer.id }),
+                   let currentIndex = viewModel.servers.firstIndex(where: { $0.id == server.id }) {
+                    // 当拖拽到目标位置时，立即执行移动
+                    if draggedIndex != currentIndex {
+                        withAnimation(.easeInOut) {
+                            viewModel.moveServer(from: draggedIndex, to: currentIndex)
+                            HapticManager.shared.impact(.soft)
+                        }
+                    }
+                }
+                dragTargetIndex = index
+            }
+        }
+    }
+
+    // 添加一个新的私有视图来处理服务器列表
+    private func serverListView() -> some View {
+        ForEach(Array(filteredServers.enumerated()), id: \.element.id) { index, server in
+            serverRowView(for: server, index: index)
+        }
+        .onChange(of: isDragging) { dragging in
+            if !dragging {
+                draggedServer = nil
+                dragTargetIndex = nil
+            }
+        }
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -135,35 +231,10 @@ struct ContentView: View {
                             }
                         }
                     } else {
-                        // 显示过滤后的服务器列表
-                        ForEach(filteredServers) { server in
-                            NavigationLink {
-                                ServerDetailView(server: server)
-                                    .onAppear {
-                                        // 添加触觉反馈
-                                        HapticManager.shared.impact(.light)
-                                    }
-                            } label: {
-                                ServerRowView(server: server)
-                                    .serverContextMenu(
-                                        viewModel: viewModel,
-                                        settingsViewModel: settingsViewModel,
-                                        server: server,
-                                        onEdit: { editingServer = server },
-                                        onModeChange: { mode in showModeChangeSuccess(mode: mode) },
-                                        onShowConfigSubscription: { showConfigSubscriptionView(for: server) },
-                                        onShowSwitchConfig: { showSwitchConfigView(for: server) },
-                                        onShowCustomRules: { showCustomRulesView(for: server) },
-                                        onShowRestartService: { showRestartServiceView(for: server) }
-                                    )
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                            .onTapGesture {
-                                HapticManager.shared.impact(.light)
-                            }
-                        }
+                        // 使用新的服务器列表视图
+                        serverListView()
                         
-                        // 添加隐藏控制器展开/收起部分
+                        // 隐藏控制器部分保持不变
                         if !hiddenServers.isEmpty {
                             Button(action: {
                                 withAnimation {
@@ -273,7 +344,7 @@ struct ContentView: View {
                     .cornerRadius(16)
                     
                     // 版本信息
-                    Text("Ver: 1.3.2 Build 7")
+                    Text("Ver: 1.3.2 Build 9")
                         .foregroundColor(.secondary)
                         .font(.footnote)
                         .padding(.top, 8)

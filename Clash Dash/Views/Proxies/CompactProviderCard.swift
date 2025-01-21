@@ -237,55 +237,54 @@ struct CompactProviderCard: View {
                     Divider()
                         .padding(.horizontal, 16)
                     
-                    VStack(spacing: 0) {
-                        // 使用 currentNodes 替代 nodes
-                        ForEach(currentNodes) { node in
-                            ProxyNodeRow(
-                                nodeName: node.name,
-                                isSelected: false,
-                                delay: node.delay,
-                                isTesting: testingNodes.contains(node.name)
-                            )
-                            .onTapGesture {
-                                // 添加触觉反馈
-                                HapticManager.shared.impact(.light)
-                                
-                                Task {
-                                    testingNodes.insert(node.name)
+                    ScrollView {
+                        LazyVStack(spacing: 0) {
+                            // 使用 currentNodes 替代 nodes
+                            ForEach(currentNodes) { node in
+                                ProxyNodeRow(
+                                    nodeName: node.name,
+                                    isSelected: false,
+                                    delay: node.delay,
+                                    isTesting: testingNodes.contains(node.name)
+                                )
+                                .onTapGesture {
+                                    // 添加触觉反馈
+                                    HapticManager.shared.impact(.light)
                                     
-                                    do {
-                                        try await withTaskCancellationHandler {
-                                            await viewModel.healthCheckProviderProxy(
-                                                providerName: provider.name,
-                                                proxyName: node.name
-                                            )
-                                            HapticManager.shared.notification(.success)
-                                        } onCancel: {
-                                            testingNodes.remove(node.name)
+                                    Task {
+                                        testingNodes.insert(node.name)
+                                        
+                                        do {
+                                            try await withTaskCancellationHandler {
+                                                await viewModel.healthCheckProviderProxy(
+                                                    providerName: provider.name,
+                                                    proxyName: node.name
+                                                )
+                                                HapticManager.shared.notification(.success)
+                                            } onCancel: {
+                                                testingNodes.remove(node.name)
+                                                HapticManager.shared.notification(.error)
+                                            }
+                                        } catch {
                                             HapticManager.shared.notification(.error)
                                         }
-                                    } catch {
-                                        HapticManager.shared.notification(.error)
+                                        
+                                        testingNodes.remove(node.name)
                                     }
-                                    
-                                    testingNodes.remove(node.name)
+                                }
+                                
+                                if node.id != currentNodes.last?.id {
+                                    Divider()
+                                        .padding(.horizontal, 16)
                                 }
                             }
-                            
-                            if node.id != currentNodes.last?.id {
-                                Divider()
-                                    .padding(.horizontal, 16)
-                            }
                         }
+                        .padding(.vertical, 8)
                     }
-                    .padding(.vertical, 8)
+                    .frame(maxHeight: 500) // 限制最大高度
                 }
                 .background(cardBackgroundColor)
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .mask {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .padding(.top, -16)
-                }
             }
         }
         .background(cardBackgroundColor)
