@@ -1,11 +1,13 @@
 # Clash Dash
 
-Clash Dash 是一款原生 SwiftUI 开发的 OpenClash 管理工具。
+Clash Dash 是一款原生 SwiftUI 开发的 OpenClash/MihomoTProxy 管理工具。
 
 <a href="https://apps.apple.com/cn/app/clash-dash/id6738882561?platform=iphone">
     <img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Download on the App Store" style="width: 120px;">
 </a>
-
+<a href="https://apps.apple.com/cn/app/clash-dash/id6738882561?platform=iphone">
+    <img src="JoinTestFlight.png" alt="Join the TestFlight" style="width: 120px;">
+</a>
 ## 预览
 
 <img src="preview.png" alt="Clash Dash Preview" width="900">
@@ -14,6 +16,7 @@ Clash Dash 是一款原生 SwiftUI 开发的 OpenClash 管理工具。
 
 - 便捷管理多个 Clash 服务（OpenClash、Sing-Box、MihomoTProxy）
 - 切换、编辑 Clash 配置文件
+- 支持 iCloud 同步
 - 编辑 Clash 订阅信息
 - 快速启动进入指定服务器
 - 支持原版和 Meta 版 Clash 内核
