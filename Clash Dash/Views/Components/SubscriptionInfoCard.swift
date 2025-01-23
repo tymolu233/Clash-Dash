@@ -54,9 +54,9 @@ struct SubscriptionInfoCard: View {
     private func getProgressColor(_ percentage: Double) -> Color {
         let remainingPercentage = 100.0 - percentage
         switch remainingPercentage {
-        case 80..<200:
+        case 50..<200:
             return .green
-        case 50..<80:
+        case 20..<50:
             return .orange
         default:
             return .red
@@ -103,8 +103,13 @@ struct SubscriptionInfoCard: View {
                                     Text("剩余时间")
                                         .font(.system(size: 14))
                                         .foregroundColor(.secondary)
-                                    Text("\(remainingDays) 天")
-                                        .font(.system(size: 22, weight: .medium))
+                                    if remainingDays > 0 {
+                                        Text("\(remainingDays) 天")
+                                            .font(.system(size: 22, weight: .medium))
+                                    } else {
+                                        Text("无限期")
+                                            .font(.system(size: 22, weight: .medium))
+                                    }
                                 }
                             }
                             
@@ -122,13 +127,14 @@ struct SubscriptionInfoCard: View {
                                             .fill(Color(.systemGray5))
                                             .frame(height: 3)
                                         
-                                        RoundedRectangle(cornerRadius: 1.5)
-                                            .fill(
-                                                getProgressColor(subscription.percentageUsed)
-                                                    .opacity(0.8)
-                                            )
-                                            .frame(width: geometry.size.width * CGFloat(subscription.remainingTraffic / subscription.totalTraffic))
-                                            .frame(height: 3)
+                                        if subscription.totalTraffic > 0 {
+                                            RoundedRectangle(cornerRadius: 1.5)
+                                                .fill(
+                                                    getProgressColor(subscription.percentageUsed)
+                                                        .opacity(0.8)
+                                                )
+                                                .frame(width: geometry.size.width * CGFloat(subscription.remainingTraffic / subscription.totalTraffic))
+                                        }
                                     }
                                 }
                                 .frame(width: 80, height: 3)
@@ -306,9 +312,16 @@ struct SubscriptionInfoCard: View {
                                 Image(systemName: "calendar")
                                     .font(.system(size: 12))
                                     .foregroundColor(.secondary)
-                                Text("\(dateFormatter.string(from: expiryDate))")
-                                    .font(.system(size: 12))
-                                    .foregroundColor(.secondary)
+                                let remainingDays = Calendar.current.dateComponents([.day], from: Date(), to: expiryDate).day ?? 0
+                                if remainingDays > 0 {
+                                    Text("\(dateFormatter.string(from: expiryDate))")
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.secondary)
+                                } else {
+                                    Text("无限期")
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.secondary)
+                                }
                             }
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
@@ -328,9 +341,15 @@ struct SubscriptionInfoCard: View {
                             
                             Spacer()
                             
-                            Text("\(formatTraffic(subscription.usedTraffic)) / \(formatTraffic(subscription.totalTraffic))")
-                                .font(.system(size: 12))
-                                .foregroundColor(.secondary)
+                            if subscription.totalTraffic > 0 {
+                                Text("\(formatTraffic(subscription.usedTraffic)) / \(formatTraffic(subscription.totalTraffic))")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondary)
+                            } else {
+                                Text("无限制")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondary)
+                            }
                         }
                         
                         GeometryReader { geometry in
@@ -338,12 +357,14 @@ struct SubscriptionInfoCard: View {
                                 RoundedRectangle(cornerRadius: 4)
                                     .fill(Color(.systemGray5))
                                 
-                                RoundedRectangle(cornerRadius: 4)
-                                    .fill(
-                                        getProgressColor(subscription.percentageUsed)
-                                            .gradient
-                                    )
-                                    .frame(width: geometry.size.width * CGFloat(subscription.remainingTraffic / subscription.totalTraffic))
+                                if subscription.totalTraffic > 0 {
+                                    RoundedRectangle(cornerRadius: 4)
+                                        .fill(
+                                            getProgressColor(subscription.percentageUsed)
+                                                .gradient
+                                        )
+                                        .frame(width: geometry.size.width * CGFloat(subscription.remainingTraffic / subscription.totalTraffic))
+                                }
                             }
                             .frame(height: 8)
                             .overlay(

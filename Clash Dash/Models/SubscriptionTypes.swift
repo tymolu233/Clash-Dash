@@ -44,6 +44,7 @@ public struct SubscriptionCardInfo: Identifiable, Codable {
     }
     
     public var remainingTraffic: Double {
+        guard totalTraffic > 0 else { return 0 }
         return totalTraffic - usedTraffic
     }
 } 

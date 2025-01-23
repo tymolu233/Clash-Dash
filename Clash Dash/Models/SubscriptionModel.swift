@@ -447,8 +447,8 @@ class OpenClashClient: ClashClient {
                 let used = Double(subInfo.Upload + subInfo.Download)
                 let expireDate = Date(timeIntervalSince1970: subInfo.Expire)
                 
-                // 只有当 total 和 expireDate 都不为0时才添加订阅信息
-                if total > 0 && subInfo.Expire > 0 {
+                // 当 total 或 expireDate 不为0时才添加订阅信息
+                if total > 0 || subInfo.Expire > 0 {
                     result[name] = SubscriptionCardInfo(
                         name: name,
                         expiryDate: expireDate,
@@ -716,8 +716,8 @@ class MihomoClient: ClashClient {
                 let used = Double(subInfo.Upload + subInfo.Download)
                 let expireDate = Date(timeIntervalSince1970: subInfo.Expire)
                 
-                // 只有当 total 和 expireDate 都不为0时才添加订阅信息
-                if total > 0 && subInfo.Expire > 0 {
+                // 当 total 或 expireDate 不为0时才添加订阅信息
+                if total > 0 || subInfo.Expire > 0 {
                     result[name] = SubscriptionCardInfo(
                         name: name,
                         expiryDate: expireDate,
