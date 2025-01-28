@@ -73,6 +73,7 @@ struct MultiColumnProxyView: View {
                     }
                 }
             }
+            .padding(.vertical, 24)
         }
         .background(Color(.systemGroupedBackground))
         .refreshable {
