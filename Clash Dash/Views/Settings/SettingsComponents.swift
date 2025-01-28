@@ -127,6 +127,7 @@ struct SettingsInfoRow: View {
 enum ProxyViewStyle: String, CaseIterable, Identifiable {
     case detailed = "detailed"
     case compact = "compact"
+    case multiColumn = "multiColumn"
     
     var id: String { self.rawValue }
     
@@ -134,6 +135,7 @@ enum ProxyViewStyle: String, CaseIterable, Identifiable {
         switch self {
         case .detailed: return "详细"
         case .compact: return "简洁"
+        case .multiColumn: return "多列"
         }
     }
 }

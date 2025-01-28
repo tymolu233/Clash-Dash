@@ -216,44 +216,50 @@ struct ProxyView: View {
     }
     
     var body: some View {
-        ScrollView {
-            LazyVStack(spacing: 20) {
-                if viewModel.groups.isEmpty {
-                    LoadingView()
-                } else {
-                    // 根据视图样式显示不同的卡片
-                    if proxyViewStyle == .detailed {
-                        VStack(spacing: 20) {
-                            ProxyGroupsOverview(groups: viewModel.getSortedGroups(), viewModel: viewModel)
-                                .drawingGroup(opaque: false)  // 优化渲染
-                            
-                            // 代理提供者部分
-                            if !hideProxyProviders {
-                                let httpProviders = viewModel.providers
-                                    .filter { ["HTTP", "FILE"].contains($0.vehicleType.uppercased()) }
-                                    .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+        Group {
+            switch proxyViewStyle {
+            case .detailed:
+                ScrollView {
+                    LazyVStack(spacing: 20) {
+                        if viewModel.groups.isEmpty {
+                            LoadingView()
+                        } else {
+                            VStack(spacing: 20) {
+                                ProxyGroupsOverview(groups: viewModel.getSortedGroups(), viewModel: viewModel)
+                                    .drawingGroup(opaque: false)
                                 
-                                if !httpProviders.isEmpty {
-                                    ProxyProvidersSection(
-                                        providers: httpProviders,
-                                        nodes: viewModel.providerNodes,
-                                        viewModel: viewModel
-                                    )
-                                    .drawingGroup(opaque: false)  // 优化渲染
+                                if !hideProxyProviders {
+                                    let httpProviders = viewModel.providers
+                                        .filter { ["HTTP", "FILE"].contains($0.vehicleType.uppercased()) }
+                                        .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+                                    
+                                    if !httpProviders.isEmpty {
+                                        ProxyProvidersSection(
+                                            providers: httpProviders,
+                                            nodes: viewModel.providerNodes,
+                                            viewModel: viewModel
+                                        )
+                                        .drawingGroup(opaque: false)
+                                    }
                                 }
                             }
+                            .padding(.horizontal)
                         }
-                        .padding(.horizontal)
-                    } else {
-                        // 代理组列表
-                        LazyVStack(spacing: 12) {
-                            ForEach(viewModel.getSortedGroups(), id: \.name) { group in
-                                CompactGroupCard(group: group, viewModel: viewModel)
-                            }
+                    }
+                    .padding(.vertical)
+                }
+                .background(Color(.systemGroupedBackground))
+                .refreshable {
+                    await refreshData()
+                }
+            case .compact:
+                ScrollView {
+                    LazyVStack(spacing: 12) {
+                        ForEach(viewModel.getSortedGroups(), id: \.name) { group in
+                            CompactGroupCard(group: group, viewModel: viewModel)
                         }
                         .padding(.horizontal)
                         
-                        // 代理提供者部分
                         if !hideProxyProviders {
                             let httpProviders = viewModel.providers
                                 .filter { ["HTTP", "FILE"].contains($0.vehicleType.uppercased()) }
@@ -279,13 +285,15 @@ struct ProxyView: View {
                             }
                         }
                     }
+                    .padding(.vertical)
                 }
+                .background(Color(.systemGroupedBackground))
+                .refreshable {
+                    await refreshData()
+                }
+            case .multiColumn:
+                MultiColumnProxyView(server: server)
             }
-            .padding(.vertical)
-        }
-        .background(Color(.systemGroupedBackground))
-        .refreshable {
-            await refreshData()
         }
         .task {
             await viewModel.fetchProxies()
@@ -300,7 +308,6 @@ struct ProxyView: View {
         withAnimation(.easeInOut(duration: 0.2)) {
             isRefreshing = false
         }
-        
         
         HapticManager.shared.notification(.success)
     }
