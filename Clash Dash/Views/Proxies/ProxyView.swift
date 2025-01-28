@@ -732,7 +732,7 @@ struct ProxyProviderCard: View {
               info.total > 0 else { return nil }
         let used = Double(info.upload + info.download)
         let total = Double(info.total)
-        let percentage = (used / total) * 100
+        let percentage = ((total - used) / total) * 100  // 修改为计算剩余流量百分比
         return (formatBytes(Int64(used)), formatBytes(info.total), percentage)
     }
     
@@ -896,9 +896,9 @@ struct ProxyProviderCard: View {
             // 流量信息
             if let (used, total, percentage) = trafficInfo {
                 VStack(alignment: .leading, spacing: 8) {
-                    // 流量度条
+                    // 流量进度条
                     GeometryReader { geometry in
-                        ZStack(alignment: .leading) {
+                        ZStack(alignment: .leading) {  // 修改为右对齐
                             RoundedRectangle(cornerRadius: 2)
                                 .fill(Color(.systemGray5))
                                 .frame(height: 4)
@@ -918,7 +918,7 @@ struct ProxyProviderCard: View {
                         
                         Spacer()
                         
-                        Text(String(format: "%.1f%%", percentage))
+                        Text(String(format: "剩余 %.1f%%", percentage))  // 修改文字显示为剩余百分比
                             .font(.caption)
                             .foregroundColor(getTrafficColor(percentage: percentage))
                     }
@@ -952,9 +952,9 @@ struct ProxyProviderCard: View {
     }
     
     private func getTrafficColor(percentage: Double) -> Color {
-        if percentage < 50 {
+        if percentage > 50 {  // 修改颜色判断逻辑
             return .green
-        } else if percentage < 80 {
+        } else if percentage > 20 {
             return .yellow
         } else {
             return .red

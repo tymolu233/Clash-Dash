@@ -162,7 +162,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
     }
     
     private func makeRequest(for server: ClashServer, path: String) -> URLRequest? {
-        let scheme = server.openWRTUseSSL ? "https" : "http"
+        let scheme = server.clashUseSSL ? "https" : "http"
         var urlComponents = URLComponents()
         
         urlComponents.scheme = scheme
