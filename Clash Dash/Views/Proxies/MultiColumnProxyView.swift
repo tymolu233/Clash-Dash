@@ -26,54 +26,56 @@ struct MultiColumnProxyView: View {
     }
     
     var body: some View {
-        ScrollView {
-            let columns = makeColumns()
-            
-            LazyVStack(spacing: 24) {
-                if viewModel.groups.isEmpty {
-                    LoadingView()
-                } else {
-                    // 代理组网格
-                    LazyVGrid(columns: columns, spacing: 16) {
-                        ForEach(viewModel.getSortedGroups(), id: \.name) { group in
-                            MultiColumnGroupCard(group: group, viewModel: viewModel)
-                                .onTapGesture {
-                                    HapticManager.shared.impact(.light)
-                                    selectedGroup = group
-                                }
-                        }
-                    }
-                    .padding(.horizontal)
-                    
-                    // 代理提供者部分
-                    if !UserDefaults.standard.bool(forKey: "hideProxyProviders") {
-                        let httpProviders = viewModel.providers
-                            .filter { ["HTTP", "FILE"].contains($0.vehicleType.uppercased()) }
-                            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
-                        
-                        if !httpProviders.isEmpty {
-                            VStack(alignment: .leading, spacing: 16) {
-                                Text("代理提供者")
-                                    .font(.system(.title3, design: .rounded))
-                                    .fontWeight(.semibold)
-                                    .padding(.horizontal)
-                                
-                                LazyVGrid(columns: columns, spacing: 16) {
-                                    ForEach(httpProviders, id: \.name) { provider in
-                                        MultiColumnProviderCard(
-                                            provider: provider,
-                                            nodes: viewModel.providerNodes[provider.name] ?? [],
-                                            viewModel: viewModel
-                                        )
+        GeometryReader { geometry in
+            ScrollView {
+                LazyVStack(spacing: 24) {
+                    if viewModel.groups.isEmpty {
+                        LoadingView()
+                    } else {
+                        // 代理组网格
+                        let columns = makeColumns(availableWidth: geometry.size.width)
+                        LazyVGrid(columns: columns, spacing: 16) {
+                            ForEach(viewModel.getSortedGroups(), id: \.name) { group in
+                                MultiColumnGroupCard(group: group, viewModel: viewModel, containerWidth: geometry.size.width)
+                                    .onTapGesture {
+                                        HapticManager.shared.impact(.light)
+                                        selectedGroup = group
                                     }
+                            }
+                        }
+                        .padding(.horizontal)
+                        
+                        // 代理提供者部分
+                        if !UserDefaults.standard.bool(forKey: "hideProxyProviders") {
+                            let httpProviders = viewModel.providers
+                                .filter { ["HTTP", "FILE"].contains($0.vehicleType.uppercased()) }
+                                .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+                            
+                            if !httpProviders.isEmpty {
+                                VStack(alignment: .leading, spacing: 16) {
+                                    Text("代理提供者")
+                                        .font(.system(.title3, design: .rounded))
+                                        .fontWeight(.semibold)
+                                        .padding(.horizontal)
+                                    
+                                    LazyVGrid(columns: columns, spacing: 16) {
+                                        ForEach(httpProviders, id: \.name) { provider in
+                                            MultiColumnProviderCard(
+                                                provider: provider,
+                                                nodes: viewModel.providerNodes[provider.name] ?? [],
+                                                viewModel: viewModel,
+                                                containerWidth: geometry.size.width
+                                            )
+                                        }
+                                    }
+                                    .padding(.horizontal)
                                 }
-                                .padding(.horizontal)
                             }
                         }
                     }
                 }
+                .padding(.vertical, 24)
             }
-            .padding(.vertical, 24)
         }
         .background(Color(.systemGroupedBackground))
         .refreshable {
@@ -84,37 +86,39 @@ struct MultiColumnProxyView: View {
         }
         .sheet(item: $selectedGroup) { group in
             NavigationStack {
-                ScrollView {
-                    let columns = makeSheetColumns()
-                    
-                    LazyVGrid(columns: columns, spacing: 12) {
-                        ForEach(group.all.indices, id: \.self) { index in
-                            let nodeName = group.all[index]
-                            ProxyNodeCard(
-                                nodeName: nodeName,
-                                node: viewModel.nodes.first { $0.name == nodeName },
-                                isSelected: viewModel.groups.first(where: { $0.name == group.name })?.now == nodeName,
-                                isTesting: viewModel.testingNodes.contains(nodeName),
-                                viewModel: viewModel
-                            )
-                            .onTapGesture {
-                                HapticManager.shared.impact(.light)
-                                if group.type == "URLTest" {
-                                    // 显示不支持手动切换的提示
-                                    return
-                                }
-                                
-                                Task {
-                                    await viewModel.selectProxy(groupName: group.name, proxyName: nodeName)
-                                    await MainActor.run {
-                                        // 添加成功的触觉反馈
-                                        HapticManager.shared.notification(.success)
+                GeometryReader { sheetGeometry in
+                    ScrollView {
+                        let columns = makeSheetColumns(availableWidth: sheetGeometry.size.width)
+                        
+                        LazyVGrid(columns: columns, spacing: 12) {
+                            ForEach(group.all.indices, id: \.self) { index in
+                                let nodeName = group.all[index]
+                                ProxyNodeCard(
+                                    nodeName: nodeName,
+                                    node: viewModel.nodes.first { $0.name == nodeName },
+                                    isSelected: viewModel.groups.first(where: { $0.name == group.name })?.now == nodeName,
+                                    isTesting: viewModel.testingNodes.contains(nodeName),
+                                    viewModel: viewModel
+                                )
+                                .onTapGesture {
+                                    HapticManager.shared.impact(.light)
+                                    if group.type == "URLTest" {
+                                        // 显示不支持手动切换的提示
+                                        return
+                                    }
+                                    
+                                    Task {
+                                        await viewModel.selectProxy(groupName: group.name, proxyName: nodeName)
+                                        await MainActor.run {
+                                            // 添加成功的触觉反馈
+                                            HapticManager.shared.notification(.success)
+                                        }
                                     }
                                 }
                             }
                         }
+                        .padding()
                     }
-                    .padding()
                     .navigationTitle(group.name)
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
@@ -141,37 +145,53 @@ struct MultiColumnProxyView: View {
         }
     }
     
-    // 添加辅助方法
-    private func makeColumns() -> [GridItem] {
-        let screenWidth = UIScreen.main.bounds.width
-        let spacing: CGFloat = 16
+    // 修改辅助方法
+    private func makeColumns(availableWidth: CGFloat) -> [GridItem] {
+        let horizontalPadding: CGFloat = 32 // 左右总边距
+        let spacing: CGFloat = 16 // 卡片之间的间距
         let minCardWidth: CGFloat = 160
         let maxCardWidth: CGFloat = 200
         
-        let columnsCount = max(2, Int(screenWidth / (minCardWidth + spacing * 2)))
-        return Array(repeating: GridItem(.flexible(minimum: minCardWidth, maximum: maxCardWidth), spacing: spacing), count: columnsCount)
+        let width = availableWidth - horizontalPadding
+        let optimalColumnCount = max(2, Int(width / (minCardWidth + spacing)))
+        let cardWidth = min(maxCardWidth, (width - (CGFloat(optimalColumnCount - 1) * spacing)) / CGFloat(optimalColumnCount))
+        
+        return Array(repeating: GridItem(.fixed(cardWidth), spacing: spacing), count: optimalColumnCount)
     }
     
-    private func makeSheetColumns() -> [GridItem] {
-        let screenWidth = UIScreen.main.bounds.width
+    private func makeSheetColumns(availableWidth: CGFloat) -> [GridItem] {
+        let horizontalPadding: CGFloat = 32
         let spacing: CGFloat = 12
         let minCardWidth: CGFloat = 160
         let maxCardWidth: CGFloat = 200
         
-        let columnsCount = max(2, Int(screenWidth / (minCardWidth + spacing * 2)))
-        return Array(repeating: GridItem(.flexible(minimum: minCardWidth, maximum: maxCardWidth), spacing: spacing), count: columnsCount)
+        let width = availableWidth - horizontalPadding
+        let optimalColumnCount = max(2, Int(width / (minCardWidth + spacing)))
+        let cardWidth = min(maxCardWidth, (width - (CGFloat(optimalColumnCount - 1) * spacing)) / CGFloat(optimalColumnCount))
+        
+        return Array(repeating: GridItem(.fixed(cardWidth), spacing: spacing), count: optimalColumnCount)
     }
 }
 
-// 多列布局的代理组卡片
+// 修改卡片视图
 struct MultiColumnGroupCard: View {
     let group: ProxyGroup
     @ObservedObject var viewModel: ProxyViewModel
+    let containerWidth: CGFloat
     @Environment(\.colorScheme) private var colorScheme
     
-    // 固定卡片尺寸
-    private let cardWidth: CGFloat = 160
-    private let cardHeight: CGFloat = 100
+    private var cardDimensions: (width: CGFloat, height: CGFloat) {
+        let horizontalPadding: CGFloat = 32
+        let spacing: CGFloat = 16
+        let minCardWidth: CGFloat = 160
+        let maxCardWidth: CGFloat = 200
+        
+        let width = containerWidth - horizontalPadding
+        let optimalColumnCount = max(2, Int(width / (minCardWidth + spacing)))
+        let cardWidth = min(maxCardWidth, (width - (CGFloat(optimalColumnCount - 1) * spacing)) / CGFloat(optimalColumnCount))
+        
+        return (width: cardWidth, height: 100)
+    }
     
     private var cardBackgroundColor: Color {
         colorScheme == .dark ? Color(.systemGray6) : Color(.systemBackground)
@@ -180,7 +200,7 @@ struct MultiColumnGroupCard: View {
     var body: some View {
         CardContent(group: group, viewModel: viewModel)
             .padding(12)
-            .frame(width: cardWidth, height: cardHeight)
+            .frame(width: cardDimensions.width, height: cardDimensions.height)
             .background(CardBackground(group: group, backgroundColor: cardBackgroundColor))
             .clipShape(RoundedRectangle(cornerRadius: 16))
             .shadow(
@@ -189,13 +209,12 @@ struct MultiColumnGroupCard: View {
                 x: 0,
                 y: 4
             )
-            // 添加点击效果
             .scaleEffect(viewModel.testingGroups.contains(group.name) ? 0.98 : 1.0)
             .animation(.spring(response: 0.3, dampingFraction: 0.6), value: viewModel.testingGroups.contains(group.name))
     }
 }
 
-// 卡片内容
+// 添加卡片内容视图
 private struct CardContent: View {
     let group: ProxyGroup
     @ObservedObject var viewModel: ProxyViewModel
@@ -247,7 +266,7 @@ private struct CardContent: View {
     }
 }
 
-// 卡片背景
+// 添加卡片背景视图
 private struct CardBackground: View {
     let group: ProxyGroup
     let backgroundColor: Color
@@ -362,19 +381,29 @@ private struct CardBackground: View {
     }
 }
 
-// 多列布局的提供者卡片
+// 修改提供者卡片视图
 struct MultiColumnProviderCard: View {
     let provider: Provider
     let nodes: [ProxyNode]
     @ObservedObject var viewModel: ProxyViewModel
+    let containerWidth: CGFloat
     @Environment(\.colorScheme) private var colorScheme
     @State private var isUpdating = false
     @State private var showingUpdateSuccess = false
     @State private var showingSheet = false
     
-    // 固定卡片尺寸
-    private let cardWidth: CGFloat = 160
-    private let cardHeight: CGFloat = 100  // 与 GroupCard 保持一致
+    private var cardDimensions: (width: CGFloat, height: CGFloat) {
+        let horizontalPadding: CGFloat = 32
+        let spacing: CGFloat = 16
+        let minCardWidth: CGFloat = 160
+        let maxCardWidth: CGFloat = 200
+        
+        let width = containerWidth - horizontalPadding
+        let optimalColumnCount = max(2, Int(width / (minCardWidth + spacing)))
+        let cardWidth = min(maxCardWidth, (width - (CGFloat(optimalColumnCount - 1) * spacing)) / CGFloat(optimalColumnCount))
+        
+        return (width: cardWidth, height: 100)
+    }
     
     private var cardBackgroundColor: Color {
         colorScheme == .dark ? Color(.systemGray6) : Color(.systemBackground)
@@ -567,7 +596,7 @@ struct MultiColumnProviderCard: View {
             }
         }
         .padding(12)
-        .frame(width: cardWidth, height: cardHeight)
+        .frame(width: cardDimensions.width, height: cardDimensions.height)
         .background(ProviderCardBackground(provider: provider, backgroundColor: cardBackgroundColor))
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .shadow(
