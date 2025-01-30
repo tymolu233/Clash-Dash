@@ -7,9 +7,48 @@ struct OpenClashRule: Identifiable, Equatable {
     let action: String      // 例如: DIRECT
     var isEnabled: Bool     // 是否启用
     let comment: String?    // 备注
+    let lineNumber: Int?    // 行号，用于错误定位
+    let error: ParsingError?  // 解析错误信息
+    let rawContent: String    // 原始内容
     
-    init(from ruleString: String) {
+    // 定义解析错误类型
+    enum ParsingError: LocalizedError, Equatable {
+        case invalidFormat
+        
+        var errorDescription: String? {
+            switch self {
+            case .invalidFormat:
+                return "规则格式错误"
+            }
+        }
+        
+        // 实现 Equatable
+        static func == (lhs: ParsingError, rhs: ParsingError) -> Bool {
+            switch (lhs, rhs) {
+            case (.invalidFormat, .invalidFormat):
+                return true
+            }
+        }
+    }
+    
+    // 实现 Equatable
+    static func == (lhs: OpenClashRule, rhs: OpenClashRule) -> Bool {
+        return lhs.id == rhs.id &&
+               lhs.target == rhs.target &&
+               lhs.type == rhs.type &&
+               lhs.action == rhs.action &&
+               lhs.isEnabled == rhs.isEnabled &&
+               lhs.comment == rhs.comment &&
+               lhs.lineNumber == rhs.lineNumber &&
+               lhs.error == rhs.error &&
+               lhs.rawContent == rhs.rawContent
+    }
+    
+    init(from ruleString: String, lineNumber: Int? = nil) throws {
         self.id = UUID()
+        self.lineNumber = lineNumber
+        self.rawContent = ruleString
+        
         // 移除前导空格
         let trimmedString = ruleString.trimmingCharacters(in: .whitespacesAndNewlines)
         
@@ -26,45 +65,27 @@ struct OpenClashRule: Identifiable, Equatable {
         let ruleContent = components[0].trimmingCharacters(in: .whitespaces)
         
         // 处理规则内容
-        if let firstComma = ruleContent.firstIndex(of: ",") {
-            // 获取规则类型
-            self.type = String(ruleContent[..<firstComma]).trimmingCharacters(in: .whitespaces)
-            
-            // 检查是否包含 no-resolve
-            if ruleContent.hasSuffix(",no-resolve") {
-                // 找到倒数第二个逗号
-                let beforeNoResolve = ruleContent.dropLast(",no-resolve".count)
-                if let lastComma = beforeNoResolve.lastIndex(of: ",") {
-                    // 提取目标和动作
-                    let afterFirstComma = ruleContent[ruleContent.index(after: firstComma)...]
-                    let targetEndIndex = lastComma
-                    self.target = String(afterFirstComma[..<targetEndIndex]).trimmingCharacters(in: .whitespaces)
-                    
-                    // 获取完整的动作（包括 no-resolve）
-                    let actionStart = ruleContent[ruleContent.index(after: lastComma)...]
-                    self.action = String(actionStart).trimmingCharacters(in: .whitespaces)
-                } else {
-                    self.target = ""
-                    self.action = ""
-                }
-            } else {
-                // 找到最后一个逗号
-                if let lastComma = ruleContent.lastIndex(of: ",") {
-                    // 提取目标和动作
-                    let afterFirstComma = ruleContent[ruleContent.index(after: firstComma)...]
-                    let targetEndIndex = lastComma
-                    self.target = String(afterFirstComma[..<targetEndIndex]).trimmingCharacters(in: .whitespaces)
-                    self.action = String(ruleContent[ruleContent.index(after: lastComma)...]).trimmingCharacters(in: .whitespaces)
-                } else {
-                    self.target = ""
-                    self.action = ""
-                }
-            }
-        } else {
-            self.type = ""
+        let ruleParts = ruleContent.components(separatedBy: ",")
+        if ruleParts.count < 3 {
+            self.type = ruleParts.first ?? ""
             self.target = ""
             self.action = ""
+            self.error = ParsingError.invalidFormat
+            self.comment = components.count > 1 ? components[1].trimmingCharacters(in: .whitespacesAndNewlines) : nil
+            return
         }
+        
+        // 获取规则类型、目标和动作
+        self.type = ruleParts[0].trimmingCharacters(in: .whitespaces)
+        self.target = ruleParts[1].trimmingCharacters(in: .whitespaces)
+        
+        // 获取动作（包括可能的 no-resolve）
+        var action = ruleParts[2].trimmingCharacters(in: .whitespaces)
+        if ruleParts.count > 3 && ruleParts[3].trimmingCharacters(in: .whitespaces) == "no-resolve" {
+            action += ",no-resolve"
+        }
+        self.action = action
+        self.error = nil
         
         // 提取注释
         if components.count > 1 {
@@ -82,17 +103,23 @@ struct OpenClashRule: Identifiable, Equatable {
             type: type,
             action: action,
             isEnabled: !isEnabled,
-            comment: comment
+            comment: comment,
+            lineNumber: lineNumber,
+            error: error,
+            rawContent: rawContent
         )
     }
     
     // 添加一个完整的初始化方法
-    init(id: UUID = UUID(), target: String, type: String, action: String, isEnabled: Bool, comment: String? = nil) {
+    init(id: UUID = UUID(), target: String, type: String, action: String, isEnabled: Bool, comment: String? = nil, lineNumber: Int? = nil, error: ParsingError? = nil, rawContent: String = "") {
         self.id = id
         self.target = target
         self.type = type
         self.action = action
         self.isEnabled = isEnabled
         self.comment = comment
+        self.lineNumber = lineNumber
+        self.error = error
+        self.rawContent = rawContent
     }
 } 

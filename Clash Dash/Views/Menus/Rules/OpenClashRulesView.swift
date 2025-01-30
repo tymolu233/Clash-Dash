@@ -14,6 +14,8 @@ struct OpenClashRulesView: View {
     @State private var editingRule: OpenClashRule?
     @State private var isCustomRulesEnabled = false
     @State private var showingHelp = false
+    @State private var parsingErrors: [String] = []
+    @State private var isSortingMode = false
     
     var body: some View {
         NavigationStack {
@@ -24,6 +26,27 @@ struct OpenClashRulesView: View {
                         .frame(maxWidth: .infinity, maxHeight: 200)
                 } else {
                     VStack {
+                        if !parsingErrors.isEmpty {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("⚠️ 规则解析错误")
+                                    .font(.headline)
+                                    .foregroundColor(.red)
+                                    .padding(.bottom, 4)
+                                
+                                ForEach(parsingErrors, id: \.self) { error in
+                                    Text(error)
+                                        .font(.system(.subheadline, design: .monospaced))
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            .padding()
+                            .background(Color(.systemBackground))
+                            .cornerRadius(10)
+                            .shadow(radius: 2)
+                            .padding(.horizontal)
+                            .padding(.bottom)
+                        }
+                        
                         if rules.isEmpty {
                             VStack(spacing: 20) {
                                 Image(systemName: "text.badge.plus")
@@ -47,14 +70,33 @@ struct OpenClashRulesView: View {
                             List {
                                 ForEach(rules) { rule in
                                     HStack(spacing: 12) {
+                                        // if isSortingMode {
+                                        //     Image(systemName: "line.3.horizontal")
+                                        //         .foregroundColor(.secondary)
+                                        //         .font(.system(size: 14))
+                                        // }
+                                        
                                         // 左侧：目标
                                         VStack(alignment: .leading, spacing: 4) {
-                                            Text(rule.target)
-                                                .font(.system(.body, design: .monospaced))
-                                                .foregroundColor(rule.isEnabled ? .primary : .secondary)
-                                                .lineLimit(1)
+                                            HStack(spacing: 6) {
+                                                if rule.error != nil {
+                                                    Image(systemName: "exclamationmark.triangle.fill")
+                                                        .foregroundColor(.orange)
+                                                        .font(.system(size: 14))
+                                                }
+                                                
+                                                Text(rule.error != nil ? rule.rawContent : rule.target)
+                                                    .font(.system(.body, design: .monospaced))
+                                                    .foregroundColor(rule.isEnabled ? (rule.error != nil ? .orange : .primary) : .secondary)
+                                                    .lineLimit(1)
+                                            }
                                             
-                                            if let comment = rule.comment {
+                                            if let error = rule.error {
+                                                Text(error.localizedDescription)
+                                                    .font(.caption)
+                                                    .foregroundColor(.orange)
+                                                    .lineLimit(1)
+                                            } else if let comment = rule.comment {
                                                 Text(comment)
                                                     .font(.caption)
                                                     .foregroundColor(.secondary)
@@ -65,84 +107,121 @@ struct OpenClashRulesView: View {
                                         Spacer()
                                         
                                         // 右侧：类型和动作
-                                        VStack(alignment: .trailing, spacing: 4) {
-                                            Text(rule.type)
-                                                .font(.caption)
-                                                .foregroundColor(typeColor(for: rule.type))
-                                                .padding(.horizontal, 6)
-                                                .padding(.vertical, 2)
-                                                .background(typeColor(for: rule.type).opacity(0.12))
-                                                .cornerRadius(4)
-                                            
-                                            Text(rule.action)
-                                                .font(.caption)
-                                                .foregroundColor(.orange)
-                                                .padding(.horizontal, 6)
-                                                .padding(.vertical, 2)
-                                                .background(Color.orange.opacity(0.12))
-                                                .cornerRadius(4)
+                                        if rule.error == nil {
+                                            VStack(alignment: .trailing, spacing: 4) {
+                                                Text(rule.type)
+                                                    .font(.caption)
+                                                    .foregroundColor(typeColor(for: rule.type))
+                                                    .padding(.horizontal, 6)
+                                                    .padding(.vertical, 2)
+                                                    .background(typeColor(for: rule.type).opacity(0.12))
+                                                    .cornerRadius(4)
+                                                
+                                                Text(rule.action)
+                                                    .font(.caption)
+                                                    .foregroundColor(.orange)
+                                                    .padding(.horizontal, 6)
+                                                    .padding(.vertical, 2)
+                                                    .background(Color.orange.opacity(0.12))
+                                                    .cornerRadius(4)
+                                            }
                                         }
                                     }
                                     .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
                                     .listRowBackground(Color(.secondarySystemGroupedBackground))
                                     .opacity(rule.isEnabled ? 1 : 0.6)
                                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                        Button(role: .destructive) {
-                                            Task {
-                                                await deleteRule(rule, package: server.luciPackage)
+                                        if !isSortingMode {
+                                            Button(role: .destructive) {
+                                                Task {
+                                                    await deleteRule(rule, package: server.luciPackage)
+                                                }
+                                            } label: {
+                                                Text("删除")
                                             }
-                                        } label: {
-                                            Text("删除")
-                                        }
-                                        
-                                        Button {
-                                            editingRule = rule  // 设置要编辑的规则，触发编辑视图
-                                        } label: {
-                                            Text("编辑")
-                                        }
-                                        .tint(.blue)
-                                        
-                                        Button {
-                                            Task {
-                                                await toggleRule(rule, package: server.luciPackage)
+                                            
+                                            Button {
+                                                editingRule = rule
+                                            } label: {
+                                                Text("编辑")
                                             }
-                                        } label: {
-                                            Text(rule.isEnabled ? "禁用" : "启用")
+                                            .tint(.blue)
+                                            
+                                            if rule.error == nil {
+                                                Button {
+                                                    Task {
+                                                        await toggleRule(rule, package: server.luciPackage)
+                                                    }
+                                                } label: {
+                                                    Text(rule.isEnabled ? "禁用" : "启用")
+                                                }
+                                                .tint(rule.isEnabled ? .orange : .green)
+                                            }
                                         }
-                                        .tint(rule.isEnabled ? .orange : .green)
+                                    }
+                                }
+                                .onMove { from, to in
+                                    rules.move(fromOffsets: from, toOffset: to)
+                                    Task {
+                                        try? await saveRules(package: server.luciPackage)
                                     }
                                 }
                             }
                             .listStyle(.insetGrouped)
+                            .environment(\.editMode, .constant(isSortingMode ? .active : .inactive))
+                            
+                            if !isSortingMode {
+                                Button {
+                                    showingHelp = true
+                                } label: {
+                                    HStack {
+                                        Image(systemName: "info.circle")
+                                        Text("查看规则帮助")
+                                    }
+                                    .font(.system(.body))
+                                    .foregroundColor(.blue)
+                                }
+                                .padding(.vertical, 8)
+                            }
                         }
                     }
                     .navigationTitle("附加规则")
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .navigationBarLeading) {
-                            Button("关闭", action: { dismiss() })
+                            if isSortingMode {
+                                Button("完成") {
+                                    isSortingMode = false
+                                }
+                            } else {
+                                Button("关闭", action: { dismiss() })
+                            }
                         }
                         
                         ToolbarItem(placement: .navigationBarTrailing) {
                             HStack(spacing: 16) {
-                                Button {
-                                    showingHelp = true
-                                } label: {
-                                    Image(systemName: "info.circle")
+                                if !rules.isEmpty {
+                                    Button {
+                                        isSortingMode.toggle()
+                                    } label: {
+                                        Image(systemName: isSortingMode ? "arrow.up.arrow.down.circle.fill" : "arrow.up.arrow.down.circle")
+                                    }
                                 }
                                 
-                                Toggle("", isOn: $isCustomRulesEnabled)
-                                    .toggleStyle(SwitchToggleStyle(tint: .blue))
-                                    .onChange(of: isCustomRulesEnabled) { newValue in
-                                        Task {
-                                            await toggleCustomRules(enabled: newValue, package: server.luciPackage)
+                                if !isSortingMode {
+                                    Toggle("", isOn: $isCustomRulesEnabled)
+                                        .toggleStyle(SwitchToggleStyle(tint: .blue))
+                                        .onChange(of: isCustomRulesEnabled) { newValue in
+                                            Task {
+                                                await toggleCustomRules(enabled: newValue, package: server.luciPackage)
+                                            }
                                         }
+                                    
+                                    Button {
+                                        showingAddSheet = true
+                                    } label: {
+                                        Image(systemName: "plus")
                                     }
-                                
-                                Button {
-                                    showingAddSheet = true
-                                } label: {
-                                    Image(systemName: "plus")
                                 }
                             }
                         }
@@ -191,6 +270,7 @@ struct OpenClashRulesView: View {
     
     private func loadRules(package: LuCIPackage = .openClash) async {
         isLoading = true
+        parsingErrors.removeAll()
         defer { isLoading = false }
         
         guard let username = server.openWRTUsername,
@@ -289,9 +369,11 @@ struct OpenClashRulesView: View {
             var parsedRules: [OpenClashRule] = []
             var isInRulesSection = false
             var currentSection = ""
+            var lineNumber = 0
             
             let lines = result.components(separatedBy: .newlines)
             for line in lines {
+                lineNumber += 1
                 let trimmedLine = line.trimmingCharacters(in: .whitespaces)
                 
                 // 检查 section 开始
@@ -303,9 +385,12 @@ struct OpenClashRulesView: View {
                 
                 // 如果在 rules section 中且行以 - 开头（包括被注释的规则）
                 if isInRulesSection && (trimmedLine.hasPrefix("-") || trimmedLine.hasPrefix("##-")) {
-                    let rule = OpenClashRule(from: trimmedLine)
-                    if !rule.type.isEmpty {
+                    do {
+                        let rule = try OpenClashRule(from: trimmedLine, lineNumber: lineNumber)
                         parsedRules.append(rule)
+                    } catch {
+                        // 不再需要记录解析错误，因为错误信息已经包含在规则对象中
+                        continue
                     }
                 }
             }
@@ -324,10 +409,12 @@ struct OpenClashRulesView: View {
         var newContent = ""
         var isInRulesSection = false
         var hasFoundRulesSection = false
+        var lineNumber = 0
         
         // 分行处理原始内容
         let lines = originalContent.components(separatedBy: .newlines)
         for line in lines {
+            lineNumber += 1
             let trimmedLine = line.trimmingCharacters(in: .whitespaces)
             
             // 检查 section 开始
@@ -340,9 +427,19 @@ struct OpenClashRulesView: View {
                     
                     // 添加新的规则
                     for rule in rules {
-                        let prefix = rule.isEnabled ? "- " : "##- "
-                        let comment = rule.comment.map { " #\($0)" } ?? ""
-                        newContent += "\(prefix)\(rule.type),\(rule.target),\(rule.action)\(comment)\n"
+                        if rule.error != nil {
+                            // 如果是错误的规则，使用原始内容
+                            let prefix = rule.isEnabled ? "- " : "##- "
+                            let cleanContent = rule.rawContent
+                                .replacingOccurrences(of: "##- ", with: "")
+                                .replacingOccurrences(of: "- ", with: "")
+                            newContent += "\(prefix)\(cleanContent)\n"
+                        } else {
+                            // 如果是正确的规则，使用格式化内容
+                            let prefix = rule.isEnabled ? "- " : "##- "
+                            let comment = rule.comment.map { " #\($0)" } ?? ""
+                            newContent += "\(prefix)\(rule.type),\(rule.target),\(rule.action)\(comment)\n"
+                        }
                     }
                 } else {
                     isInRulesSection = false
@@ -355,7 +452,6 @@ struct OpenClashRulesView: View {
             if !isInRulesSection {
                 newContent += line + "\n"
             }
-            // 在 rules section 中的行被跳过，因为我们已经添加了新的规则
         }
         
         // 如果文件中没有找到 rules section，在末尾添加
@@ -365,9 +461,19 @@ struct OpenClashRulesView: View {
             }
             newContent += "rules:\n"
             for rule in rules {
-                let prefix = rule.isEnabled ? "- " : "##- "
-                let comment = rule.comment.map { " #\($0)" } ?? ""
-                newContent += "\(prefix)\(rule.type),\(rule.target),\(rule.action)\(comment)\n"
+                if rule.error != nil {
+                    // 如果是错误的规则，使用原始内容
+                    let prefix = rule.isEnabled ? "- " : "##- "
+                    let cleanContent = rule.rawContent
+                        .replacingOccurrences(of: "##- ", with: "")
+                        .replacingOccurrences(of: "- ", with: "")
+                    newContent += "\(prefix)\(cleanContent)\n"
+                } else {
+                    // 如果是正确的规则，使用格式化内容
+                    let prefix = rule.isEnabled ? "- " : "##- "
+                    let comment = rule.comment.map { " #\($0)" } ?? ""
+                    newContent += "\(prefix)\(rule.type),\(rule.target),\(rule.action)\(comment)\n"
+                }
             }
         }
         
