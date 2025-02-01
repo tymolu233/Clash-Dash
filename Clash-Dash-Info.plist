@@ -24,13 +24,13 @@
 		<string>_lnp._tcp.</string>
 	</array>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>需要访问位置信息以获取当前 Wi-Fi 网络名称</string>
+	<string>需要访问位置信息以在地图上显示连接位置</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>需要访问位置信息以获取当前 Wi-Fi 网络名称</string>
+	<string>需要访问位置信息以在地图上显示连接位置</string>
 	<key>NSLocationAlwaysUsageDescription</key>
-	<string>需要访问位置信息以获取当前 Wi-Fi 网络名称</string>
+	<string>需要访问位置信息以在地图上显示连接位置</string>
 	<key>NSLocationUsageDescription</key>
-	<string>需要访问位置信息以获取当前 Wi-Fi 网络名称</string>
+	<string>需要访问位置信息以在地图上显示连接位置</string>
 	<key>NSLocationTemporaryUsageDescriptionDictionary</key>
 	<dict>
 		<key>WiFiAccess</key>
@@ -48,5 +48,9 @@
 			<string>None</string>
 		</dict>
 	</dict>
+	<key>MKDirectionsApplicationSupportedModes</key>
+	<array>
+		<string>MKDirectionsModePlane</string>
+	</array>
 </dict>
 </plist>

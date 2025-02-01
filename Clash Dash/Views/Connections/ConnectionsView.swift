@@ -81,6 +81,13 @@ struct ConnectionsView: View {
     @State private var showDeviceFilter = false
     @State private var selectedDevices: Set<String> = []  // 存储选中的设备ID（IP或设备名称）
     
+    // 添加视图模式枚举和状态
+    private enum ViewMode {
+        case list
+        case map
+    }
+    @State private var viewMode: ViewMode = .list
+    
     // 在 SortOption 枚举前添加 DeviceFilterButton
     private var deviceFilterButton: some View {
         Menu {
@@ -400,6 +407,18 @@ struct ConnectionsView: View {
             
             Spacer(minLength: 0)
             
+            // 添加视图模式切换按钮
+            Button(action: {
+                withAnimation {
+                    viewMode = viewMode == .list ? .map : .list
+                }
+            }) {
+                Image(systemName: viewMode == .list ? "map" : "list.bullet")
+                    .foregroundColor(.accentColor)
+                    .font(.system(size: 16))
+                    .frame(width: 28, height: 28)
+            }
+            
             // 添加设备过滤按钮
             deviceFilterButton
             
@@ -500,38 +519,45 @@ struct ConnectionsView: View {
                 if viewModel.connections.isEmpty {
                     EmptyStateView()
                 } else {
-                    ScrollView {
-                        LazyVStack(spacing: 0) {
-                            ForEach(filteredConnections) { connection in
-                                if viewModel.connectionRowStyle == .modern {
-                                    ModernConnectionRow(
-                                        connection: connection,
-                                        viewModel: viewModel,
-                                        tagViewModel: tagViewModel,
-                                        onClose: {
-                                            HapticManager.shared.impact(.light)
-                                            viewModel.closeConnection(connection.id)
-                                        },
-                                        selectedConnection: $selectedConnection
-                                    )
-                                } else {
-                                    ConnectionRow(
-                                        connection: connection,
-                                        viewModel: viewModel,
-                                        tagViewModel: tagViewModel,
-                                        onClose: {
-                                            HapticManager.shared.impact(.light)
-                                            viewModel.closeConnection(connection.id)
-                                        },
-                                        selectedConnection: $selectedConnection
-                                    )
+                    if viewMode == .list {
+                        ScrollView {
+                            LazyVStack(spacing: 0) {
+                                ForEach(filteredConnections) { connection in
+                                    if viewModel.connectionRowStyle == .modern {
+                                        ModernConnectionRow(
+                                            connection: connection,
+                                            viewModel: viewModel,
+                                            tagViewModel: tagViewModel,
+                                            onClose: {
+                                                HapticManager.shared.impact(.light)
+                                                viewModel.closeConnection(connection.id)
+                                            },
+                                            selectedConnection: $selectedConnection
+                                        )
+                                    } else {
+                                        ConnectionRow(
+                                            connection: connection,
+                                            viewModel: viewModel,
+                                            tagViewModel: tagViewModel,
+                                            onClose: {
+                                                HapticManager.shared.impact(.light)
+                                                viewModel.closeConnection(connection.id)
+                                            },
+                                            selectedConnection: $selectedConnection
+                                        )
+                                    }
                                 }
                             }
+                            .padding(.vertical, 8)
+                            .animation(.spring(response: 0.3, dampingFraction: 0.8), value: filteredConnections)
                         }
-                        .padding(.vertical, 8)
-                        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: filteredConnections)
+                        .background(Color(.systemGroupedBackground))
+                    } else {
+                        // 地图视图
+                        ConnectionMapView(connections: filteredConnections)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .background(Color(.systemGroupedBackground))
                     }
-                    .background(Color(.systemGroupedBackground))
                 }
             }
             .refreshable {

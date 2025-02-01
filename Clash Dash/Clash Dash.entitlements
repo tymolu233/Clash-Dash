@@ -20,5 +20,7 @@
 	<array>
 		<string>group.ym.si.clashdash</string>
 	</array>
+	<key>com.apple.developer.maps</key>
+	<true/>
 </dict>
 </plist>
