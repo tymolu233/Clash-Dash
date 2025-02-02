@@ -66,25 +66,48 @@ struct OpenClashRule: Identifiable, Equatable {
         
         // 处理规则内容
         let ruleParts = ruleContent.components(separatedBy: ",")
-        if ruleParts.count < 3 {
-            self.type = ruleParts.first ?? ""
-            self.target = ""
-            self.action = ""
-            self.error = ParsingError.invalidFormat
-            self.comment = components.count > 1 ? components[1].trimmingCharacters(in: .whitespacesAndNewlines) : nil
-            return
-        }
+        let partsCount = ruleParts.count
         
-        // 获取规则类型、目标和动作
+        // 获取规则类型
         self.type = ruleParts[0].trimmingCharacters(in: .whitespaces)
-        self.target = ruleParts[1].trimmingCharacters(in: .whitespaces)
         
-        // 获取动作（包括可能的 no-resolve）
-        var action = ruleParts[2].trimmingCharacters(in: .whitespaces)
-        if ruleParts.count > 3 && ruleParts[3].trimmingCharacters(in: .whitespaces) == "no-resolve" {
-            action += ",no-resolve"
+        // 根据规则类型和部分数量进行不同的处理
+        switch type {
+        case "AND", "OR", "NOT":
+            // 对于逻辑规则,将除了第一部分(类型)和最后一部分(动作)之外的所有部分作为target
+            if partsCount < 3 {
+                self.target = ""
+                self.action = ""
+                self.error = ParsingError.invalidFormat
+                self.comment = components.count > 1 ? components[1].trimmingCharacters(in: .whitespacesAndNewlines) : nil
+                return
+            }
+            
+            // 将中间所有部分合并为target
+            let targetParts = ruleParts[1..<(partsCount-1)]
+            self.target = targetParts.joined(separator: ",").trimmingCharacters(in: .whitespaces)
+            self.action = ruleParts[partsCount-1].trimmingCharacters(in: .whitespaces)
+            
+        default:
+            // 对于普通规则,需要刚好3个或4个部分(如果有no-resolve)
+            if partsCount < 3 {
+                self.target = ""
+                self.action = ""
+                self.error = ParsingError.invalidFormat
+                self.comment = components.count > 1 ? components[1].trimmingCharacters(in: .whitespacesAndNewlines) : nil
+                return
+            }
+            
+            self.target = ruleParts[1].trimmingCharacters(in: .whitespaces)
+            
+            // 获取动作（包括可能的 no-resolve）
+            var action = ruleParts[2].trimmingCharacters(in: .whitespaces)
+            if partsCount > 3 && ruleParts[3].trimmingCharacters(in: .whitespaces) == "no-resolve" {
+                action += ",no-resolve"
+            }
+            self.action = action
         }
-        self.action = action
+        
         self.error = nil
         
         // 提取注释
