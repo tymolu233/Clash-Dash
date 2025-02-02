@@ -554,7 +554,12 @@ struct ConnectionsView: View {
                         .background(Color(.systemGroupedBackground))
                     } else {
                         // 地图视图
-                        ConnectionMapView(connections: filteredConnections)
+                        ConnectionMapView(
+                            connections: viewModel.connections,
+                            isActiveMode: connectionFilter == .active,
+                            searchText: searchText,
+                            selectedDevices: selectedDevices
+                        )
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                             .background(Color(.systemGroupedBackground))
                     }
