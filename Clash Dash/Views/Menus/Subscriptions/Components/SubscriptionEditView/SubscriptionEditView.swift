@@ -31,6 +31,7 @@ struct SubscriptionEditView: View {
     @State private var ruleProvider = false
     @State private var isCustomConvertAddress = false
     @State private var customConvertAddress = ""
+    @State private var customTemplateUrl = ""
     
     init(viewModel: ConfigSubscriptionViewModel, subscription: ConfigSubscription? = nil, onSave: @escaping (ConfigSubscription) -> Void) {
         self.viewModel = viewModel
@@ -71,6 +72,7 @@ struct SubscriptionEditView: View {
             _sort = State(initialValue: sub.subConvert ? sub.sort ?? false : false)
             _nodeType = State(initialValue: sub.subConvert ? sub.nodeType ?? false : false)
             _ruleProvider = State(initialValue: sub.subConvert ? sub.ruleProvider ?? false : false)
+            _customTemplateUrl = State(initialValue: sub.customTemplateUrl ?? "")
             
             // 检查是否使用自定义转换地址
             if let addr = sub.convertAddress,
@@ -121,6 +123,7 @@ struct SubscriptionEditView: View {
                             convertAddress: $convertAddress,
                             customConvertAddress: $customConvertAddress,
                             template: $template,
+                            customTemplateUrl: $customTemplateUrl,
                             emoji: $emoji,
                             udp: $udp,
                             skipCertVerify: $skipCertVerify,
@@ -197,6 +200,7 @@ struct SubscriptionEditView: View {
             subConvert: subConvert,
             convertAddress: subConvert ? finalConvertAddress : nil,
             template: subConvert ? template : nil,
+            customTemplateUrl: customTemplateUrl,
             emoji: subConvert ? emoji : nil,
             udp: subConvert ? udp : nil,
             skipCertVerify: subConvert ? skipCertVerify : nil,
@@ -206,6 +210,7 @@ struct SubscriptionEditView: View {
             keyword: filteredKeywords.isEmpty ? nil : viewModel.formatQuotedValues(filteredKeywords),
             exKeyword: filteredExKeywords.isEmpty ? nil : viewModel.formatQuotedValues(filteredExKeywords),
             remoteFirst: remoteFirst
+            
         )
         onSave(sub)
         dismiss()

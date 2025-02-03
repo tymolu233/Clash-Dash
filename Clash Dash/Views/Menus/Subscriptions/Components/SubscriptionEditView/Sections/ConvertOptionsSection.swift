@@ -4,6 +4,7 @@ struct ConvertOptionsSection: View {
     @Binding var convertAddress: String
     @Binding var customConvertAddress: String
     @Binding var template: String
+    @Binding var customTemplateUrl: String
     @Binding var emoji: Bool
     @Binding var udp: Bool
     @Binding var skipCertVerify: Bool
@@ -40,12 +41,19 @@ struct ConvertOptionsSection: View {
                     ForEach(viewModel.templateOptions, id: \.self) { template in
                         Text(template).tag(template)
                     }
+                    Text("自定义").tag("custom")
                 }
                 .onChange(of: template) { newValue in
                     // 确保选择的值在有效选项中
-                    if !viewModel.templateOptions.contains(newValue) {
+                    if !viewModel.templateOptions.contains(newValue) && newValue != "custom" {
                         template = viewModel.templateOptions[0]
                     }
+                }
+                
+                if template == "custom" {
+                    TextField("自定义模板地址", text: $customTemplateUrl)
+                        .textInputAutocapitalization(.never)
+                        .keyboardType(.URL)
                 }
             }
             

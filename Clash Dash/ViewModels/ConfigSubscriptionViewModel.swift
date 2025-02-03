@@ -141,9 +141,15 @@ class ConfigSubscriptionViewModel: ObservableObject {
                         } else if key.contains(".sub_convert") {
                             currentSub.subConvert = value.trimmingCharacters(in: CharacterSet(charactersIn: "'")) == "1"
                         } else if key.contains(".convert_address") {
-                            currentSub.convertAddress = value
+                            currentSub.convertAddress = value.trimmingCharacters(in: CharacterSet(charactersIn: "'"))
                         } else if key.contains(".template") {
-                            currentSub.template = value
+                            currentSub.template = value.trimmingCharacters(in: CharacterSet(charactersIn: "'"))
+                            // 如果模板值为 "0"，则表示使用自定义模板
+                            if value == "0" {
+                                currentSub.template = "custom"
+                            }
+                        } else if key.contains(".custom_template_url") {
+                            currentSub.customTemplateUrl = value.trimmingCharacters(in: CharacterSet(charactersIn: "'"))
                         } else if key.contains(".emoji") {
                             currentSub.emoji = value.trimmingCharacters(in: CharacterSet(charactersIn: "'")) == "true"
                         } else if key.contains(".udp") {
@@ -638,7 +644,18 @@ class ConfigSubscriptionViewModel: ObservableObject {
                         }
                         if oldSub.template != subscription.template {
                             if let template = subscription.template {
-                                commands.append("uci set openclash.@config_subscribe[\(subscription.id)].template='\(template)'")
+                                if template == "custom" {
+                                    commands.append("uci set openclash.@config_subscribe[\(subscription.id)].template='0'")
+                                    if let customUrl = subscription.customTemplateUrl {
+                                        commands.append("uci set openclash.@config_subscribe[\(subscription.id)].custom_template_url='\(customUrl)'")
+                                    }
+                                } else {
+                                    commands.append("uci set openclash.@config_subscribe[\(subscription.id)].template='\(template)'")
+                                }
+                            }
+                        } else if oldSub.customTemplateUrl != subscription.customTemplateUrl {
+                            if let customUrl = subscription.customTemplateUrl {
+                                commands.append("uci set openclash.@config_subscribe[\(subscription.id)].custom_template_url='\(customUrl)'")
                             }
                         }
 

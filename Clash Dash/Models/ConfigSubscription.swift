@@ -9,6 +9,7 @@ struct ConfigSubscription: Identifiable, Codable, Equatable {
     var subConvert: Bool
     var convertAddress: String?
     var template: String?
+    var customTemplateUrl: String?
     var emoji: Bool?
     var udp: Bool?
     var skipCertVerify: Bool?
@@ -69,6 +70,7 @@ struct ConfigSubscription: Identifiable, Codable, Equatable {
          subConvert: Bool = false,
          convertAddress: String? = nil,
          template: String? = nil,
+         customTemplateUrl: String? = nil,
          emoji: Bool? = nil,
          udp: Bool? = nil,
          skipCertVerify: Bool? = nil,
@@ -87,6 +89,7 @@ struct ConfigSubscription: Identifiable, Codable, Equatable {
         self.subConvert = subConvert
         self.convertAddress = convertAddress
         self.template = template
+        self.customTemplateUrl = customTemplateUrl
         self.emoji = emoji
         self.udp = udp
         self.skipCertVerify = skipCertVerify
