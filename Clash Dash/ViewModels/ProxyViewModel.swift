@@ -55,6 +55,12 @@ struct ProxyProvider: Codable {
     let subscriptionInfo: SubscriptionInfo?
     let updatedAt: String?
     let hidden: Bool?
+    
+    // 添加验证方法
+    var isValid: Bool {
+        guard let info = subscriptionInfo else { return true }
+        return info.isValid
+    }
 }
 
 struct ProxyProvidersResponse: Codable {
@@ -87,6 +93,36 @@ struct SubscriptionInfo: Codable {
         case download = "Download"
         case total = "Total"
         case expire = "Expire"
+    }
+    
+    // 添加验证方法
+    var isValid: Bool {
+        // 验证流量数据是否有效
+        let uploadValid = upload >= 0 && !Double(upload).isInfinite && !Double(upload).isNaN
+        let downloadValid = download >= 0 && !Double(download).isInfinite && !Double(download).isNaN
+        let totalValid = total >= 0 && !Double(total).isInfinite && !Double(total).isNaN
+        
+        // 安全计算总使用量
+        let uploadDouble = Double(upload)
+        let downloadDouble = Double(download)
+        
+        // 检查是否任一值接近或等于 Int64 最大值
+        if uploadDouble >= Double(Int64.max) / 2 || downloadDouble >= Double(Int64.max) / 2 {
+            return false // 数值太大，认为无效
+        }
+        
+        return uploadValid && downloadValid && totalValid
+    }
+    
+    // 安全获取总流量
+    var safeUsedTraffic: Double {
+        let uploadDouble = Double(upload)
+        let downloadDouble = Double(download)
+        
+        if uploadDouble.isFinite && downloadDouble.isFinite {
+            return uploadDouble + downloadDouble
+        }
+        return 0
     }
 }
 
@@ -232,7 +268,15 @@ class ProxyViewModel: ObservableObject {
                         hidden: provider.hidden
                     )
                 }
-                .filter { $0.hidden != true } // 过滤掉 hidden 为 true 的提供者
+                .filter { provider in
+                    // 过滤掉 hidden 为 true 的提供者
+                    if provider.hidden == true { return false }
+                    // 过滤掉无效的订阅信息
+                    if let info = provider.subscriptionInfo, !info.isValid {
+                        return false
+                    }
+                    return true
+                }
                 .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
                 // print("📦 更新后的提供者数量: \(self.providers.count)")
                 

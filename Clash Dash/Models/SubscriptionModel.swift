@@ -441,20 +441,24 @@ class OpenClashClient: ClashClient {
         for (name, provider) in response.providers {
             if let vehicleType = provider.vehicleType,
                ["HTTP", "FILE"].contains(vehicleType.uppercased()),
-               let subInfo = provider.subscriptionInfo {
+               let subInfo = provider.subscriptionInfo,
+               subInfo.isValid {
                 
                 let total = Double(subInfo.Total)
-                let used = Double(subInfo.Upload + subInfo.Download)
+                let upload = Double(subInfo.Upload)
+                let download = Double(subInfo.Download)
+                let used = (upload.isFinite && download.isFinite) ? upload + download : 0
+                
                 let expireDate = Date(timeIntervalSince1970: subInfo.Expire)
                 
                 // 当 total 或 expireDate 不为0时才添加订阅信息
-                if total > 0 || subInfo.Expire > 0 {
+                if (total > 0 || subInfo.Expire > 0) && used.isFinite {
                     result[name] = SubscriptionCardInfo(
                         name: name,
                         expiryDate: expireDate,
                         lastUpdateTime: Date(),
-                        usedTraffic: used,  // API 返回的已经是字节单位
-                        totalTraffic: total  // API 返回的已经是字节单位
+                        usedTraffic: used,
+                        totalTraffic: total
                     )
                 }
             }
@@ -710,20 +714,24 @@ class MihomoClient: ClashClient {
         for (name, provider) in response.providers {
             if let vehicleType = provider.vehicleType,
                ["HTTP", "FILE"].contains(vehicleType.uppercased()),
-               let subInfo = provider.subscriptionInfo {
+               let subInfo = provider.subscriptionInfo,
+               subInfo.isValid {
                 
                 let total = Double(subInfo.Total)
-                let used = Double(subInfo.Upload + subInfo.Download)
+                let upload = Double(subInfo.Upload)
+                let download = Double(subInfo.Download)
+                let used = (upload.isFinite && download.isFinite) ? upload + download : 0
+                
                 let expireDate = Date(timeIntervalSince1970: subInfo.Expire)
                 
                 // 当 total 或 expireDate 不为0时才添加订阅信息
-                if total > 0 || subInfo.Expire > 0 {
+                if (total > 0 || subInfo.Expire > 0) && used.isFinite {
                     result[name] = SubscriptionCardInfo(
                         name: name,
                         expiryDate: expireDate,
                         lastUpdateTime: Date(),
-                        usedTraffic: used,  // API 返回的已经是字节单位
-                        totalTraffic: total  // API 返回的已经是字节单位
+                        usedTraffic: used,
+                        totalTraffic: total
                     )
                 }
             }
@@ -884,5 +892,26 @@ extension Double {
     func rounded(to places: Int) -> Double {
         let divisor = pow(10.0, Double(places))
         return (self * divisor).rounded() / divisor
+    }
+}
+
+// 添加 SubscriptionInfo 的扩展，用于验证数据
+extension ProxyProviderResponse.SubscriptionInfo {
+    var isValid: Bool {
+        // 验证流量数据是否有效
+        let uploadValid = Upload >= 0 && !Double(Upload).isInfinite && !Double(Upload).isNaN
+        let downloadValid = Download >= 0 && !Double(Download).isInfinite && !Double(Download).isNaN
+        let totalValid = Total >= 0 && !Double(Total).isInfinite && !Double(Total).isNaN
+        
+        // 安全计算总使用量
+        let upload = Double(Upload)
+        let download = Double(Download)
+        
+        // 检查是否任一值接近或等于 Int64 最大值
+        if upload >= Double(Int64.max) / 2 || download >= Double(Int64.max) / 2 {
+            return false // 数值太大，认为无效
+        }
+        
+        return uploadValid && downloadValid && totalValid
     }
 } 
