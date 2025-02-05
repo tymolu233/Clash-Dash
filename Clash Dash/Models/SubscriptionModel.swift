@@ -109,18 +109,18 @@ class DefaultHTTPClient: HTTPClient {
             "params": [server.openWRTUsername ?? "root", server.openWRTPassword ?? ""]
         ] as [String : Any]
         
-        print("Sending login request to: \(url)")
+        // print("Sending login request to: \(url)")
         
         let loginBody = try JSONSerialization.data(withJSONObject: loginData)
-        print("Login request body: \(String(data: loginBody, encoding: .utf8) ?? "")")
+        // print("Login request body: \(String(data: loginBody, encoding: .utf8) ?? "")")
         request.httpBody = loginBody
         
         let (data, response) = try await URLSession.shared.data(for: request)
         
-        if let httpResponse = response as? HTTPURLResponse {
-            print("Login response status code: \(httpResponse.statusCode)")
-            print("Login response headers: \(httpResponse.allHeaderFields)")
-        }
+        let httpResponse = response as? HTTPURLResponse
+            // print("Login response status code: \(httpResponse.statusCode)")
+            // print("Login response headers: \(httpResponse.allHeaderFields)")
+        
         
         // 打印接收到的数据
         if let responseString = String(data: data, encoding: .utf8) {
@@ -239,9 +239,9 @@ class OpenClashClient: ClashClient {
             "params": ["uci get openclash.config.config_path"]
         ] as [String : Any]
         
-        print("Getting current config from: \(url)")
-        print("Headers: \(headers)")
-        print("Request data: \(requestData)")
+        // print("Getting current config from: \(url)")
+        // print("Headers: \(headers)")
+        // print("Request data: \(requestData)")
         
         let body = try JSONSerialization.data(withJSONObject: requestData)
         let (data, response) = try await httpClient.makeRequest(method: "POST", url: url, headers: headers, body: body)
@@ -333,19 +333,19 @@ class OpenClashClient: ClashClient {
             "Content-Type": "application/x-www-form-urlencoded; charset=utf-8"
         ]
         
-        print("Sending request to: \(urlComponents.url!)")
-        print("Headers: \(headers)")
+        // LogManager.shared.info("订阅信息 - 发送请求到: \(urlComponents.url!)")
+        // LogManager.shared.info("订阅信息 - 请求头: \(headers)")
         
         let (data, response) = try await httpClient.makeRequest(method: "GET", url: urlComponents.url!, headers: headers, body: nil)
         
         if let httpResponse = response as? HTTPURLResponse {
-            print("Response status code: \(httpResponse.statusCode)")
-            print("Response headers: \(httpResponse.allHeaderFields)")
+            LogManager.shared.info("订阅信息 - 响应状态码: \(httpResponse.statusCode)")
+            LogManager.shared.info("订阅信息 - 响应头: \(httpResponse.allHeaderFields)")
         }
         
         // 打印接收到的数据
         if let responseString = String(data: data, encoding: .utf8) {
-            print("Received response: \(responseString)")
+            LogManager.shared.info("订阅信息 - 接收到的响应: \(responseString)")
             
             // 尝试清理响应数据
             let cleanedResponse = responseString
@@ -356,7 +356,7 @@ class OpenClashClient: ClashClient {
             // 尝试解析响应
             do {
                 guard let cleanedData = cleanedResponse.data(using: .utf8) else {
-                    print("Failed to convert cleaned response to data")
+                    LogManager.shared.error("订阅信息 - 无法将清理响应转换为数据")
                     return try await getProxyProvider()
                 }
                 
@@ -382,7 +382,7 @@ class OpenClashClient: ClashClient {
                     dateFormatter.dateFormat = "yyyy-MM-dd"
                     
                     guard let expireDate = dateFormatter.date(from: response.expire) else {
-                        print("Failed to parse expire date: \(response.expire)")
+                        LogManager.shared.error("订阅信息 - 无法解析到期日期: \(response.expire)")
                         return try await getProxyProvider()
                     }
                     
@@ -396,29 +396,30 @@ class OpenClashClient: ClashClient {
                         )
                     ]
                 }
+
                 
                 return try await getProxyProvider()
                 
             } catch {
-                print("Error decoding cleaned response: \(error)")
+                LogManager.shared.error("订阅信息 - 错误解码清理响应: \(error)")
                 if let jsonError = error as? DecodingError {
                     switch jsonError {
                     case .dataCorrupted(let context):
-                        print("Data corrupted: \(context)")
+                        LogManager.shared.error("订阅信息 - 数据损坏: \(context)")
                     case .keyNotFound(let key, let context):
-                        print("Key '\(key)' not found: \(context)")
+                        LogManager.shared.error("订阅信息 - 键未找到: \(key) - \(context)")
                     case .typeMismatch(let type, let context):
-                        print("Type '\(type)' mismatch: \(context)")
+                        LogManager.shared.error("订阅信息 - 类型不匹配: \(type) - \(context)")
                     case .valueNotFound(let type, let context):
-                        print("Value of type '\(type)' not found: \(context)")
+                        LogManager.shared.error("订阅信息 - 值未找到: \(type) - \(context)")
                     @unknown default:
-                        print("Unknown decoding error: \(jsonError)")
+                        LogManager.shared.error("订阅信息 - 未知解码错误: \(jsonError)")
                     }
                 }
                 return try await getProxyProvider()
             }
         } else {
-            print("Could not convert response data to string")
+            LogManager.shared.error("订阅信息 - 无法将响应数据转换为字符串")
             return try await getProxyProvider()
         }
     }
@@ -437,7 +438,8 @@ class OpenClashClient: ClashClient {
         let response = try JSONDecoder().decode(ProxyProviderResponse.self, from: data)
         
         var result: [String: SubscriptionCardInfo] = [:]
-        
+
+        LogManager.shared.info("订阅信息 - 代理提供者信息: \(response)")
         for (name, provider) in response.providers {
             if let vehicleType = provider.vehicleType,
                ["HTTP", "FILE"].contains(vehicleType.uppercased()),
@@ -527,12 +529,12 @@ class MihomoClient: ClashClient {
         let (data, response) = try await httpClient.makeRequest(method: "POST", url: url, headers: headers, body: body)
         
         if let httpResponse = response as? HTTPURLResponse {
-            print("Config response status code: \(httpResponse.statusCode)")
-            print("Config response headers: \(httpResponse.allHeaderFields)")
+            LogManager.shared.info("订阅信息 - 响应状态码: \(httpResponse.statusCode)")
+            LogManager.shared.info("订阅信息 - 响应头: \(httpResponse.allHeaderFields)")
         }
         
         if let responseString = String(data: data, encoding: .utf8) {
-            print("Config response: \(responseString)")
+            LogManager.shared.info("订阅信息 - 响应: \(responseString)")
             
             // 尝试清理响应数据
             let cleanedResponse = responseString
@@ -542,7 +544,7 @@ class MihomoClient: ClashClient {
             
             do {
                 guard let cleanedData = cleanedResponse.data(using: .utf8) else {
-                    print("Failed to convert cleaned config response to data")
+                    LogManager.shared.error("订阅信息 - 无法将清理响应转换为数据")
                     return nil
                 }
                 
@@ -555,33 +557,33 @@ class MihomoClient: ClashClient {
                     .replacingOccurrences(of: "\\u000a", with: "")
                     .replacingOccurrences(of: "\n", with: "")
                 
-                print("Parsed result: \(result)")
+                LogManager.shared.info("订阅信息 - 解析结果: \(result)")
                 
                 let parts = result.split(separator: ":")
                 let config = parts.count > 1 && parts[0] == "subscription" ? String(parts[1]) : nil
-                print("Final config: \(config ?? "nil")")
+                LogManager.shared.info("订阅信息 - 最终配置: \(config ?? "nil")")
                 return config
                 
             } catch {
-                print("Error decoding config response: \(error)")
+                LogManager.shared.error("订阅信息 - 错误解码配置响应: \(error)")
                 if let jsonError = error as? DecodingError {
                     switch jsonError {
                     case .dataCorrupted(let context):
-                        print("Data corrupted: \(context)")
+                        LogManager.shared.error("订阅信息 - 数据损坏: \(context)")
                     case .keyNotFound(let key, let context):
-                        print("Key '\(key)' not found: \(context)")
+                        LogManager.shared.error("订阅信息 - 键未找到: \(key) - \(context)")
                     case .typeMismatch(let type, let context):
-                        print("Type '\(type)' mismatch: \(context)")
+                        LogManager.shared.error("订阅信息 - 类型不匹配: \(type) - \(context)")
                     case .valueNotFound(let type, let context):
                         print("Value of type '\(type)' not found: \(context)")
                     @unknown default:
-                        print("Unknown decoding error: \(jsonError)")
+                        LogManager.shared.error("订阅信息 - 未知解码错误: \(jsonError)")
                     }
                 }
                 throw error
             }
         } else {
-            print("Could not convert config response data to string")
+            LogManager.shared.error("订阅信息 - 无法将配置响应数据转换为字符串")
             return nil
         }
     }
@@ -657,7 +659,7 @@ class MihomoClient: ClashClient {
         
         // 打印接收到的数据
         if let responseString = String(data: data, encoding: .utf8) {
-            print("Received response: \(responseString)")
+            LogManager.shared.info("订阅信息 - 接收响应: \(responseString)")
         }
         
         // 尝试解析响应
@@ -668,7 +670,7 @@ class MihomoClient: ClashClient {
             
             let response = try JSONDecoder().decode(Response.self, from: data)
             guard let subscriptionData = MihomoSubscriptionData.parse(from: response.result) else {
-                print("Failed to parse subscription data from result")
+                LogManager.shared.error("订阅信息 - 无法从结果解析订阅数据")
                 return try await getProxyProvider()
             }
             
@@ -676,7 +678,7 @@ class MihomoClient: ClashClient {
             dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
             
             guard let expireDate = dateFormatter.date(from: subscriptionData.expire) else {
-                print("Failed to parse expire date: \(subscriptionData.expire)")
+                LogManager.shared.error("订阅信息 - 无法解析到期日期: \(subscriptionData.expire)")
                 return try await getProxyProvider()
             }
             
@@ -690,8 +692,8 @@ class MihomoClient: ClashClient {
                 )
             ]
         } catch {
-            print("Error decoding response: \(error)")
-            print("Response data: \(String(data: data, encoding: .utf8) ?? "Unable to convert data to string")")
+            LogManager.shared.error("订阅信息 - 错误解码响应: \(error)")
+            LogManager.shared.error("订阅信息 - 响应数据: \(String(data: data, encoding: .utf8) ?? "Unable to convert data to string")")
             throw error
         }
     }
@@ -723,6 +725,8 @@ class MihomoClient: ClashClient {
                 let used = (upload.isFinite && download.isFinite) ? upload + download : 0
                 
                 let expireDate = Date(timeIntervalSince1970: subInfo.Expire)
+
+                LogManager.shared.info("订阅信息 - 订阅信息: \(name) - \(expireDate) - \(used) - \(total)")
                 
                 // 当 total 或 expireDate 不为0时才添加订阅信息
                 if (total > 0 || subInfo.Expire > 0) && used.isFinite {
@@ -780,20 +784,26 @@ class SubscriptionManager: ObservableObject {
         switch server.luciPackage {
         case .mihomoTProxy:
             self.clashClient = MihomoClient(server: server, httpClient: httpClient)
+            LogManager.shared.info("订阅信息 - 初始化 Mihomo 客户端")
         case .openClash:
             self.clashClient = OpenClashClient(server: server, httpClient: httpClient)
+            LogManager.shared.info("订阅信息 - 初始化 OpenClash 客户端")
         }
         
         // 加载缓存的数据
         if let cached = cache.load(for: server) {
             self.subscriptions = cached
             self.lastUpdateTime = cache.getLastUpdateTime(for: server)
+            LogManager.shared.info("订阅信息 - 从缓存加载了 \(cached.count) 个订阅信息")
+        } else {
+            LogManager.shared.info("订阅信息 - 没有找到缓存的订阅信息")
         }
     }
     
     func fetchSubscriptionInfo(forceRefresh: Bool = false) async {
         // 如果不是强制刷新且已有缓存数据，直接返回
         if !forceRefresh && !subscriptions.isEmpty {
+            LogManager.shared.info("订阅信息 - 使用现有缓存数据，跳过刷新")
             return
         }
         
@@ -801,12 +811,17 @@ class SubscriptionManager: ObservableObject {
             self.isLoading = true
         }
         
+        LogManager.shared.info("订阅信息 - 开始\(forceRefresh ? "强制" : "")刷新订阅信息")
+        
         do {
             // 根据 ServerSource 决定获取订阅信息的方式
             if server.source == .openWRT {
+                LogManager.shared.info("订阅信息 - 检测到 OpenWRT 源，尝试获取配置信息")
                 // 对于 openWRT 源，使用原有的逻辑
                 if let config = try await clashClient.getCurrentConfig() {
+                    LogManager.shared.info("订阅信息 - 成功获取配置：\(config)")
                     if let subscriptionInfo = try await clashClient.getSubscriptionInfo(config: config) {
+                        LogManager.shared.info("订阅信息 - 成功获取订阅信息，共 \(subscriptionInfo.count) 个")
                         // 保持现有订阅的顺序
                         var newSubscriptions: [SubscriptionCardInfo] = []
                         if !self.subscriptions.isEmpty {
@@ -822,9 +837,11 @@ class SubscriptionManager: ObservableObject {
                                     newSubscriptions.append(newSub)
                                 }
                             }
+                            LogManager.shared.info("订阅信息 - 更新现有订阅顺序，最终数量：\(newSubscriptions.count)")
                         } else {
                             // 如果是首次加载，按照名称排序
                             newSubscriptions = Array(subscriptionInfo.values).sorted { ($0.name ?? "") < ($1.name ?? "") }
+                            LogManager.shared.info("订阅信息 - 首次加载订阅信息，按名称排序")
                         }
                         
                         DispatchQueue.main.async {
@@ -834,13 +851,20 @@ class SubscriptionManager: ObservableObject {
                         }
                         // 保存到缓存
                         cache.save(subscriptions: newSubscriptions, for: server)
+                        LogManager.shared.info("订阅信息 - 已更新并保存到缓存")
                         return
+                    } else {
+                        LogManager.shared.warning("订阅信息 - 无法获取订阅信息，尝试获取代理提供者信息")
                     }
+                } else {
+                    LogManager.shared.warning("订阅信息 - 无法获取配置信息，尝试获取代理提供者信息")
                 }
             }
             
             // 对于其他源或者 openWRT 获取失败的情况，直接尝试获取代理提供者信息
+            LogManager.shared.info("订阅信息 - 尝试获取代理提供者信息")
             if let proxyInfo = try await clashClient.getProxyProvider() {
+                LogManager.shared.info("订阅信息 - 成功获取代理提供者信息，共 \(proxyInfo.count) 个")
                 // 保持现有订阅的顺序
                 var newSubscriptions: [SubscriptionCardInfo] = []
                 if !self.subscriptions.isEmpty {
@@ -856,9 +880,11 @@ class SubscriptionManager: ObservableObject {
                             newSubscriptions.append(newSub)
                         }
                     }
+                    LogManager.shared.info("订阅信息 - 更新现有订阅顺序，最终数量：\(newSubscriptions.count)")
                 } else {
                     // 如果是首次加载，按照名称排序
                     newSubscriptions = Array(proxyInfo.values).sorted { ($0.name ?? "") < ($1.name ?? "") }
+                    LogManager.shared.info("订阅信息 - 首次加载代理提供者信息，按名称排序")
                 }
                 
                 DispatchQueue.main.async {
@@ -868,9 +894,12 @@ class SubscriptionManager: ObservableObject {
                 }
                 // 保存到缓存
                 cache.save(subscriptions: newSubscriptions, for: server)
+                LogManager.shared.info("订阅信息 - 代理提供者信息已更新并保存到缓存")
+            } else {
+                LogManager.shared.warning("订阅信息 - 无法获取代理提供者信息")
             }
         } catch {
-            print("Error fetching subscription info: \(error)")
+            LogManager.shared.error("订阅信息 - 获取订阅信息失败：\(error.localizedDescription)")
             DispatchQueue.main.async {
                 self.isLoading = false
             }
@@ -878,10 +907,12 @@ class SubscriptionManager: ObservableObject {
     }
     
     func refresh() async {
+        LogManager.shared.info("订阅信息 - 手动刷新订阅信息")
         await fetchSubscriptionInfo(forceRefresh: true)
     }
     
     func clearCache() {
+        LogManager.shared.info("订阅信息 - 清除订阅信息缓存")
         cache.clear(for: server)
         subscriptions = []
         lastUpdateTime = nil
