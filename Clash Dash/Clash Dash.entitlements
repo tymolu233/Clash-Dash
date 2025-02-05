@@ -2,8 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>aps-environment</key>
-	<string>development</string>
 	<key>com.apple.developer.icloud-container-identifiers</key>
 	<array>
 		<string>iCloud.ym.si.clashdash</string>
@@ -12,6 +10,8 @@
 	<array>
 		<string>CloudKit</string>
 	</array>
+	<key>com.apple.developer.maps</key>
+	<true/>
 	<key>com.apple.developer.networking.networkextension</key>
 	<array/>
 	<key>com.apple.developer.networking.wifi-info</key>
@@ -20,7 +20,5 @@
 	<array>
 		<string>group.ym.si.clashdash</string>
 	</array>
-	<key>com.apple.developer.maps</key>
-	<true/>
 </dict>
 </plist>
