@@ -182,6 +182,7 @@
 				9D3823DD2D0816F7002FF881 /* Frameworks */,
 				9D3823DE2D0816F7002FF881 /* Resources */,
 				9D3829722D114F54002FF881 /* Embed Foundation Extensions */,
+				9D9E35862D54791000188CA2 /* Update Build Number */,
 			);
 			buildRules = (
 			);
@@ -522,10 +523,11 @@
 				CODE_SIGN_ENTITLEMENTS = "Clash Dash/Clash Dash.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 397;
 				DEVELOPMENT_ASSET_PATHS = "\"Clash Dash/Preview Content\"";
 				DEVELOPMENT_TEAM = M943S3MQCS;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Clash-Dash-Info.plist";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
@@ -558,10 +560,11 @@
 				CODE_SIGN_ENTITLEMENTS = "Clash Dash/Clash Dash.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 397;
 				DEVELOPMENT_ASSET_PATHS = "\"Clash Dash/Preview Content\"";
 				DEVELOPMENT_TEAM = M943S3MQCS;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Clash-Dash-Info.plist";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
@@ -591,7 +594,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 397;
 				DEVELOPMENT_TEAM = M943S3MQCS;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
@@ -610,7 +613,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 397;
 				DEVELOPMENT_TEAM = M943S3MQCS;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
@@ -628,7 +631,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 397;
 				DEVELOPMENT_TEAM = M943S3MQCS;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
@@ -645,7 +648,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 397;
 				DEVELOPMENT_TEAM = M943S3MQCS;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
@@ -666,7 +669,7 @@
 				CODE_SIGN_ENTITLEMENTS = WidgetExtensionExtension.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 397;
 				DEVELOPMENT_TEAM = M943S3MQCS;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WidgetExtension/Info.plist;
@@ -696,7 +699,7 @@
 				CODE_SIGN_ENTITLEMENTS = WidgetExtensionExtension.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 397;
 				DEVELOPMENT_TEAM = M943S3MQCS;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WidgetExtension/Info.plist;
@@ -767,6 +770,27 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		9D9E35862D54791000188CA2 /* Update Build Number */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Update Build Number";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# 获取 Git 提交次数作为构建版本号\nbuildNumber=$(git rev-list HEAD --count)\n\n# 更新 project.pbxproj 中的版本号\nsed -i \"\" \"s/CURRENT_PROJECT_VERSION = [0-9]*;/CURRENT_PROJECT_VERSION = $buildNumber;/g\" \"${PROJECT_FILE_PATH}/project.pbxproj\"\n\n# 如果有 Git 标签，更新营销版本号\nif [ -n \"$(git tag --points-at HEAD)\" ]; then\n    marketingVersion=$(git tag --points-at HEAD | head -n 1)\n    sed -i \"\" \"s/MARKETING_VERSION = [0-9.]*;/MARKETING_VERSION = $marketingVersion;/g\" \"${PROJECT_FILE_PATH}/project.pbxproj\"\nfi\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 	};
 	rootObject = 9D3823D82D0816F7002FF881 /* Project object */;
 }
