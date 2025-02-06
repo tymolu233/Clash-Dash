@@ -45,18 +45,20 @@ struct AppearanceSettingsView: View {
                     }
                 }
 
-                Picker("连接视图样式", selection: $connectionRowStyle) {
-                    ForEach(ConnectionRowStyle.allCases) { style in
-                        Text(style.description)
-                            .tag(style)
-                    }
-                }
-
                 NavigationLink {
                     OverviewCardSettingsView()
                 } label: {
                     SettingRow(
                         title: "概览页面设置",
+                        value: ""
+                    )
+                }
+                
+                NavigationLink {
+                    ConnectionsSettingsView()
+                } label: {
+                    SettingRow(
+                        title: "连接页面设置",
                         value: ""
                     )
                 }

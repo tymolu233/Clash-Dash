@@ -11,6 +11,48 @@ struct ConnectionsView: View {
     @State private var showClientTagSheet = false
     @State private var selectedConnection: ClashConnection?
     
+    // 获取默认排序设置
+    @AppStorage("defaultConnectionSortOption") private var defaultSortOption = DefaultConnectionSortOption.startTime
+    @AppStorage("defaultConnectionSortAscending") private var defaultSortAscending = false
+    
+    // 修改排序状态，使用默认值初始化
+    @State private var selectedSortOption: SortOption
+    @State private var isAscending: Bool
+    
+    init(server: ClashServer) {
+        self.server = server
+        // 使用默认排序设置初始化状态
+        let defaultOption = UserDefaults.standard.string(forKey: "defaultConnectionSortOption") ?? DefaultConnectionSortOption.startTime.rawValue
+        let defaultAscending = UserDefaults.standard.bool(forKey: "defaultConnectionSortAscending")
+        
+        // 将DefaultConnectionSortOption转换为SortOption
+        _selectedSortOption = State(initialValue: SortOption(rawValue: defaultOption) ?? .startTime)
+        _isAscending = State(initialValue: defaultAscending)
+    }
+    
+    // 添加计算属性来获取不同类型的连接数量
+    private var activeConnectionsCount: Int {
+        viewModel.connections.filter { $0.isAlive }.count
+    }
+    
+    private var closedConnectionsCount: Int {
+        viewModel.connections.filter { !$0.isAlive }.count
+    }
+    
+    private var tcpConnectionsCount: Int {
+        viewModel.connections.filter { connection in
+            let isMatchingState = connectionFilter == .active ? connection.isAlive : !connection.isAlive
+            return isMatchingState && connection.metadata.network.uppercased() == "TCP"
+        }.count
+    }
+    
+    private var udpConnectionsCount: Int {
+        viewModel.connections.filter { connection in
+            let isMatchingState = connectionFilter == .active ? connection.isAlive : !connection.isAlive
+            return isMatchingState && connection.metadata.network.uppercased() == "UDP"
+        }.count
+    }
+    
     // 添加确认对话框的状态
     @State private var showCloseAllConfirmation = false
     @State private var showClearClosedConfirmation = false
@@ -46,32 +88,6 @@ struct ConnectionsView: View {
             case .uploadSpeed: return "arrow.up.circle.fill"
             }
         }
-    }
-    
-    @State private var selectedSortOption: SortOption = .startTime
-    @State private var isAscending = false
-    
-    // 添加计算属性来获取不同类型的连接数量
-    private var activeConnectionsCount: Int {
-        viewModel.connections.filter { $0.isAlive }.count
-    }
-    
-    private var closedConnectionsCount: Int {
-        viewModel.connections.filter { !$0.isAlive }.count
-    }
-    
-    private var tcpConnectionsCount: Int {
-        viewModel.connections.filter { connection in
-            let isMatchingState = connectionFilter == .active ? connection.isAlive : !connection.isAlive
-            return isMatchingState && connection.metadata.network.uppercased() == "TCP"
-        }.count
-    }
-    
-    private var udpConnectionsCount: Int {
-        viewModel.connections.filter { connection in
-            let isMatchingState = connectionFilter == .active ? connection.isAlive : !connection.isAlive
-            return isMatchingState && connection.metadata.network.uppercased() == "UDP"
-        }.count
     }
     
     // 添加控制搜索栏显示的状态
@@ -442,10 +458,15 @@ struct ConnectionsView: View {
                     }
                 }
             } label: {
-                Image(systemName: "arrow.up.arrow.down.circle.fill")
-                    .foregroundColor(.accentColor)
-                    .font(.system(size: 20))
-                    .frame(width: 28, height: 28)
+                HStack(spacing: 4) {
+                    Image(systemName: selectedSortOption.icon)
+                        .foregroundColor(.accentColor)
+                        .font(.system(size: 16))
+                    Image(systemName: isAscending ? "chevron.up" : "chevron.down")
+                        .foregroundColor(.accentColor)
+                        .font(.system(size: 12))
+                }
+                .frame(width: 48, height: 28)
             }
         }
         .padding(.horizontal, 8)

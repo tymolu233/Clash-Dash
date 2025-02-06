@@ -56,6 +56,8 @@ class CloudKitManager: ObservableObject {
         "wifi_bindings",
         "speedChartStyle",
         "connectionRowStyle",
+        "defaultConnectionSortOption",
+        "defaultConnectionSortAscending",
         "default_servers",
         "lowDelayThreshold",
         "mediumDelayThreshold"
