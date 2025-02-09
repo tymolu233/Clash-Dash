@@ -1038,9 +1038,22 @@ class ProxyViewModel: ObservableObject {
             var visited = visitedGroups
             visited.insert(nodeName)
             
-            // 获取当前选中的节点
+            // 如果是负载均衡组，计算所有子节点的平均延迟
+            if group.type == "LoadBalance" {
+                let delays = group.all.compactMap { childNodeName -> Int? in
+                    let delay = getNodeDelay(nodeName: childNodeName, visitedGroups: visited)
+                    return delay > 0 ? delay : nil
+                }
+                
+                // 如果有有效延迟，返回平均值
+                if !delays.isEmpty {
+                    return delays.reduce(0, +) / delays.count
+                }
+                return 0
+            }
+            
+            // 对于其他类型的组，获取当前选中的节点延迟
             let currentNodeName = group.now
-            // 递归获取实际节点的延迟，传递已访问的组列表
             return getNodeDelay(nodeName: currentNodeName, visitedGroups: visited)
         }
         
