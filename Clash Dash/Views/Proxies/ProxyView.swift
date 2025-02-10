@@ -477,12 +477,12 @@ struct GroupCard: View {
                             Image(systemName: "bolt.horizontal.circle.fill")
                                 .foregroundStyle(.blue)
                                 .font(.caption2)
+                        } else if group.type == "LoadBalance" {
+                            Image(systemName: "arrow.triangle.branch")
+                                .foregroundStyle(.blue)
+                                .font(.caption2)
                         }
                     }
-                    
-                    // Text(group.type)
-                    //     .font(.caption2)
-                    //     .foregroundStyle(.secondary)
                 }
                 
                 Spacer()
@@ -514,21 +514,29 @@ struct GroupCard: View {
                     // 获取实际节点的延迟
                     let (finalNode, finalDelay) = getActualNodeAndDelay(nodeName: group.now)
                     
-                    // 显示直接选中的节点名称
-                    Text(group.now)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                    
-                    // 显示实际节点的延迟
-                    if finalDelay > 0 {
-                        Text("\(finalDelay) ms")
-                            .font(.caption2)
-                            .padding(.horizontal, 4)
-                            .padding(.vertical, 1)
-                            .background(DelayColor.color(for: finalDelay).opacity(0.1))
-                            .foregroundStyle(DelayColor.color(for: finalDelay))
-                            .clipShape(Capsule())
+                    // 显示当前状态
+                    if group.type == "LoadBalance" {
+                        Text("负载均衡")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    } else {
+                        // 显示直接选中的节点名称
+                        Text(group.now)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                        
+                        // 显示实际节点的延迟
+                        if finalDelay > 0 {
+                            Text("\(finalDelay) ms")
+                                .font(.caption2)
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 1)
+                                .background(DelayColor.color(for: finalDelay).opacity(0.1))
+                                .foregroundStyle(DelayColor.color(for: finalDelay))
+                                .clipShape(Capsule())
+                        }
                     }
                 }
                 
@@ -548,30 +556,6 @@ struct GroupCard: View {
                 total: totalNodes
             )
             .padding(.horizontal, 2)
-            
-            // // 延迟统计数据
-            // HStack {
-            //     HStack(spacing: 8) {
-            //         ForEach([
-            //             (count: delayStats.green, color: DelayColor.low, label: "低延迟"),
-            //             (count: delayStats.yellow, color: DelayColor.medium, label: "等"),
-            //             (count: delayStats.red, color: DelayColor.high, label: "高延迟"),
-            //             (count: delayStats.timeout, color: DelayColor.disconnected, label: "超时")
-            //         ], id: \.label) { stat in
-            //             if stat.count > 0 {
-            //                 HStack(spacing: 2) {
-            //                     Circle()
-            //                         .fill(stat.color.opacity(0.85))
-            //                         .frame(width: 4, height: 4)
-            //                     Text("\(stat.count)")
-            //                         .font(.caption2)
-            //                         .foregroundStyle(.secondary)
-            //                 }
-            //             }
-            //         }
-            //     }
-            // }
-            // .padding(.top, 2)
         }
         .padding(12)
         .background(cardBackgroundColor)

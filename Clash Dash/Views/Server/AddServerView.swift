@@ -35,15 +35,15 @@ struct AddServerHelpView: View {
                         HStack {
                             Image(systemName: "arrow.triangle.branch")
                                 .foregroundColor(.blue)
-                            Text("MihomoTProxy")
+                            Text("Nikki")
                                 .font(.headline)
                         }
                         
-                        Text("如果使用的是 MihomoTProxy，外部控制器的端口和密钥信息可以在以下位置查看：")
+                        Text("如果使用的是 Nikki，外部控制器的端口和密钥信息可以在以下位置查看：")
                             .foregroundColor(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                         
-                        Text("MihomoTProxy → 混入配置 → 外部控制配置")
+                        Text("Nikki → 混入配置 → 外部控制配置")
                             .padding(10)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .background(cardBackground)
@@ -250,7 +250,7 @@ struct AddServerView: View {
                         
                         Picker("", selection: $luciPackage) {
                             Text("OpenClash").tag(LuCIPackage.openClash)
-                            Text("MihomoTProxy").tag(LuCIPackage.mihomoTProxy)
+                            Text("Nikki").tag(LuCIPackage.mihomoTProxy)
                         }
                         .pickerStyle(.segmented)
                     }

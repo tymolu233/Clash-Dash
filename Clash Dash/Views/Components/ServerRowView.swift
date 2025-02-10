@@ -55,10 +55,10 @@ struct ServerRowView: View {
                     HStack(spacing: 12) {
                         // 服务器来源标签
                         Label {
-                            Text(server.source == .clashController ? "Clash 控制器" : server.luciPackage == .openClash ? "OpenClash" : "MihomoTProxy")
+                            Text(server.source == .clashController ? "Clash 控制器" : server.luciPackage == .openClash ? "OpenClash" : "Nikki")
                                 .foregroundColor(.secondary)
                         } icon: {
-                            Image(systemName: server.source == .clashController ? "server.rack" : server.luciPackage == .openClash ? "o.square" : "m.square")
+                            Image(systemName: server.source == .clashController ? "server.rack" : server.luciPackage == .openClash ? "o.square" : "n.square")
                                 .foregroundColor(.secondary)
                         }
                         .font(.caption)

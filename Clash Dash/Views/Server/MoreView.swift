@@ -137,7 +137,7 @@ struct MoreView: View {
 
             // MihomoTProxy 功能组
             if server.luciPackage == .mihomoTProxy && server.source == .openWRT {
-                Section("MihomoTProxy 插件控制") {
+                Section("Nikki 插件控制") {
                     Button {
                         HapticManager.shared.impact(.light)
                         showingServiceLog = true

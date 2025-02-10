@@ -18,7 +18,7 @@ Clash Dash 是一款原生 SwiftUI 开发的 OpenClash/MihomoTProxy 管理工具
 
 ## 主要功能
 
-- 便捷管理多个 Clash 服务（OpenClash、Sing-Box、MihomoTProxy）
+- 便捷管理多个 Clash 服务（OpenClash、Sing-Box、Nikki）
 - 切换、编辑 Clash 配置文件
 - 支持 iCloud 同步
 - 编辑 Clash 订阅信息
@@ -40,7 +40,7 @@ Clash Dash 是一款原生 SwiftUI 开发的 OpenClash/MihomoTProxy 管理工具
 如果你在使用过程中遇到问题，请查看我们的 [故障排除指南](TROUBLESHOOTING.md)。常见问题包括：
 
 - OpenWRT 认证相关问题
-- OpenClash/MihomoTProxy 插件问题
+- OpenClash/Nikki（原 MihomoTProxy）插件问题
 
 ## 隐私声明
 

@@ -1385,10 +1385,10 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                         continuation.yield("🔄 切换配置文件...")
                         
                         // 发送第二条日志
-                        continuation.yield("🧹 清理 MihomoTProxy 运行日志...")
+                        continuation.yield("🧹 清理 Nikki 运行日志...")
                         
                         // 发送第三条日志
-                        continuation.yield("🔄 重载 MihomoTProxy 服务...")
+                        continuation.yield("🔄 重载 Nikki 服务...")
                         
                         // 循环获取日志，直到看到成功启动的消息
                         while true {
@@ -1410,7 +1410,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                                         
                                         // 如果看到成功启动的消息，结束监控
                                         if log.contains("[App] Start Successful") {
-                                            continuation.yield("✅ MihomoTProxy 服务已完全启动")
+                                            continuation.yield("✅ Nikki 服务已完全启动")
                                             continuation.finish()
                                             return
                                         }
@@ -1560,7 +1560,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
     }
     
     func fetchMihomoTProxyConfigs(_ server: ClashServer) async throws -> [OpenClashConfig] {
-        logger.info("🔍 开始获取 MihomoTProxy 配置列表")
+        logger.info("🔍 开始获取 Nikki 配置列表")
         // 获取认证 token
         guard let username = server.openWRTUsername,
               let password = server.openWRTPassword else {

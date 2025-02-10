@@ -189,14 +189,14 @@ struct RestartServiceView: View {
                 
                 // 2. 清理日志
                 withAnimation {
-                    logs.append("🧹 清理 MihomoTProxy 运行日志...")
+                    logs.append("🧹 清理 Nikki 运行日志...")
                 }
                 let clearLogCmd = "/usr/libexec/mihomo-call clear_log app"
                 let clearLogRequest = try await makeUCIRequest(server, token: token, method: "sys", params: ["exec", [clearLogCmd]])
                 
                 // 3. 重启服务
                 withAnimation {
-                    logs.append("🔄 重启 MihomoTProxy 服务...")
+                    logs.append("🔄 重启 Nikki 服务...")
                 }
                 let restartCmd = "/etc/init.d/mihomo restart"
                 let restartRequest = try await makeUCIRequest(server, token: token, method: "sys", params: ["exec", [restartCmd]])
@@ -231,7 +231,7 @@ struct RestartServiceView: View {
                             // 检查启动成功标记
                             if log.contains("[App] Start Successful") {
                                 withAnimation {
-                                    logs.append("✅ MihomoTProxy 服务已完全启动")
+                                    logs.append("✅ Nikki 服务已完全启动")
                                 }
                                 isRestartSuccessful = true
                                 isRestarting = false

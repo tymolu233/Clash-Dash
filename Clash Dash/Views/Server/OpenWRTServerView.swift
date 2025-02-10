@@ -245,7 +245,7 @@ struct OpenWRTServerView: View {
                 Section {
                     Picker("LuCI 软件包", selection: $luciPackage) {
                         Text("OpenClash").tag(LuCIPackage.openClash)
-                        Text("MihomoTProxy").tag(LuCIPackage.mihomoTProxy)
+                        Text("Nikki").tag(LuCIPackage.mihomoTProxy)
                     }
                     .pickerStyle(.segmented)
                     

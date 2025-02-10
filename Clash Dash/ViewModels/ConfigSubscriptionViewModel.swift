@@ -789,7 +789,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
         } else {
             do {
                 // print("🔄 开始更新 MihomoTProxy 订阅: \(subscription.name)")
-                logger.info("🔄 开始更新 MihomoTProxy 订阅: \(subscription.name)")
+                logger.info("🔄 开始更新 Nikki 订阅: \(subscription.name)")
                 
                 let token = try await getAuthToken()
                 
@@ -1326,7 +1326,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
     
     // 更新 MihomoTProxy 订阅
     func updateMihomoTProxySubscription(_ subscriptionId: String) async throws -> ConfigSubscription? {
-        logger.info("开始更新 MihomoTProxy 订阅: \(subscriptionId)")
+        logger.info("开始更新 Nikki 订阅: \(subscriptionId)")
         
         let token = try await getAuthToken()
         

@@ -233,6 +233,10 @@ private struct CardContent: View {
                     Image(systemName: "bolt.horizontal.circle.fill")
                         .foregroundStyle(.blue)
                         .font(.caption2)
+                } else if group.type == "LoadBalance" {
+                    Image(systemName: "arrow.triangle.branch")
+                        .foregroundStyle(.blue)
+                        .font(.caption2)
                 }
                 
                 Spacer(minLength: 0)
@@ -255,10 +259,17 @@ private struct CardContent: View {
                             .scaleEffect(0.7)
                     } else {
                         // 节点名称
-                        Text(group.now)
-                            .font(.system(.subheadline, design: .rounded))
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
+                        if group.type == "LoadBalance" {
+                            Text("负载均衡")
+                                .font(.system(.subheadline, design: .rounded))
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        } else {
+                            Text(group.now)
+                                .font(.system(.subheadline, design: .rounded))
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
                     }
                 }
             }

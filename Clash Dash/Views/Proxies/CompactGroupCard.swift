@@ -22,6 +22,9 @@ struct CompactGroupCard: View {
     
     // 获取当前选中节点的延迟颜色
     private var currentNodeColor: Color {
+        if group.type == "LoadBalance" {
+            return .blue
+        }
         let delay = viewModel.getNodeDelay(nodeName: group.now)
         return DelayColor.color(for: delay)
     }
@@ -157,15 +160,45 @@ struct CompactGroupCard: View {
                                     Image(systemName: "bolt.horizontal.circle.fill")
                                         .foregroundStyle(.blue)
                                         .font(.caption2)
+                                } else if group.type == "LoadBalance" {
+                                    Image(systemName: "arrow.triangle.branch")
+                                        .foregroundStyle(.blue)
+                                        .font(.caption2)
                                 }
                             }
 
-                            Text(group.now)
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                                .fontWeight(.medium)
-                                .lineLimit(1)
-                                .truncationMode(.middle)
+                            if group.type == "LoadBalance" {
+                                Text("负载均衡")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .fontWeight(.medium)
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                            } else if viewModel.testingGroups.contains(group.name) {
+                                DelayTestingView()
+                                    .foregroundStyle(.blue)
+                                    .scaleEffect(0.7)
+                            } else {
+                                HStack(spacing: 4) {
+                                    Text(group.now)
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                        .fontWeight(.medium)
+                                        .lineLimit(1)
+                                        .truncationMode(.middle)
+                                    
+                                    // let delay = viewModel.getNodeDelay(nodeName: group.now)
+                                    // if delay > 0 {
+                                    //     Text("\(delay) ms")
+                                    //         .font(.caption2)
+                                    //         .padding(.horizontal, 4)
+                                    //         .padding(.vertical, 1)
+                                    //         .background(DelayColor.color(for: delay).opacity(0.1))
+                                    //         .foregroundStyle(DelayColor.color(for: delay))
+                                    //         .clipShape(Capsule())
+                                    // }
+                                }
+                            }
                         }
                     }
                     
