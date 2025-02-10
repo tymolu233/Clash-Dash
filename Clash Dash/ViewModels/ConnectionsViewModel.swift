@@ -31,11 +31,11 @@ class ConnectionsViewModel: ObservableObject {
         var message: String {
             switch self {
             case .disconnected:
-                return "未连接到服务器"
+                return "未连接到后端"
             case .connecting:
-                return "正在连接服务器..."
+                return "正在连接后端..."
             case .connected:
-                return "已连接到服务器"
+                return "已连接到后端"
             case .paused:
                 return "监控已暂停"
             case .error(let message):

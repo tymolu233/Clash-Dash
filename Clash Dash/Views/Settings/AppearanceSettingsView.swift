@@ -85,9 +85,11 @@ struct AppearanceSettingsView: View {
                     )
                     .onChange(of: lowDelaySliderValue) { newValue in
                         lowDelayThreshold = Int(newValue)
+                        HapticManager.shared.impact(.light)
                     }
                     .onChange(of: mediumDelaySliderValue) { newValue in
                         mediumDelayThreshold = Int(newValue)
+                        HapticManager.shared.impact(.light)
                     }
                     
                     Text("低于\(lowDelayThreshold)ms显示为绿色，\(lowDelayThreshold)ms到\(mediumDelayThreshold)ms之间显示为黄色，高于\(mediumDelayThreshold)ms显示为橙色")

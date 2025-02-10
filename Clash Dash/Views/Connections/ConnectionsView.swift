@@ -748,9 +748,6 @@ struct ConnectionsView: View {
                     }
                 }
             }
-            .refreshable {
-                await viewModel.refresh()
-            }
             
             menuButtons
                 .padding()
