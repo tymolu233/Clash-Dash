@@ -106,49 +106,211 @@ struct ConnectionsView: View {
     
     // 在 SortOption 枚举前添加 DeviceFilterButton
     private var deviceFilterButton: some View {
-        Menu {
-            let devices = getActiveDevices()
-            if devices.isEmpty {
-                Text("暂无设备记录")
-            } else {
-                Button("显示全部") {
-                    selectedDevices.removeAll()
-                }
-                
-                Button("全部隐藏") {
-                    selectedDevices = Set(devices.map(\.id))
-                }
-                Divider()
-                ForEach(viewModel.deviceCache, id: \.self) { ip in
-                    if let device = devices.first(where: { $0.id == ip }) {
-                        Button {
-                            if selectedDevices.contains(device.id) {
-                                selectedDevices.remove(device.id)
-                            } else {
-                                selectedDevices.insert(device.id)
-                            }
-                        } label: {
-                            HStack {
-                                Text(device.displayName)
-                                    .foregroundColor(device.activeCount > 0 ? .primary : .secondary)
-                                
-                                if !selectedDevices.contains(device.id) {
-                                    Image(systemName: "checkmark")
-                                }
-                            }
-                        }
-                    }
-                }
-                
-                
-                
-                
-            }
+        Button {
+            showDeviceFilter.toggle()
         } label: {
             Image(systemName: "desktopcomputer")
                 .foregroundColor(selectedDevices.isEmpty ? .accentColor : .gray)
                 .font(.system(size: 16))
                 .frame(width: 28, height: 28)
+        }
+        .sheet(isPresented: $showDeviceFilter) {
+            NavigationStack {
+                ZStack {
+                    Color(.systemGroupedBackground)
+                        .ignoresSafeArea()
+                    
+                    ScrollView {
+                        VStack(spacing: 16) {
+                            let devices = getActiveDevices()
+                            if devices.isEmpty {
+                                VStack(spacing: 16) {
+                                    Image(systemName: "desktopcomputer.trianglebadge.exclamationmark")
+                                        .font(.system(size: 48))
+                                        .foregroundColor(.secondary)
+                                        .rotationEffect(.degrees(showDeviceFilter ? 0 : -10))
+                                        .animation(.easeInOut(duration: 1).repeatForever(autoreverses: true), value: showDeviceFilter)
+                                    
+                                    Text("暂无设备记录")
+                                        .font(.headline)
+                                        .foregroundColor(.secondary)
+                                }
+                                .frame(maxHeight: .infinity)
+                            } else {
+                                // 状态统计卡片
+                                VStack(spacing: 8) {
+                                    HStack(spacing: 16) {
+                                        // 总设备
+                                        VStack(spacing: 2) {
+                                            Text("\(devices.count)")
+                                                .font(.system(size: 24, weight: .medium))
+                                            Text("总设备")
+                                                .font(.caption2)
+                                                .foregroundColor(.secondary)
+                                        }
+                                        .frame(maxWidth: .infinity)
+                                        
+                                        // 分隔线
+                                        Rectangle()
+                                            .fill(Color.gray.opacity(0.2))
+                                            .frame(width: 1, height: 32)
+                                        
+                                        // 活跃设备
+                                        VStack(spacing: 2) {
+                                            Text("\(devices.filter { $0.activeCount > 0 }.count)")
+                                                .font(.system(size: 24, weight: .medium))
+                                                .foregroundColor(.green)
+                                            Text("活跃设备")
+                                                .font(.caption2)
+                                                .foregroundColor(.secondary)
+                                        }
+                                        .frame(maxWidth: .infinity)
+                                        
+                                        // 分隔线
+                                        Rectangle()
+                                            .fill(Color.gray.opacity(0.2))
+                                            .frame(width: 1, height: 32)
+                                        
+                                        // 已筛选
+                                        VStack(spacing: 2) {
+                                            Text("\(selectedDevices.count)")
+                                                .font(.system(size: 24, weight: .medium))
+                                                .foregroundColor(.blue)
+                                            Text("已筛选")
+                                                .font(.caption2)
+                                                .foregroundColor(.secondary)
+                                        }
+                                        .frame(maxWidth: .infinity)
+                                    }
+                                    .padding(.vertical, 12)
+                                    
+                                    Divider()
+                                        .padding(.horizontal, -16)
+                                    
+                                    // 快捷操作按钮
+                                    HStack(spacing: 12) {
+                                        Button {
+                                            withAnimation {
+                                                selectedDevices.removeAll()
+                                            }
+                                        } label: {
+                                            HStack {
+                                                Image(systemName: "eye")
+                                                Text("显示全部")
+                                            }
+                                            .frame(maxWidth: .infinity)
+                                        }
+                                        .buttonStyle(.bordered)
+                                        .tint(.blue)
+                                        
+                                        Button {
+                                            withAnimation {
+                                                selectedDevices = Set(devices.map(\.id))
+                                            }
+                                        } label: {
+                                            HStack {
+                                                Image(systemName: "eye.slash")
+                                                Text("全部隐藏")
+                                            }
+                                            .frame(maxWidth: .infinity)
+                                        }
+                                        .buttonStyle(.bordered)
+                                        .tint(.red)
+                                    }
+                                    .padding(.horizontal, 2)
+                                }
+                                .padding(16)
+                                .background(Color(.secondarySystemGroupedBackground))
+                                .clipShape(RoundedRectangle(cornerRadius: 16))
+                                .shadow(color: Color.black.opacity(0.03), radius: 10, x: 0, y: 2)
+                                .padding(.horizontal)
+                                
+                                // 设备列表
+                                LazyVStack(spacing: 12) {
+                                    ForEach(Array(devices).sorted(by: { $0.activeCount > $1.activeCount }), id: \.id) { device in
+                                        Button {
+                                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                                if selectedDevices.contains(device.id) {
+                                                    selectedDevices.remove(device.id)
+                                                } else {
+                                                    selectedDevices.insert(device.id)
+                                                }
+                                            }
+                                        } label: {
+                                            HStack(spacing: 12) {
+                                                // 选中状态指示
+                                                ZStack {
+                                                    Circle()
+                                                        .fill(selectedDevices.contains(device.id) ? Color.gray.opacity(0.1) : Color.accentColor.opacity(0.1))
+                                                        .frame(width: 40, height: 40)
+                                                    
+                                                    Image(systemName: selectedDevices.contains(device.id) ? "eye.slash.fill" : "eye.fill")
+                                                        .foregroundColor(selectedDevices.contains(device.id) ? .gray : .accentColor)
+                                                        .font(.system(size: 16))
+                                                }
+                                                
+                                                VStack(alignment: .leading, spacing: 4) {
+                                                    HStack {
+                                                        Text(device.name ?? device.id)
+                                                            .font(.system(size: 16, weight: .medium))
+                                                            .foregroundColor(device.activeCount > 0 ? .primary : .secondary)
+                                                        
+                                                        if device.activeCount > 0 {
+                                                            HStack(spacing: 4) {
+                                                                Circle()
+                                                                    .fill(Color.green)
+                                                                    .frame(width: 6, height: 6)
+                                                                    .opacity(showDeviceFilter ? 1 : 0.3)
+                                                                    .animation(.easeInOut(duration: 1).repeatForever(autoreverses: true), value: showDeviceFilter)
+                                                            }
+                                                        }
+                                                    }
+                                                    
+                                                    HStack(spacing: 12) {
+                                                        if device.activeCount > 0 {
+                                                            Text("\(device.activeCount) 个活跃连接")
+                                                                .foregroundColor(.green)
+                                                        } else {
+                                                            Text("无活跃连接")
+                                                                .foregroundColor(.secondary)
+                                                        }
+                                                        
+                                                    
+                                                            Text(device.id)
+                                                                .foregroundColor(.secondary)
+                                                        
+                                                    }
+                                                    .font(.caption)
+                                                }
+                                                
+                                                Spacer()
+                                            }
+                                            .padding(12)
+                                            .background(Color(.secondarySystemGroupedBackground))
+                                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                }
+                                .padding(.horizontal)
+                            }
+                        }
+                        .padding(.vertical)
+                    }
+                }
+                .navigationTitle("设备筛选")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("完成") {
+                            showDeviceFilter = false
+                        }
+                        .fontWeight(.medium)
+                    }
+                }
+            }
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
         }
     }
     
