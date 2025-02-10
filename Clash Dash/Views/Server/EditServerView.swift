@@ -127,7 +127,7 @@ struct EditServerView: View {
                         
                         Picker("", selection: $luciPackage) {
                             Text("OpenClash").tag(LuCIPackage.openClash)
-                            Text("Nikki").tag(LuCIPackage.mihomoTProxy)
+                            Text("Nikki/MihomoTProxy").tag(LuCIPackage.mihomoTProxy)
                         }
                         .pickerStyle(.segmented)
                     }

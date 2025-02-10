@@ -39,7 +39,7 @@ struct AddServerHelpView: View {
                                 .font(.headline)
                         }
                         
-                        Text("如果使用的是 Nikki，外部控制器的端口和密钥信息可以在以下位置查看：")
+                        Text("如果使用的是 Nikki（原 MihomoTProxy），外部控制器的端口和密钥信息可以在以下位置查看：")
                             .foregroundColor(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                         
@@ -250,7 +250,7 @@ struct AddServerView: View {
                         
                         Picker("", selection: $luciPackage) {
                             Text("OpenClash").tag(LuCIPackage.openClash)
-                            Text("Nikki").tag(LuCIPackage.mihomoTProxy)
+                            Text("Nikki/MihomoTProxy").tag(LuCIPackage.mihomoTProxy)
                         }
                         .pickerStyle(.segmented)
                     }
