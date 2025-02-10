@@ -160,8 +160,14 @@ class SettingsViewModel: ObservableObject {
             if let httpResponse = response as? HTTPURLResponse,
                (200...299).contains(httpResponse.statusCode) {
                 logger.info("配置重载成功")
+                DispatchQueue.main.async {
+                    HapticManager.shared.notification(.success)
+                }
             } else if let error = error {
                 logger.error("配置重载失败：\(error.localizedDescription)")
+                DispatchQueue.main.async {
+                    HapticManager.shared.notification(.error)
+                }
             }
         }.resume()
     }
@@ -180,8 +186,14 @@ class SettingsViewModel: ObservableObject {
             if let httpResponse = response as? HTTPURLResponse,
                (200...299).contains(httpResponse.statusCode) {
                 logger.info("GEO 数据库更新成功")
+                DispatchQueue.main.async {
+                    HapticManager.shared.notification(.success)
+                }
             } else if let error = error {
                 logger.error("GEO 数据库更新失败：\(error.localizedDescription)")
+                DispatchQueue.main.async {
+                    HapticManager.shared.notification(.error)
+                }
             }
         }.resume()
     }
@@ -200,8 +212,14 @@ class SettingsViewModel: ObservableObject {
             if let httpResponse = response as? HTTPURLResponse,
                (200...299).contains(httpResponse.statusCode) {
                 logger.info("FakeIP 缓存清除成功")
+                DispatchQueue.main.async {
+                    HapticManager.shared.notification(.success)
+                }
             } else if let error = error {
                 logger.error("FakeIP 缓存清除失败：\(error.localizedDescription)")
+                DispatchQueue.main.async {
+                    HapticManager.shared.notification(.error)
+                }
             }
         }.resume()
     }
@@ -220,8 +238,14 @@ class SettingsViewModel: ObservableObject {
             if let httpResponse = response as? HTTPURLResponse,
                (200...299).contains(httpResponse.statusCode) {
                 logger.info("核心重启成功")
+                DispatchQueue.main.async {
+                    HapticManager.shared.notification(.success)
+                }
             } else if let error = error {
                 logger.error("核心重启失败：\(error.localizedDescription)")
+                DispatchQueue.main.async {
+                    HapticManager.shared.notification(.error)
+                }
             }
         }.resume()
     }
@@ -240,8 +264,14 @@ class SettingsViewModel: ObservableObject {
             if let httpResponse = response as? HTTPURLResponse,
                (200...299).contains(httpResponse.statusCode) {
                 logger.info("核心更新成功")
+                DispatchQueue.main.async {
+                    HapticManager.shared.notification(.success)
+                }
             } else if let error = error {
                 logger.error("核心更新失败：\(error.localizedDescription)")
+                DispatchQueue.main.async {
+                    HapticManager.shared.notification(.error)
+                }
             }
         }.resume()
     }
@@ -249,10 +279,16 @@ class SettingsViewModel: ObservableObject {
     func validateAndUpdatePort(_ portString: String, configKey: String, server: ClashServer) -> Bool {
         guard let port = Int(portString),
               (0...65535).contains(port) else {
+            DispatchQueue.main.async {
+                HapticManager.shared.notification(.error)
+            }
             return false
         }
         
         updateConfig(configKey, value: port, server: server)
+        DispatchQueue.main.async {
+            HapticManager.shared.notification(.success)
+        }
         return true
     }
     
