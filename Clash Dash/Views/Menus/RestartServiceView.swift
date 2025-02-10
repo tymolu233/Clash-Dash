@@ -187,18 +187,23 @@ struct RestartServiceView: View {
                 
                 let token = try await viewModel.getAuthToken(server, username: username, password: password)
                 
+                let isNikki = try await viewModel.isUsingNikki(server, token: token)
+                
+                let packageName = isNikki ? "nikki" : "mihomo"
+                
                 // 2. 清理日志
                 withAnimation {
-                    logs.append("🧹 清理 Nikki 运行日志...")
+                    
+                    logs.append("🧹 清理 \(isNikki ? "Nikki" : "Mihomo") 运行日志...")
                 }
-                let clearLogCmd = "/usr/libexec/mihomo-call clear_log app"
+                let clearLogCmd = "/usr/libexec/\(packageName)-call clear_log app"
                 let clearLogRequest = try await makeUCIRequest(server, token: token, method: "sys", params: ["exec", [clearLogCmd]])
                 
                 // 3. 重启服务
                 withAnimation {
-                    logs.append("🔄 重启 Nikki 服务...")
+                    logs.append("🔄 重启 \(isNikki ? "Nikki" : "Mihomo") 服务...")
                 }
-                let restartCmd = "/etc/init.d/mihomo restart"
+                let restartCmd = "/etc/init.d/\(packageName) restart"
                 let restartRequest = try await makeUCIRequest(server, token: token, method: "sys", params: ["exec", [restartCmd]])
                 
                 // 4. 监控日志
@@ -208,7 +213,7 @@ struct RestartServiceView: View {
                 
                 while retryCount < maxRetries {
                     // 获取应用日志
-                    let getLogCmd = "cat /var/log/mihomo/app.log"
+                    let getLogCmd = "cat /var/log/\(packageName)/app.log"
                     let logRequest = try await makeUCIRequest(server, token: token, method: "sys", params: ["exec", [getLogCmd]])
                     
                     if let result = logRequest["result"] as? String {
@@ -231,7 +236,7 @@ struct RestartServiceView: View {
                             // 检查启动成功标记
                             if log.contains("[App] Start Successful") {
                                 withAnimation {
-                                    logs.append("✅ Nikki 服务已完全启动")
+                                    logs.append("✅ \(isNikki ? "Nikki" : "Mihomo") 服务已完全启动")
                                 }
                                 isRestartSuccessful = true
                                 isRestarting = false

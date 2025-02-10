@@ -501,6 +501,13 @@ class MihomoClient: ClashClient {
         self.httpClient = httpClient
     }
     
+    // 添加一个私有方法来获取包名
+    private func getPackageName() async throws -> String {
+        let serverViewModel = await ServerViewModel()
+        let isNikki = try await serverViewModel.checkIsUsingNikki(server)
+        return isNikki ? "nikki" : "mihomo"
+    }
+    
     func getCurrentConfig() async throws -> String? {
         if token == nil {
             token = try await httpClient.login()
@@ -515,10 +522,12 @@ class MihomoClient: ClashClient {
             "Cookie": "sysauth=\(token!);sysauth_http=\(token!)"
         ]
         
+        let packageName = try await getPackageName()
+        
         let requestData = [
             "id": 1,
             "method": "exec",
-            "params": ["uci get mihomo.config.profile"]
+            "params": ["uci get \(packageName).config.profile"]
         ] as [String : Any]
         
         print("Getting current config from: \(url)")
@@ -648,10 +657,15 @@ class MihomoClient: ClashClient {
             "Cookie": "sysauth=\(token!);sysauth_http=\(token!)"
         ]
         
+        // 检查是否使用 nikki
+        let serverViewModel = await ServerViewModel()
+        let isNikki = try await serverViewModel.checkIsUsingNikki(server)
+        let packageName = isNikki ? "nikki" : "mihomo"
+        
         let requestData = [
             "id": 1,
             "method": "exec",
-            "params": ["uci show mihomo.\(config)"]
+            "params": ["uci show \(packageName).\(config)"]
         ] as [String : Any]
         
         let body = try JSONSerialization.data(withJSONObject: requestData)

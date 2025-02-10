@@ -205,7 +205,8 @@ class ServiceLogViewModel: ObservableObject {
     private func fetchMihomoTProxyPluginLog() {
         Task {
             do {
-                let logs = try await fetchMihomoTProxyLog(path: "/var/log/mihomo/app.log")
+                let packageName = try await getPackageName()
+                let logs = try await fetchMihomoTProxyLog(path: "/var/log/\(packageName)/app.log")
                 let entries = logs.compactMap { line -> ServiceLogEntry? in
                     return parseMihomoTProxyPluginLogLine(line)
                 }
@@ -222,7 +223,8 @@ class ServiceLogViewModel: ObservableObject {
     private func fetchMihomoTProxyKernelLog() {
         Task {
             do {
-                let logs = try await fetchMihomoTProxyLog(path: "/var/log/mihomo/core.log")
+                let packageName = try await getPackageName()
+                let logs = try await fetchMihomoTProxyLog(path: "/var/log/\(packageName)/core.log")
                 let entries = logs.compactMap { line -> ServiceLogEntry? in
                     return parseKernelLogLine(line)  // 可以复用 OpenClash 的内核日志解析，因为格式相同
                 }
@@ -392,10 +394,12 @@ class ServiceLogViewModel: ObservableObject {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
             
+            let packageName = try await getPackageName()
+            
             // 根据日志类型选择清理命令
             let clearCommand = currentLogType == .plugin ? 
-                "/usr/libexec/mihomo-call clear_log app" : 
-                "/usr/libexec/mihomo-call clear_log core"
+                "/usr/libexec/\(packageName)-call clear_log app" : 
+                "/usr/libexec/\(packageName)-call clear_log core"
             
             let requestBody: [String: Any] = [
                 "id": 1,
@@ -419,6 +423,13 @@ class ServiceLogViewModel: ObservableObject {
         await MainActor.run {
             logs.removeAll()
         }
+    }
+    
+    // 添加一个辅助方法来获取包名
+    private func getPackageName() async throws -> String {
+        let serverViewModel = ServerViewModel()
+        let isNikki = try await serverViewModel.checkIsUsingNikki(server)
+        return isNikki ? "nikki" : "mihomo"
     }
 }
 

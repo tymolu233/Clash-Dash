@@ -669,7 +669,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                     let statusResponse = try JSONDecoder().decode(ClashStatusResponse.self, from: statusData)
                     
                     if statusResponse.result.contains("stopped") {
-                        throw NetworkError.unauthorized(message: "MihomoTProxy 未在运行，请先启用 MihomoTProxy 再添加")
+                        throw NetworkError.unauthorized(message: "Nikki 未在运行，请先启用 Nikki")
                     }
                     
                     // MihomoTProxy 正在运行，返回 true
@@ -971,11 +971,15 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             
             let switchCommand: String
             
+            // 检查是否使用 nikki
+            let isNikki = try await isUsingNikki(server, token: token)
+            let packagePrefix = isNikki ? "nikki" : "mihomo"
+            
             // 判断是否为订阅配置
             if isSubscription {
-                switchCommand = "uci set mihomo.config.profile=subscription:\(configFilename.replacingOccurrences(of: ".yaml", with: "").replacingOccurrences(of: ".yml", with: "")) && uci commit mihomo"
+                switchCommand = "uci set \(packagePrefix).config.profile=subscription:\(configFilename.replacingOccurrences(of: ".yaml", with: "").replacingOccurrences(of: ".yml", with: "")) && uci commit \(packagePrefix)"
             } else {
-                switchCommand = "uci set mihomo.config.profile=file:\(configFilename) && uci commit mihomo"
+                switchCommand = "uci set \(packagePrefix).config.profile=file:\(configFilename) && uci commit \(packagePrefix)"
             }
 
             // print("切换配置命令: \(switchCommand)")
@@ -1371,8 +1375,12 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             //  1. 清理日志
             let clearnAppLog = try await makeUCIRequest(server, token: token, method: "sys", params: ["exec", ["/usr/libexec/mihomo-call clear_log app"]])
             
+            // 检查是否使用 nikki
+            let isNikki = try await isUsingNikki(server, token: token)
+            let packagePrefix = isNikki ? "nikki" : "mihomo"
+            
             // 2. 进行服务重载
-            let reloadService = try await makeUCIRequest(server, token: token, method: "sys", params: ["exec", ["/etc/init.d/mihomo reload"]])
+            let reloadService = try await makeUCIRequest(server, token: token, method: "sys", params: ["exec", ["/etc/init.d/\(packagePrefix) reload"]])
 
             // 3. 返回异步流来监控日志
             return AsyncThrowingStream { continuation in
@@ -1385,15 +1393,15 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                         continuation.yield("🔄 切换配置文件...")
                         
                         // 发送第二条日志
-                        continuation.yield("🧹 清理 Nikki 运行日志...")
+                        continuation.yield("🧹 清理 \(isNikki ? "Nikki" : "Mihomo") 运行日志...")
                         
                         // 发送第三条日志
-                        continuation.yield("🔄 重载 Nikki 服务...")
+                        continuation.yield("🔄 重载 \(isNikki ? "Nikki" : "Mihomo") 服务...")
                         
                         // 循环获取日志，直到看到成功启动的消息
                         while true {
                             // 获取应用日志
-                            let getAppLog = try await makeUCIRequest(server, token: token, method: "sys", params: ["exec", ["cat /var/log/mihomo/app.log"]])
+                            let getAppLog = try await makeUCIRequest(server, token: token, method: "sys", params: ["exec", ["cat /var/log/\(packagePrefix)/app.log"]])
                             
                             if let result = getAppLog["result"] as? String {
                                 // 将日志按行分割并处理
@@ -1410,7 +1418,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                                         
                                         // 如果看到成功启动的消息，结束监控
                                         if log.contains("[App] Start Successful") {
-                                            continuation.yield("✅ Nikki 服务已完全启动")
+                                            continuation.yield("✅ \(isNikki ? "Nikki" : "Mihomo") 服务已完全启动")
                                             continuation.finish()
                                             return
                                         }
@@ -1539,6 +1547,10 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         } else {
             // mihomoTProxy
             
+            // 检查是否使用 nikki
+            let isNikki = try await isUsingNikki(server, token: token)
+            let packagePrefix = isNikki ? "nikki" : "mihomo"
+            
             let deleteCommand: String
 
             if isSubscription {
@@ -1546,9 +1558,9 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                 // let removeResponse = try await makeUCIRequest(server, token: token, method: "sys", params: ["exec", [removeCommand]])
 
                 // logger.log("📥 删除订阅配置响应: \(removeResponse)")
-                deleteCommand = "rm '/etc/mihomo/subscriptions/\(configFilename)'"
+                deleteCommand = "rm '/etc/\(packagePrefix)/subscriptions/\(configFilename)'"
             } else {
-                deleteCommand = "rm '/etc/mihomo/profiles/\(configFilename)'"
+                deleteCommand = "rm '/etc/\(packagePrefix)/profiles/\(configFilename)'"
             }
 
             // print("🗑 开始删除配置文件: \(deleteCommand)")
@@ -1573,9 +1585,13 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         // print("✅ 获取令牌成功")
         var configs: [OpenClashConfig] = []
         
+        // 检查是否使用 nikki
+        let isNikki = try await isUsingNikki(server, token: token)
+        let packagePrefix = isNikki ? "nikki" : "mihomo"
+        
         // 1. 获取 profiles 目录下的配置文件（非订阅）
         // print("📂 获取 profiles 目录下的配置文件...")
-        let profilesResponse = try await makeUCIRequest(server, token: token, method: "fs", params: ["glob", ["/etc/mihomo/profiles/*"]])
+        let profilesResponse = try await makeUCIRequest(server, token: token, method: "fs", params: ["glob", ["/etc/\(packagePrefix)/profiles/*"]])
         // print("📥 profiles 响应: \(profilesResponse)")
         
         if let result = profilesResponse["result"] as? [Any],
@@ -1595,7 +1611,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                 logger.info("📥 文件元数据: \(metadata)")
                 
                 if let stat = metadata["result"] as? [String: Any] {
-                    let name = profile.replacingOccurrences(of: "/etc/mihomo/profiles/", with: "")
+                    let name = profile.replacingOccurrences(of: "/etc/\(packagePrefix)/profiles/", with: "")
                     let mtime = Date(timeIntervalSince1970: (stat["mtime"] as? TimeInterval) ?? 0)
                     let size = Int64((stat["size"] as? Int) ?? 0)
                     
@@ -1622,7 +1638,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         
         // 2. 获取 subscriptions 目录下的配置文件（订阅）
         // print("\n📂 获取 subscriptions 目录下的配置文件...")
-        let subscriptionsResponse = try await makeUCIRequest(server, token: token, method: "fs", params: ["glob", ["/etc/mihomo/subscriptions/*"]])
+        let subscriptionsResponse = try await makeUCIRequest(server, token: token, method: "fs", params: ["glob", ["/etc/\(packagePrefix)/subscriptions/*"]])
         // print("📥 subscriptions 响应: \(subscriptionsResponse)")
         
         if let result = subscriptionsResponse["result"] as? [Any],
@@ -1636,11 +1652,11 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                     continue
                 }
                 
-                let subId = subscription.replacingOccurrences(of: "/etc/mihomo/subscriptions/", with: "")
+                let subId = subscription.replacingOccurrences(of: "/etc/\(packagePrefix)/subscriptions/", with: "")
                 
                 // 获取订阅详情
                 // print("📊 获取订阅详情...")
-                let detailResponse = try await makeUCIRequest(server, token: token, method: "sys", params: ["exec", ["uci show mihomo." + subId.replacingOccurrences(of: ".yaml", with: "").replacingOccurrences(of: ".yml", with: "")]])
+                let detailResponse = try await makeUCIRequest(server, token: token, method: "sys", params: ["exec", ["uci show \(packagePrefix)." + subId.replacingOccurrences(of: ".yaml", with: "").replacingOccurrences(of: ".yml", with: "")]])
                 // print("📥 订阅详情响应: \(detailResponse)")
                 
                 if let detailResult = detailResponse["result"] as? String,
@@ -1739,7 +1755,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         
         // 3. 获取当前使用的配置
         // print("\n🔍 获取当前使用的配置...")
-        let currentConfigResponse = try await makeUCIRequest(server, token: token, method: "sys", params: ["exec", ["uci show mihomo.config.profile"]])
+        let currentConfigResponse = try await makeUCIRequest(server, token: token, method: "sys", params: ["exec", ["uci show \(packagePrefix).config.profile"]])
         // logger.log("📥 当前配置响应: \(currentConfigResponse)")
         
         if let currentConfig = currentConfigResponse["result"] as? String,
@@ -1751,7 +1767,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             // 解析配置字符串
             let parts = currentConfigStr.split(separator: ":")
             if parts.count == 2 {
-                let configType = String(parts[0]).replacingOccurrences(of: "mihomo.config.profile=", with: "")  // subscription 或 file
+                let configType = String(parts[0]).replacingOccurrences(of: "\(packagePrefix).config.profile=", with: "")  // subscription 或 file
                 let configName = String(parts[1]) // 配置名称
                 logger.info("配置类型: \(configType), 配置名称: \(configName)")
                 
@@ -1823,5 +1839,31 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         let item = servers.remove(at: from)
         servers.insert(item, at: to)
         saveServers()
+    }
+
+    // 添加一个公共方法来检查是否使用 nikki
+    public func isUsingNikki(_ server: ClashServer, token: String) async throws -> Bool {
+        let response = try await makeUCIRequest(server, token: token, method: "sys", params: ["exec", ["uci show nikki"]])
+        
+        // 检查 result 是否为空
+        if let result = response["result"] as? String,
+           !result.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            logger.debug("检测到使用 nikki 配置")
+            return true
+        }
+        
+        logger.debug("使用默认 MihomoTProxy 配置")
+        return false
+    }
+
+    // 添加一个便捷方法，自动处理 token 获取
+    public func checkIsUsingNikki(_ server: ClashServer) async throws -> Bool {
+        guard let username = server.openWRTUsername,
+              let password = server.openWRTPassword else {
+            throw NetworkError.unauthorized(message: "未设置 OpenWRT 用户名或密码")
+        }
+        
+        let token = try await getAuthToken(server, username: username, password: password)
+        return try await isUsingNikki(server, token: token)
     }
 } 

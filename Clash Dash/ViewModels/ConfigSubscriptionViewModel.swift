@@ -9,6 +9,7 @@ struct UCIResponse: Codable {
 
 private let logger = LogManager.shared
 
+
 @MainActor
 class ConfigSubscriptionViewModel: ObservableObject {
     @Published var subscriptions: [ConfigSubscription] = []
@@ -17,22 +18,47 @@ class ConfigSubscriptionViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var templateOptions: [String] = []
     @Published var isUpdating = false
+    @Published private(set) var packageName: String
     
     private let server: ClashServer
-    
+
+    let serverViewModel = ServerViewModel()
+
+        
     var currentServer: ClashServer { server }
-    
-    private var packageName: String {
-        return server.luciPackage == .openClash ? "openclash" : "mihomo"
-    }
     
     init(server: ClashServer) {
         self.server = server
+        self.packageName = server.luciPackage == .openClash ? "openclash" : "mihomo"
+        
+        // 如果是 mihomoTProxy，异步检查是否使用 nikki
+        if server.luciPackage == .mihomoTProxy {
+            Task {
+                await checkAndUpdatePackageName()
+            }
+        }
+    }
+    
+    private func checkAndUpdatePackageName() async {
+        do {
+            let isNikki = try await serverViewModel.checkIsUsingNikki(server)
+            await MainActor.run {
+                self.packageName = isNikki ? "nikki" : "mihomo"
+            }
+        } catch {
+            logger.error("检查 Nikki 状态失败: \(error.localizedDescription)")
+            // 保持默认的 mihomo
+        }
     }
     
     func loadSubscriptions() async {
         isLoading = true
         defer { isLoading = false }
+        
+        // 在加载订阅之前检查并更新包名
+        if server.luciPackage == .mihomoTProxy {
+            await checkAndUpdatePackageName()
+        }
         
         do {
             subscriptions = try await fetchSubscriptions()
@@ -196,7 +222,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
             
             let getAllCommand: [String: Any] = [
                 "method": "exec",
-                "params": ["uci show mihomo | grep \"=subscription\""]
+                "params": ["uci show \(packageName) | grep \"=subscription\""]
             ]
             request.httpBody = try JSONSerialization.data(withJSONObject: getAllCommand)
             
@@ -525,12 +551,12 @@ class ConfigSubscriptionViewModel: ObservableObject {
                 
                 // 构建添加命令
                 let commands = [
-                    "uci add mihomo subscription",
-                    "uci set mihomo.@subscription[-1].name='\(subscription.name)'",
-                    "uci set mihomo.@subscription[-1].url='\(subscription.address)'",
-                    "uci set mihomo.@subscription[-1].user_agent='\(subscription.subUA)'",
-                    "uci set mihomo.@subscription[-1].prefer='\(subscription.remoteFirst ?? true ? "remote" : "local")'",
-                    "uci commit mihomo"
+                    "uci add \(packageName) subscription",
+                    "uci set \(packageName).@subscription[-1].name='\(subscription.name)'",
+                    "uci set \(packageName).@subscription[-1].url='\(subscription.address)'",
+                    "uci set \(packageName).@subscription[-1].user_agent='\(subscription.subUA)'",
+                    "uci set \(packageName).@subscription[-1].prefer='\(subscription.remoteFirst ?? true ? "remote" : "local")'",
+                    "uci commit \(packageName)"
                 ].joined(separator: " && ")
                 
                 // print("📤 发送的命令:")
@@ -810,11 +836,11 @@ class ConfigSubscriptionViewModel: ObservableObject {
                 
                 // 构建更新命令
                 let commands = [
-                    "uci set mihomo.@subscription[\(subscription.id)].name='\(subscription.name)'",
-                    "uci set mihomo.@subscription[\(subscription.id)].url='\(subscription.address)'",
-                    "uci set mihomo.@subscription[\(subscription.id)].user_agent='\(subscription.subUA)'",
-                    "uci set mihomo.@subscription[\(subscription.id)].prefer='\(subscription.remoteFirst ?? true ? "remote" : "local")'",
-                    "uci commit mihomo"
+                    "uci set \(packageName).@subscription[\(subscription.id)].name='\(subscription.name)'",
+                    "uci set \(packageName).@subscription[\(subscription.id)].url='\(subscription.address)'",
+                    "uci set \(packageName).@subscription[\(subscription.id)].user_agent='\(subscription.subUA)'",
+                    "uci set \(packageName).@subscription[\(subscription.id)].prefer='\(subscription.remoteFirst ?? true ? "remote" : "local")'",
+                    "uci commit \(packageName)"
                 ].joined(separator: " && ")
                 
                 // print("📤 发送的命令:")
@@ -1147,8 +1173,8 @@ class ConfigSubscriptionViewModel: ObservableObject {
                 
                 // 删除命令
                 let commands = [
-                    "uci delete mihomo.\(subscription.subscriptionId ?? "")",
-                    "uci commit mihomo"
+                    "uci delete \(packageName).\(subscription.subscriptionId ?? "")",
+                    "uci commit \(packageName)"
                 ]
                 
                 let command: [String: Any] = [
@@ -1257,7 +1283,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
         // 获取订阅详情
         let getDetailCommand: [String: Any] = [
             "method": "exec",
-            "params": ["uci show mihomo.\(subscriptionId)"]
+            "params": ["uci show \(packageName).\(subscriptionId)"]
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: getDetailCommand)
         
@@ -1347,7 +1373,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
         let command: [String: Any] = [
             "id": 1,
             "method": "exec",
-            "params": ["/usr/libexec/mihomo-call subscription update \(subscriptionId)"]
+            "params": ["/usr/libexec/\(packageName)-call subscription update \(subscriptionId)"]
         ]
         // print(command)
         request.httpBody = try JSONSerialization.data(withJSONObject: command)
