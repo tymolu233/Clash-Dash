@@ -9,6 +9,7 @@ struct MoreView: View {
     @State private var showingCustomRules = false
     @State private var showingRestartService = false
     @State private var showingServiceLog = false
+    @State private var pluginVersion: String = "未知插件版本"
     
     // 添加触觉反馈生成器
     
@@ -31,6 +32,16 @@ struct MoreView: View {
         case .premium: return "Clash Premium"
         case .singbox: return "Sing-Box"
         case .unknown: return "未知内核"
+        }
+    }
+    
+    private func fetchPluginVersion() {
+        Task {
+            do {
+                pluginVersion = try await viewModel.getPluginVersion(server: server)
+            } catch {
+                pluginVersion = "未知版本"
+            }
         }
     }
     
@@ -243,24 +254,29 @@ struct MoreView: View {
         .overlay(alignment: .bottom) {
             if server.status == .ok {
                 VStack(spacing: 4) {
-                    Label {
-                        Text(kernelType)
-                    } icon: {
+                    HStack {
                         Image(systemName: "cpu")
+                            .frame(width: 20, alignment: .leading)
+                        Text("\(kernelType) (\(versionDisplay))")
                     }
                     .font(.caption)
                     .foregroundColor(.secondary)
                     
-                    Label {
-                        Text(versionDisplay)
-                    } icon: {
-                        Image(systemName: "tag")
+                    if server.source == .openWRT {
+                        HStack {
+                            Image(systemName: "shippingbox")
+                                .frame(width: 20, alignment: .leading)
+                            Text(pluginVersion)
+                        }
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                     }
-                    .font(.caption)
-                    .foregroundColor(.secondary)
                 }
                 .padding(.bottom, 20)
             }
+        }
+        .onAppear {
+            fetchPluginVersion()
         }
     }
 }
