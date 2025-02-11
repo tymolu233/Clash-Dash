@@ -103,7 +103,7 @@ struct RestartServiceView: View {
         do {
             if package == .openClash {
                 // 1. 先发送重启命令
-                let stream = try await viewModel.restartOpenClash(
+                _ = try await viewModel.restartOpenClash(
                     server,
                     packageName: "openclash",
                     isSubscription: false
@@ -197,14 +197,14 @@ struct RestartServiceView: View {
                     logs.append("🧹 清理 \(isNikki ? "Nikki" : "Mihomo") 运行日志...")
                 }
                 let clearLogCmd = "/usr/libexec/\(packageName)-call clear_log app"
-                let clearLogRequest = try await makeUCIRequest(server, token: token, method: "sys", params: ["exec", [clearLogCmd]])
+                _ = try await makeUCIRequest(server, token: token, method: "sys", params: ["exec", [clearLogCmd]])
                 
                 // 3. 重启服务
                 withAnimation {
                     logs.append("🔄 重启 \(isNikki ? "Nikki" : "Mihomo") 服务...")
                 }
                 let restartCmd = "/etc/init.d/\(packageName) restart"
-                let restartRequest = try await makeUCIRequest(server, token: token, method: "sys", params: ["exec", [restartCmd]])
+                _ = try await makeUCIRequest(server, token: token, method: "sys", params: ["exec", [restartCmd]])
                 
                 // 4. 监控日志
                 var seenLogs = Set<String>()

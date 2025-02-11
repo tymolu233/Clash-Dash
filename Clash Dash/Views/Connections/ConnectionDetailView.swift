@@ -236,7 +236,7 @@ struct ConnectionDetailView: View {
     private var breakButton: some View {
         Button {
             Task {
-                await viewModel.closeConnection(currentConnection.id)
+                viewModel.closeConnection(currentConnection.id)
             }
         } label: {
             Text("打断")

@@ -204,7 +204,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         }
         
         if challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust {
-            let acceptMessage = "✅ 无条件接受服务器证书"
+//            let acceptMessage = "✅ 无条件接受服务器证书"
             // print(acceptMessage)
             // logger.log(acceptMessage)
             
@@ -212,15 +212,15 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                 let credential = URLCredential(trust: serverTrust)
                 completionHandler(.useCredential, credential)
             } else {
-                let errorMessage = "⚠️ 无法获取服务器证书"
-                print(errorMessage)
-                logger.debug(errorMessage)
+//                let errorMessage = "⚠️ 无法获取服务器证书"
+//                print(errorMessage)
+//                logger.debug("errorMessage")
                 completionHandler(.performDefaultHandling, nil)
             }
         } else {
-            let defaultMessage = "❌ 默认处理证书验证"
-            print(defaultMessage)
-            logger.debug(defaultMessage)
+//            let defaultMessage = "❌ 默认处理证书验证"
+//            print(defaultMessage)
+//            logger.debug("❌ 默认处理证书验证")
             completionHandler(.performDefaultHandling, nil)
         }
     }
@@ -288,7 +288,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                         updatedServer.version = version
                         updatedServer.errorMessage = nil
                         updateServer(updatedServer)
-                        logger.info("更新：\(updatedServer.name ?? server.url) 状态为 OK")
+                        logger.info("更新：\(server.url) 状态为 OK")
                     } else {
                         logger.error("解析响应失败: \(error)")
                         updateServerStatus(server, status: .error, message: "无效的响应格式")
@@ -984,7 +984,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
 
             // print("切换配置命令: \(switchCommand)")
 
-            let switchRequest = try await makeUCIRequest(server, token: token, method: "sys", params: ["exec", [switchCommand]])
+            _ = try await makeUCIRequest(server, token: token, method: "sys", params: ["exec", [switchCommand]])
             // print("📥 切换配置响应: \(switchRequest)")
 
         }
@@ -1166,7 +1166,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         request.httpBody = try JSONSerialization.data(withJSONObject: command)
         
         let session = makeURLSession(for: server)
-        let (data, response) = try await session.data(for: request)
+        let (_, response) = try await session.data(for: request)
         
         if let httpResponse = response as? HTTPURLResponse {
             // print("📥 写入响应状态码: \(httpResponse.statusCode)")
@@ -1221,11 +1221,11 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
     }
     
     func restartOpenClash(_ server: ClashServer, packageName: String, isSubscription: Bool) async throws -> AsyncThrowingStream<String, Error> {
-        let scheme = server.openWRTUseSSL ? "https" : "http"
-        guard let openWRTUrl = server.openWRTUrl else {
-            throw NetworkError.invalidURL
-        }
-        let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
+//        let scheme = server.openWRTUseSSL ? "https" : "http"
+//        guard let openWRTUrl = server.openWRTUrl else {
+//            throw NetworkError.invalidURL
+//        }
+//        let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
         
         // print("开始重启 OpenClash")
 
@@ -1373,14 +1373,14 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         } else {
             // mihomoTProxy
             //  1. 清理日志
-            let clearnAppLog = try await makeUCIRequest(server, token: token, method: "sys", params: ["exec", ["/usr/libexec/mihomo-call clear_log app"]])
+            _ = try await makeUCIRequest(server, token: token, method: "sys", params: ["exec", ["/usr/libexec/mihomo-call clear_log app"]])
             
             // 检查是否使用 nikki
             let isNikki = try await isUsingNikki(server, token: token)
             let packagePrefix = isNikki ? "nikki" : "mihomo"
             
             // 2. 进行服务重载
-            let reloadService = try await makeUCIRequest(server, token: token, method: "sys", params: ["exec", ["/etc/init.d/\(packagePrefix) reload"]])
+            _ = try await makeUCIRequest(server, token: token, method: "sys", params: ["exec", ["/etc/init.d/\(packagePrefix) reload"]])
 
             // 3. 返回异步流来监控日志
             return AsyncThrowingStream { continuation in
@@ -1533,7 +1533,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             request.httpBody = try JSONSerialization.data(withJSONObject: command)
             
             let session = makeURLSession(for: server)
-            let (data, response) = try await session.data(for: request)
+            let (_, response) = try await session.data(for: request)
             
             guard let httpResponse = response as? HTTPURLResponse,
                 httpResponse.statusCode == 200 else {
@@ -1667,7 +1667,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
                     // print("📥 文件元数据: \(metadata)")
                     
                     if let stat = metadata["result"] as? [String: Any] {
-                        let name = subId
+//                        let name = subId
                         let mtime = Date(timeIntervalSince1970: (stat["mtime"] as? TimeInterval) ?? 0)
                         let size = Int64((stat["size"] as? Int) ?? 0)
                         

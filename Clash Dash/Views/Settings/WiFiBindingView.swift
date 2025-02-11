@@ -83,7 +83,7 @@ struct WiFiBindingView: View {
             
             // 加载服务器列表
             Task { @MainActor in
-                await serverViewModel.loadServers()
+                serverViewModel.loadServers()
             }
         }
     }
@@ -171,7 +171,7 @@ struct AddWiFiBindingView: View {
         .onAppear {
             serverViewModel.setBingingManager(bindingManager)
             Task { @MainActor in
-                await serverViewModel.loadServers()
+                serverViewModel.loadServers()
             }
         }
     }
@@ -257,7 +257,7 @@ struct EditWiFiBindingView: View {
         }
         .onAppear {
             Task { @MainActor in
-                await serverViewModel.loadServers()
+                serverViewModel.loadServers()
             }
         }
     }

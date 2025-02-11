@@ -35,9 +35,7 @@ private struct LineChartView: View {
         let totalDuration: TimeInterval = 30 // 总显示时间范围（秒）
         
         // 计算当前时间到最早记录的时间差
-        if let firstTime = displayData.last?.timestamp {
-            let elapsedTime = now.timeIntervalSince(firstTime)
-            
+        if displayData.last?.timestamp != nil {
             // 对每个数据点计算其相对位置
             for i in 0..<displayData.count {
                 let record = displayData[i]

@@ -42,11 +42,11 @@ class SettingsViewModel: ObservableObject {
     func fetchConfig(server: ClashServer) {
         guard let request = makeRequest(path: "configs", server: server) else { return }
         
-        URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+        URLSession.shared.dataTask(with: request) { data, response, error in
             guard let data = data else { return }
             
             if let config = try? JSONDecoder().decode(ClashConfig.self, from: data) {
-                DispatchQueue.main.async {
+                DispatchQueue.main.async { [weak self] in
                     self?.config = config
                     self?.updateUIFromConfig(config)
                 }
@@ -74,15 +74,15 @@ class SettingsViewModel: ObservableObject {
             self.interfaceName = interfaceName
         }
         
-        self.httpPort = "\(config.port ?? 0)"
+        self.httpPort = "\(config.port)"
         self.tempHttpPort = self.httpPort
-        self.socksPort = "\(config.socksPort ?? 0)"
+        self.socksPort = "\(config.socksPort)"
         self.tempSocksPort = self.socksPort
-        self.mixedPort = "\(config.mixedPort ?? 0)"
+        self.mixedPort = String(config.mixedPort ?? 0)
         self.tempMixedPort = self.mixedPort
-        self.redirPort = "\(config.redirPort ?? 0)"
+        self.redirPort = String(config.redirPort)
         self.tempRedirPort = self.redirPort
-        self.tproxyPort = "\(config.tproxyPort ?? 0)"
+        self.tproxyPort = String(config.tproxyPort ?? 0)
         self.tempTproxyPort = self.tproxyPort
     }
     
@@ -101,19 +101,16 @@ class SettingsViewModel: ObservableObject {
         // 构建嵌套的 payload 结构
         let payload: [String: Any]
         if path.contains(".") {
-            // 处理嵌套路径，如 "tun.stack"
             let components = path.split(separator: ".")
             let lastKey = String(components.last!)
             let firstKey = String(components.first!)
             
-            // 直接构建嵌套结构
             payload = [
                 firstKey: [
                     lastKey: value
                 ]
             ]
         } else {
-            // 处理非嵌套路径，如 "mixed-port"
             payload = [path: value]
         }
         
@@ -127,7 +124,7 @@ class SettingsViewModel: ObservableObject {
             return
         }
         
-        URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+        URLSession.shared.dataTask(with: request) { data, response, error in
             if let httpResponse = response as? HTTPURLResponse {
                 if httpResponse.statusCode == 204 {
                     logger.info("配置更新成功：\(path) = \(value)")
@@ -156,7 +153,7 @@ class SettingsViewModel: ObservableObject {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try? JSONSerialization.data(withJSONObject: [:])
         
-        URLSession.shared.dataTask(with: request) { _, response, error in
+        URLSession.shared.dataTask(with: request) { data, response, error in
             if let httpResponse = response as? HTTPURLResponse,
                (200...299).contains(httpResponse.statusCode) {
                 logger.info("配置重载成功")
@@ -182,7 +179,7 @@ class SettingsViewModel: ObservableObject {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try? JSONSerialization.data(withJSONObject: [:])
         
-        URLSession.shared.dataTask(with: request) { _, response, error in
+        URLSession.shared.dataTask(with: request) { data, response, error in
             if let httpResponse = response as? HTTPURLResponse,
                (200...299).contains(httpResponse.statusCode) {
                 logger.info("GEO 数据库更新成功")
@@ -208,7 +205,7 @@ class SettingsViewModel: ObservableObject {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try? JSONSerialization.data(withJSONObject: [:])
         
-        URLSession.shared.dataTask(with: request) { _, response, error in
+        URLSession.shared.dataTask(with: request) { data, response, error in
             if let httpResponse = response as? HTTPURLResponse,
                (200...299).contains(httpResponse.statusCode) {
                 logger.info("FakeIP 缓存清除成功")
@@ -234,7 +231,7 @@ class SettingsViewModel: ObservableObject {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try? JSONSerialization.data(withJSONObject: [:])
         
-        URLSession.shared.dataTask(with: request) { _, response, error in
+        URLSession.shared.dataTask(with: request) { data, response, error in
             if let httpResponse = response as? HTTPURLResponse,
                (200...299).contains(httpResponse.statusCode) {
                 logger.info("核心重启成功")
@@ -260,7 +257,7 @@ class SettingsViewModel: ObservableObject {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try? JSONSerialization.data(withJSONObject: [:])
         
-        URLSession.shared.dataTask(with: request) { _, response, error in
+        URLSession.shared.dataTask(with: request) { data, response, error in
             if let httpResponse = response as? HTTPURLResponse,
                (200...299).contains(httpResponse.statusCode) {
                 logger.info("核心更新成功")

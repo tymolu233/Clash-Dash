@@ -506,7 +506,7 @@ struct ContentView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ControllersUpdated"))) { _ in
             Task { @MainActor in
-                await viewModel.loadServers()
+                viewModel.loadServers()
                 // 添加触觉反馈
                 let impact = UIImpactFeedbackGenerator(style: .medium)
                 impact.impactOccurred()

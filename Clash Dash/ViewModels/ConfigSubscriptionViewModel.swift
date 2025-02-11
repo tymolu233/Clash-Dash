@@ -258,7 +258,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
             var subscriptions: [ConfigSubscription] = []
             var currentId = 0
             
-            for (path, subscriptionId) in subscriptionPaths {
+            for (path, _) in subscriptionPaths {
                 let getDetailCommand: [String: Any] = [
                     "method": "exec",
                     "params": ["uci show \(path)"]

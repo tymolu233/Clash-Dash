@@ -213,7 +213,7 @@ class CloudKitManager: ObservableObject {
         // } else {
         //     logger.warning("未找到 wifi_bindings 数据")
         // }
-        let wifiBindings = defaults["wifi_bindings"]
+//        let wifiBindings = defaults["wifi_bindings"]
         
         for (key, value) in defaults {
             // 记录每个键的处理过程

@@ -149,9 +149,9 @@ class RulesViewModel: ObservableObject {
     func refreshProvider(_ name: String) async {
         do {
             // 找到要刷新的提供者
-            guard let provider = providers.first(where: { $0.name == name }) else {
-                return
-            }
+//            guard let provider = providers.first(where: { $0.name == name }) else {
+//                return
+//            }
             
             // 更新该提供者的加载状态
             if let index = providers.firstIndex(where: { $0.name == name }) {
@@ -172,7 +172,7 @@ class RulesViewModel: ObservableObject {
             request.httpMethod = "PUT"
             request.setValue("Bearer \(server.secret)", forHTTPHeaderField: "Authorization")
             
-            let (data, response) = try await URLSession.shared.data(for: request)
+            let (_, response) = try await URLSession.shared.data(for: request)
             
             if let httpResponse = response as? HTTPURLResponse {
                 if httpResponse.statusCode == 204 {

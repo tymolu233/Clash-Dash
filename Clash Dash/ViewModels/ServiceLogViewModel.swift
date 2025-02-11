@@ -43,10 +43,6 @@ class ServiceLogViewModel: ObservableObject {
             case .kernel:
                 fetchMihomoTProxyKernelLog()
             }
-            
-        default:
-            isLoading = false
-            error = ServiceLogError.invalidServer
         }
     }
     
@@ -340,83 +336,91 @@ class ServiceLogViewModel: ObservableObject {
     func clearLogs() async throws {
         switch server.luciPackage {
         case .openClash:
-            // OpenClash 的清理会同时清理插件和核心日志
-            let scheme = server.openWRTUseSSL ? "https" : "http"
-            guard let openWRTUrl = server.openWRTUrl,
-                  let username = server.openWRTUsername,
-                  let password = server.openWRTPassword else {
-                throw ServiceLogError.invalidServer
-            }
-            
-            let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
-            let token = try await ServerViewModel().getAuthToken(server, username: username, password: password)
-            
-            guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
-                throw ServiceLogError.invalidServer
-            }
-            
-            var request = URLRequest(url: url)
-            request.httpMethod = "POST"
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
-            
-            let requestBody: [String: Any] = [
-                "id": 1,
-                "method": "exec",
-                "params": ["cat /dev/null > /tmp/openclash.log"]
-            ]
-            
-            request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
-            
-            let (_, response) = try await URLSession.shared.data(for: request)
-            guard let httpResponse = response as? HTTPURLResponse,
-                  httpResponse.statusCode == 200 else {
-                throw ServiceLogError.clearFailed
-            }
-            
+            try await clearOpenClashLog()
         case .mihomoTProxy:
-            let scheme = server.openWRTUseSSL ? "https" : "http"
-            guard let openWRTUrl = server.openWRTUrl,
-                  let username = server.openWRTUsername,
-                  let password = server.openWRTPassword else {
-                throw ServiceLogError.invalidServer
-            }
-            
-            let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
-            let token = try await ServerViewModel().getAuthToken(server, username: username, password: password)
-            
-            guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
-                throw ServiceLogError.invalidServer
-            }
-            
-            var request = URLRequest(url: url)
-            request.httpMethod = "POST"
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
-            
-            let packageName = try await getPackageName()
-            
-            // 根据日志类型选择清理命令
-            let clearCommand = currentLogType == .plugin ? 
-                "/usr/libexec/\(packageName)-call clear_log app" : 
-                "/usr/libexec/\(packageName)-call clear_log core"
-            
-            let requestBody: [String: Any] = [
-                "id": 1,
-                "method": "exec",
-                "params": [clearCommand]
-            ]
-            
-            request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
-            
-            let (_, response) = try await URLSession.shared.data(for: request)
-            guard let httpResponse = response as? HTTPURLResponse,
-                  httpResponse.statusCode == 200 else {
-                throw ServiceLogError.clearFailed
-            }
-            
-        default:
+            try await clearMihomoTProxyLog()
+        }
+    }
+    
+    private func clearOpenClashLog() async throws {
+        let scheme = server.openWRTUseSSL ? "https" : "http"
+        guard let openWRTUrl = server.openWRTUrl,
+              let username = server.openWRTUsername,
+              let password = server.openWRTPassword else {
             throw ServiceLogError.invalidServer
+        }
+        
+        let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
+        let token = try await ServerViewModel().getAuthToken(server, username: username, password: password)
+        
+        guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
+            throw ServiceLogError.invalidServer
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
+        
+        let requestBody: [String: Any] = [
+            "id": 1,
+            "method": "exec",
+            "params": ["cat /dev/null > /tmp/openclash.log"]
+        ]
+        
+        request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+        
+        let (_, response) = try await URLSession.shared.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse,
+              httpResponse.statusCode == 200 else {
+            throw ServiceLogError.clearFailed
+        }
+        
+        // 清理成功后清空本地日志数组
+        await MainActor.run {
+            logs.removeAll()
+        }
+    }
+    
+    private func clearMihomoTProxyLog() async throws {
+        let scheme = server.openWRTUseSSL ? "https" : "http"
+        guard let openWRTUrl = server.openWRTUrl,
+              let username = server.openWRTUsername,
+              let password = server.openWRTPassword else {
+            throw ServiceLogError.invalidServer
+        }
+        
+        let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
+        let token = try await ServerViewModel().getAuthToken(server, username: username, password: password)
+        
+        guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
+            throw ServiceLogError.invalidServer
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
+        
+        let packageName = try await getPackageName()
+        
+        // 根据日志类型选择清理命令
+        let clearCommand = currentLogType == .plugin ? 
+            "/usr/libexec/\(packageName)-call clear_log app" : 
+            "/usr/libexec/\(packageName)-call clear_log core"
+        
+        let requestBody: [String: Any] = [
+            "id": 1,
+            "method": "exec",
+            "params": [clearCommand]
+        ]
+        
+        request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+        
+        let (_, response) = try await URLSession.shared.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse,
+              httpResponse.statusCode == 200 else {
+            throw ServiceLogError.clearFailed
         }
         
         // 清理成功后清空本地日志数组

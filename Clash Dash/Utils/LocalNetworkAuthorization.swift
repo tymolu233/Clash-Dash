@@ -37,7 +37,7 @@ public class LocalNetworkAuthorization: NSObject {
                 print(error.localizedDescription)
             case .ready, .cancelled:
                 break
-            case let .waiting(error):
+            case .waiting(_):
                 // print("Local network permission has been denied: \(error)")
                 self.reset()
                 self.completion?(false)

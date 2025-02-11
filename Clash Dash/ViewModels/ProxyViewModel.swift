@@ -223,7 +223,7 @@ class ProxyViewModel: ObservableObject {
                 allNodes.append(contentsOf: proxyNodes)
                 
                 // 更新组数据
-                let oldGroups = self.groups
+//                let oldGroups = self.groups
                 self.groups = proxiesResponse.proxies.compactMap { name, proxy in
                     guard proxy.all != nil else { return nil }
                     if proxy.hidden == true { return nil }
@@ -312,7 +312,7 @@ class ProxyViewModel: ObservableObject {
             } else {
                 print("❌ 解析 providers 数据失败")
                 // 尝试打印原始数据以进行调试
-                let jsonString = String(data: providersData, encoding: .utf8)
+//                let jsonString = String(data: providersData, encoding: .utf8)
                     // print("📝 原始 providers 数据:")
                     // print(jsonString)
                 
@@ -456,7 +456,7 @@ class ProxyViewModel: ObservableObject {
             if UserDefaults.standard.bool(forKey: "autoDisconnectOldProxy") {
                 logger.info("正在断开旧连接...")
                 // 获取当前活跃的连接
-                guard var connectionsRequest = makeRequest(path: "connections") else { return }
+                guard let connectionsRequest = makeRequest(path: "connections") else { return }
                 let (data, _) = try await URLSession.shared.data(for: connectionsRequest)
                 
                 if let connectionsResponse = try? JSONDecoder().decode(ConnectionsResponse.self, from: data) {
@@ -597,19 +597,17 @@ class ProxyViewModel: ObservableObject {
     
     @MainActor
     func refreshAllData() async {
-        do {
-            // 1. 获取理数据
-            await fetchProxies()
-            
-            // 2. 测试所有节点延迟
-            for group in groups {
-                if let nodes = providerNodes[group.name] {
-                    await testGroupDelay(groupName: group.name, nodes: nodes)
-                }
+        // 1. 获取理数据
+        await fetchProxies()
+        
+        // 2. 测试所有节点延迟
+        for group in groups {
+            if let nodes = providerNodes[group.name] {
+                await testGroupDelay(groupName: group.name, nodes: nodes)
             }
-        } catch {
-            print("Error refreshing all data: \(error)")
         }
+        
+        logger.error("刷新所有数据完成")
     }
     
     // 修改组测速方法
@@ -619,7 +617,7 @@ class ProxyViewModel: ObservableObject {
         // print("测速前节点状态:")
         if let group = groups.first(where: { $0.name == groupName }) {
             for nodeName in group.all {
-                if let node = nodes.first(where: { $0.name == nodeName }) {
+                if nodes.contains(where: { $0.name == nodeName }) {
                     // print("节点: \(nodeName), 延迟: \(node.delay)")
                 }
             }
@@ -699,7 +697,7 @@ class ProxyViewModel: ObservableObject {
                 // print("\n更新后节点状态:")
                 if let group = groups.first(where: { $0.name == groupName }) {
                     for nodeName in group.all {
-                        if let node = nodes.first(where: { $0.name == nodeName }) {
+                        if nodes.contains(where: { $0.name == nodeName }) {
                             // print("节点: \(nodeName), 最终延迟: \(node.delay)")
                         }
                     }
@@ -747,7 +745,7 @@ class ProxyViewModel: ObservableObject {
                 try? await Task.sleep(nanoseconds: 500_000_000) // 0.5秒
                 
                 // 在主线程上更新
-                await MainActor.run {
+                _ = await MainActor.run {
                     // 更新时间戳
                     self.lastUpdated = Date()
                     
@@ -789,7 +787,7 @@ class ProxyViewModel: ObservableObject {
             try? await Task.sleep(nanoseconds: 500_000_000) // 0.5秒
             
             // 在主线程刷新数据
-            await MainActor.run {
+            _ = await MainActor.run {
                 Task {
                     await self.fetchProxies()
                     self.lastDelayTestTime = Date()

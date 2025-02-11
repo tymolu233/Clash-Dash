@@ -12,7 +12,7 @@ struct YAMLHighlighter {
         
         // 键值对中的键
         if let colonIndex = line.firstIndex(of: ":") {
-            let keyPart = String(line[..<colonIndex]).trimmingCharacters(in: .whitespaces)
+//            let keyPart = String(line[..<colonIndex]).trimmingCharacters(in: .whitespaces)
             let keyRange = attributedString.startIndex..<attributedString.index(attributedString.startIndex, offsetByCharacters: colonIndex.utf16Offset(in: line))
             
             // 检查是否是缩进的键

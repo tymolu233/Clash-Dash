@@ -190,32 +190,25 @@ struct CompactProviderCard: View {
                             }
                         }
                         
-                        do {
-                            try await withTaskCancellationHandler {
-                                await viewModel.updateProxyProvider(providerName: provider.name)
-                                try? await Task.sleep(nanoseconds: 500_000_000)
-                                await viewModel.fetchProxies()
-                                
-                                await MainActor.run {
-                                    HapticManager.shared.notification(.success)
-                                    isUpdating = false
-                                    withAnimation {
-                                        showingUpdateSuccess = true
-                                    }
-                                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                                        withAnimation {
-                                            showingUpdateSuccess = false
-                                        }
-                                    }
+                        await withTaskCancellationHandler {
+                            await viewModel.updateProxyProvider(providerName: provider.name)
+                            try? await Task.sleep(nanoseconds: 500_000_000)
+                            await viewModel.fetchProxies()
+                            
+                            await MainActor.run {
+                                HapticManager.shared.notification(.success)
+                                isUpdating = false
+                                withAnimation {
+                                    showingUpdateSuccess = true
                                 }
-                            } onCancel: {
-                                Task { @MainActor in
-                                    isUpdating = false
-                                    HapticManager.shared.notification(.error)
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                                    withAnimation {
+                                        showingUpdateSuccess = false
+                                    }
                                 }
                             }
-                        } catch {
-                            await MainActor.run {
+                        } onCancel: {
+                            Task { @MainActor in
                                 isUpdating = false
                                 HapticManager.shared.notification(.error)
                             }
@@ -251,24 +244,26 @@ struct CompactProviderCard: View {
                                     // 添加触觉反馈
                                     HapticManager.shared.impact(.light)
                                     
-                                    Task {
+                                    Task { @MainActor in
+                                        // 在主线程上修改 UI 状态
                                         testingNodes.insert(node.name)
                                         
-                                        do {
-                                            try await withTaskCancellationHandler {
-                                                await viewModel.healthCheckProviderProxy(
-                                                    providerName: provider.name,
-                                                    proxyName: node.name
-                                                )
+                                        await withTaskCancellationHandler {
+                                            await viewModel.healthCheckProviderProxy(
+                                                providerName: provider.name,
+                                                proxyName: node.name
+                                            )
+                                            await MainActor.run {
                                                 HapticManager.shared.notification(.success)
-                                            } onCancel: {
+                                            }
+                                        } onCancel: {
+                                            Task { @MainActor in
                                                 testingNodes.remove(node.name)
                                                 HapticManager.shared.notification(.error)
                                             }
-                                        } catch {
-                                            HapticManager.shared.notification(.error)
                                         }
                                         
+                                        // 在主线程上修改 UI 状态
                                         testingNodes.remove(node.name)
                                     }
                                 }

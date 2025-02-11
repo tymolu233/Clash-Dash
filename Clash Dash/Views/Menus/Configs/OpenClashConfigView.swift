@@ -182,7 +182,6 @@ struct OpenClashConfigView: View {
     
     private func handleConfigSelection(_ config: OpenClashConfig) {
         // 添加触觉反馈
-        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
         HapticManager.shared.impact(.light)
 
         // 首先检查是否是当前启用的配置
@@ -258,7 +257,6 @@ struct OpenClashConfigView: View {
     
     private func handleEditConfig(_ config: OpenClashConfig) {
         // 添加触觉反馈
-        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
         HapticManager.shared.impact(.light)
 
         let maxEditSize: Int64 = 90 * 1024  // 90KB
@@ -281,7 +279,6 @@ struct OpenClashConfigView: View {
     
     private func handleDeleteConfig(_ config: OpenClashConfig) {
         // 添加触觉反馈
-        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
         HapticManager.shared.impact(.light)
         
         // 如果是当前启用的配置，不允许删除

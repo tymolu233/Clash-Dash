@@ -519,32 +519,25 @@ struct MultiColumnProviderCard: View {
                         HapticManager.shared.impact(.light)
                         isUpdating = true
                         
-                        do {
-                            try await withTaskCancellationHandler {
-                                await viewModel.updateProxyProvider(providerName: provider.name)
-                                try? await Task.sleep(nanoseconds: 500_000_000)
-                                await viewModel.fetchProxies()
-                                
-                                await MainActor.run {
-                                    HapticManager.shared.notification(.success)
-                                    isUpdating = false
-                                    withAnimation {
-                                        showingUpdateSuccess = true
-                                    }
-                                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                                        withAnimation {
-                                            showingUpdateSuccess = false
-                                        }
-                                    }
+                        await withTaskCancellationHandler {
+                            await viewModel.updateProxyProvider(providerName: provider.name)
+                            try? await Task.sleep(nanoseconds: 500_000_000)
+                            await viewModel.fetchProxies()
+                            
+                            await MainActor.run {
+                                HapticManager.shared.notification(.success)
+                                isUpdating = false
+                                withAnimation {
+                                    showingUpdateSuccess = true
                                 }
-                            } onCancel: {
-                                Task { @MainActor in
-                                    isUpdating = false
-                                    HapticManager.shared.notification(.error)
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                                    withAnimation {
+                                        showingUpdateSuccess = false
+                                    }
                                 }
                             }
-                        } catch {
-                            await MainActor.run {
+                        } onCancel: {
+                            Task { @MainActor in
                                 isUpdating = false
                                 HapticManager.shared.notification(.error)
                             }

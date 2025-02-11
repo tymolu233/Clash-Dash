@@ -755,14 +755,14 @@ struct OpenClashRulesView: View {
             
             request.httpBody = try JSONSerialization.data(withJSONObject: payload)
             
-            let (data, response) = try await URLSession.shared.data(for: request)
+            let (_, response) = try await URLSession.shared.data(for: request)
             
             guard let httpResponse = response as? HTTPURLResponse,
                   httpResponse.statusCode == 200 else {
                 throw NetworkError.serverError((response as? HTTPURLResponse)?.statusCode ?? 500)
             }
             
-            let responseString = String(data: data, encoding: .utf8)
+//            let responseString = String(data: data, encoding: .utf8)
             
             // 重启 OpenClash 服务使配置生效
             // let restartCmd = "/etc/init.d/openclash restart"

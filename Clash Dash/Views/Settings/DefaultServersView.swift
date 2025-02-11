@@ -61,7 +61,7 @@ struct DefaultServersView: View {
             selectedServerIds = bindingManager.defaultServerIds
             serverViewModel.setBingingManager(bindingManager)
             Task { @MainActor in
-                await serverViewModel.loadServers()
+                serverViewModel.loadServers()
             }
         }
     }

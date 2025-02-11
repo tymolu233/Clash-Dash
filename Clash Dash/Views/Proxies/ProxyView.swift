@@ -512,7 +512,7 @@ struct GroupCard: View {
                         .scaleEffect(0.7)
                 } else {
                     // 获取实际节点的延迟
-                    let (finalNode, finalDelay) = getActualNodeAndDelay(nodeName: group.now)
+                    let (_, finalDelay) = getActualNodeAndDelay(nodeName: group.now)
                     
                     // 显示当前状态
                     if group.type == "LoadBalance" {
@@ -564,7 +564,6 @@ struct GroupCard: View {
         .drawingGroup(opaque: false)  // 优化渲染
         .onTapGesture {
             // 添加触觉反馈
-            let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
             HapticManager.shared.impact(.light)
             
             // 显示选择器
@@ -987,34 +986,22 @@ struct ProviderNodeSelector: View {
                                 // print("Testing node: \(node.name) in provider: \(provider.name)")
                                 testingNodes.insert(node.name)
                                 
-                                do {
-                                    try await withTaskCancellationHandler {
-                                        await viewModel.healthCheckProviderProxy(
-                                            providerName: provider.name,
-                                            proxyName: node.name
-
-                                        )
-                                        await viewModel.fetchProxies()
-                                        // 添加成功的触觉反馈
-                                        
-                                        HapticManager.shared.notification(.success)
-
-                                    } onCancel: {
-                                        // print("Node test cancelled: \(node.name)")
+                                await withTaskCancellationHandler {
+                                    await viewModel.healthCheckProviderProxy(
+                                        providerName: provider.name,
+                                        proxyName: node.name
+                                    )
+                                    await viewModel.fetchProxies()
+                                    await MainActor.run {
                                         testingNodes.remove(node.name)
-                                        // 添加失败的触觉反馈
-                                        
+                                        HapticManager.shared.notification(.success)
+                                    }
+                                } onCancel: {
+                                    Task { @MainActor in
+                                        testingNodes.remove(node.name)
                                         HapticManager.shared.notification(.error)
                                     }
-                                } catch {
-                                    print("Node test error: \(error)")
-                                    // 添加失败的触觉反馈
-                                    
-                                    HapticManager.shared.notification(.error)
                                 }
-                                
-                                testingNodes.remove(node.name)
-                                // print("Node test completed: \(node.name)")
                             }
                         }
                     }
@@ -1031,31 +1018,23 @@ struct ProviderNodeSelector: View {
                         
                         Task {
                             // print("Testing all nodes in provider: \(provider.name)")
-                            isTestingAll = true
-                            
-                            do {
-                                try await withTaskCancellationHandler {
-                                    await viewModel.healthCheckProvider(providerName: provider.name)
-                                    await viewModel.fetchProxies()
-                                    // 添加成功的触觉反馈
-                                    
-                                    HapticManager.shared.notification(.success)
-                                } onCancel: {
-                                    // print("Provider test cancelled")
-                                    isTestingAll = false
-                                    // 添加失败的触觉反馈
-                                    
-                                    HapticManager.shared.notification(.error)
-                                }
-                            } catch {
-                                // print("Provider test error: \(error)")
-                                // 添加失败的触觉反馈
-                                
-                                HapticManager.shared.notification(.error)
+                            await MainActor.run {
+                                isTestingAll = true
                             }
                             
-                            isTestingAll = false
-                            // print("Provider test completed: \(provider.name)")
+                            await withTaskCancellationHandler {
+                                await viewModel.healthCheckProvider(providerName: provider.name)
+                                await viewModel.fetchProxies()
+                                await MainActor.run {
+                                    isTestingAll = false
+                                    HapticManager.shared.notification(.success)
+                                }
+                            } onCancel: {
+                                Task { @MainActor in
+                                    isTestingAll = false
+                                    HapticManager.shared.notification(.error)
+                                }
+                            }
                         }
                     } label: {
                         if isTestingAll {
@@ -1233,7 +1212,7 @@ struct ProxySelectorSheet: View {
                             )
                             .onTapGesture {
                                 // 添加触觉反馈
-                                let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+                                
                                 HapticManager.shared.impact(.light)
                                 
                                 if group.type == "URLTest" {
@@ -1286,7 +1265,7 @@ struct ProxySelectorSheet: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         // 添加触觉反馈
-                        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+                      
                         HapticManager.shared.impact(.light)
                         
                         Task {
@@ -1304,7 +1283,7 @@ struct ProxySelectorSheet: View {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("关闭") {
                         // 添加触觉反馈
-                        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+                        
                         HapticManager.shared.impact(.light)
                         
                         dismiss()
@@ -1358,7 +1337,7 @@ struct ProxyNodeCard: View {
             // 节点类型和延迟
             HStack {
                 // 如果是代理组，显示 "代理组"，否则显示节点类型
-                if let group = viewModel.groups.first(where: { $0.name == nodeName }) {
+                if viewModel.groups.contains(where: { $0.name == nodeName }) {
                     Text("代理组")
                         .font(.caption2)
                         .padding(.horizontal, 4)
@@ -1630,6 +1609,7 @@ struct RoundedCorner: Shape {
             cornerRadii: CGSize(width: radius, height: radius)
         )
         return Path(path.cgPath)
+            
     }
 }
 

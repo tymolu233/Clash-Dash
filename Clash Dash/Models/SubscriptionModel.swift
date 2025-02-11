@@ -115,16 +115,11 @@ class DefaultHTTPClient: HTTPClient {
         // print("Login request body: \(String(data: loginBody, encoding: .utf8) ?? "")")
         request.httpBody = loginBody
         
-        let (data, response) = try await URLSession.shared.data(for: request)
-        
-        let httpResponse = response as? HTTPURLResponse
-            // print("Login response status code: \(httpResponse.statusCode)")
-            // print("Login response headers: \(httpResponse.allHeaderFields)")
-        
+        let (data, _) = try await URLSession.shared.data(for: request)
         
         // 打印接收到的数据
         if let responseString = String(data: data, encoding: .utf8) {
-            print("Login response: \(responseString)")
+            // print("Login response: \(responseString)")
             
             // 检查响应是否为空或无效
             if responseString.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -164,19 +159,19 @@ class DefaultHTTPClient: HTTPClient {
                 return response.result
                 
             } catch {
-                print("Error decoding login response: \(error)")
+                // print("Error decoding login response: \(error)")
                 if let jsonError = error as? DecodingError {
                     switch jsonError {
                     case .dataCorrupted(let context):
-                        print("Data corrupted: \(context)")
+                        LogManager.shared.error("Data corrupted: \(context)")
                     case .keyNotFound(let key, let context):
-                        print("Key '\(key)' not found: \(context)")
+                        LogManager.shared.error("Key '\(key)' not found: \(context)")
                     case .typeMismatch(let type, let context):
-                        print("Type '\(type)' mismatch: \(context)")
+                        LogManager.shared.error("Type '\(type)' mismatch: \(context)")
                     case .valueNotFound(let type, let context):
-                        print("Value of type '\(type)' not found: \(context)")
+                        LogManager.shared.error("Value of type '\(type)' not found: \(context)")
                     @unknown default:
-                        print("Unknown decoding error: \(jsonError)")
+                        LogManager.shared.error("Unknown decoding error: \(jsonError)")
                     }
                 }
                 throw error
@@ -247,12 +242,12 @@ class OpenClashClient: ClashClient {
         let (data, response) = try await httpClient.makeRequest(method: "POST", url: url, headers: headers, body: body)
         
         if let httpResponse = response as? HTTPURLResponse {
-            print("Config response status code: \(httpResponse.statusCode)")
-            print("Config response headers: \(httpResponse.allHeaderFields)")
+            LogManager.shared.info("Config response status code: \(httpResponse.statusCode)")
+            LogManager.shared.info("Config response headers: \(httpResponse.allHeaderFields)")
         }
         
         if let responseString = String(data: data, encoding: .utf8) {
-            print("Config response: \(responseString)")
+            LogManager.shared.info("Config response: \(responseString)")
             
             // 尝试清理响应数据
             let cleanedResponse = responseString
@@ -262,7 +257,7 @@ class OpenClashClient: ClashClient {
             
             do {
                 guard let cleanedData = cleanedResponse.data(using: .utf8) else {
-                    print("Failed to convert cleaned config response to data")
+                    LogManager.shared.error("Failed to convert cleaned config response to data")
                     return nil
                 }
                 
@@ -277,29 +272,29 @@ class OpenClashClient: ClashClient {
                     .replacingOccurrences(of: ".yml", with: "")
                     .replacingOccurrences(of: "\n", with: "")
                 
-                print("Parsed config: \(config)")
+                LogManager.shared.info("Parsed config: \(config)")
                 return config
                 
             } catch {
-                print("Error decoding config response: \(error)")
+                LogManager.shared.error("Error decoding config response: \(error)")
                 if let jsonError = error as? DecodingError {
                     switch jsonError {
                     case .dataCorrupted(let context):
-                        print("Data corrupted: \(context)")
+                        LogManager.shared.error("Data corrupted: \(context)")
                     case .keyNotFound(let key, let context):
-                        print("Key '\(key)' not found: \(context)")
+                        LogManager.shared.error("Key '\(key)' not found: \(context)")
                     case .typeMismatch(let type, let context):
-                        print("Type '\(type)' mismatch: \(context)")
+                        LogManager.shared.error("Type '\(type)' mismatch: \(context)")
                     case .valueNotFound(let type, let context):
-                        print("Value of type '\(type)' not found: \(context)")
+                        LogManager.shared.error("Value of type '\(type)' not found: \(context)")
                     @unknown default:
-                        print("Unknown decoding error: \(jsonError)")
+                        LogManager.shared.error("Unknown decoding error: \(jsonError)")
                     }
                 }
                 throw error
             }
         } else {
-            print("Could not convert config response data to string")
+            LogManager.shared.error("Could not convert config response data to string")
             return nil
         }
     }
@@ -530,9 +525,9 @@ class MihomoClient: ClashClient {
             "params": ["uci get \(packageName).config.profile"]
         ] as [String : Any]
         
-        print("Getting current config from: \(url)")
-        print("Headers: \(headers)")
-        print("Request data: \(requestData)")
+        LogManager.shared.info("Getting current config from: \(url)")
+        LogManager.shared.info("Headers: \(headers)")
+        LogManager.shared.info("Request data: \(requestData)")
         
         let body = try JSONSerialization.data(withJSONObject: requestData)
         let (data, response) = try await httpClient.makeRequest(method: "POST", url: url, headers: headers, body: body)
@@ -584,7 +579,7 @@ class MihomoClient: ClashClient {
                     case .typeMismatch(let type, let context):
                         LogManager.shared.error("订阅信息 - 类型不匹配: \(type) - \(context)")
                     case .valueNotFound(let type, let context):
-                        print("Value of type '\(type)' not found: \(context)")
+                        LogManager.shared.error("订阅信息 - 值未找到: \(type) - \(context)")
                     @unknown default:
                         LogManager.shared.error("订阅信息 - 未知解码错误: \(jsonError)")
                     }
@@ -858,8 +853,9 @@ class SubscriptionManager: ObservableObject {
                             LogManager.shared.info("订阅信息 - 首次加载订阅信息，按名称排序")
                         }
                         
+                        let finalSubscriptions = newSubscriptions
                         DispatchQueue.main.async {
-                            self.subscriptions = newSubscriptions
+                            self.subscriptions = finalSubscriptions
                             self.lastUpdateTime = Date()
                             self.isLoading = false
                         }
@@ -901,8 +897,9 @@ class SubscriptionManager: ObservableObject {
                     LogManager.shared.info("订阅信息 - 首次加载代理提供者信息，按名称排序")
                 }
                 
+                let finalSubscriptions = newSubscriptions
                 DispatchQueue.main.async {
-                    self.subscriptions = newSubscriptions
+                    self.subscriptions = finalSubscriptions
                     self.lastUpdateTime = Date()
                     self.isLoading = false
                 }

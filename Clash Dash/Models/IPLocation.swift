@@ -2,7 +2,9 @@ import Foundation
 import CoreLocation
 
 struct IPLocation: Codable, Identifiable {
-    let id = UUID()
+    var id: UUID {
+        UUID()
+    }
     let query: String
     let status: String
     let country: String

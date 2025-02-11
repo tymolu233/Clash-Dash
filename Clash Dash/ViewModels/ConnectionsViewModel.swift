@@ -548,7 +548,7 @@ class ConnectionsViewModel: ObservableObject {
                    httpResponse.statusCode == 204 {
                     await MainActor.run {
                         if let index = connections.firstIndex(where: { $0.id == id }) {
-                            var updatedConnection = connections[index]
+                            let updatedConnection = connections[index]
                             connections[index] = ClashConnection(
                                 id: updatedConnection.id,
                                 metadata: updatedConnection.metadata,

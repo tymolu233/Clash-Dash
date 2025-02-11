@@ -195,6 +195,10 @@ struct WaterDropEffect: View {
                 timeWindowStart = Date()
                 currentDifference = 0  // 确保初始差值为0
                 
+                // 获取视图尺寸
+                let viewHeight = geometry.size.height
+                let viewWidth = geometry.size.width
+                
                 timer = Timer.scheduledTimer(withTimeInterval: animationInterval, repeats: true) { _ in
                     withAnimation(.linear(duration: animationInterval)) {
                         let currentValue = isUpload ? monitor.rawTotalUpload : monitor.rawTotalDownload
@@ -266,7 +270,7 @@ struct WaterDropEffect: View {
                             
                             if drop.isGrowing {
                                 // 计算目标大小
-                                let (targetSize, targetWidth, targetHeight) = calculateDropParameters(accumulatedData: drop.accumulatedData)
+                                let (targetSize, _, _) = calculateDropParameters(accumulatedData: drop.accumulatedData)
                                 
                                 // 平滑地更新大小
                                 let currentSize = drop.size
@@ -295,7 +299,7 @@ struct WaterDropEffect: View {
                                 drop.position.y += drop.speed/120
                                 
                                 // 下落过程中的变形效果
-                                let fallProgress = min(drop.position.y / (geometry.size.height * 0.7), 1.0)
+                                let fallProgress = min(drop.position.y / (viewHeight * 0.7), 1.0)
                                 let maxWidthIncrease: CGFloat = 0.02  // 最大宽度增加1%
                                 let maxHeightDecrease: CGFloat = 0.02  // 最大高度减少1%
                                 
@@ -307,8 +311,8 @@ struct WaterDropEffect: View {
                                 drop.heightParameter = 3.5 * (1 - maxHeightDecrease * easedProgress)
                                 
                                 // 接近底部时逐渐降低透明度和变形
-                                if drop.position.y >= geometry.size.height - drop.size * 2 {
-                                    let distanceToBottom: CGFloat = CGFloat(geometry.size.height) - drop.position.y
+                                if drop.position.y >= viewHeight - drop.size * 2 {
+                                    let distanceToBottom: CGFloat = viewHeight - drop.position.y
                                     let squashProgress = 1.0 - (distanceToBottom / (drop.size * 2))  // 0到1的进度
                                     
                                     // 逐渐增加宽度和减小高度
@@ -321,8 +325,8 @@ struct WaterDropEffect: View {
                                     // 在这里创建和更新水面效果
                                     if splashes.isEmpty {
                                         let splash = WaterSplash(
-                                            position: CGPoint(x: geometry.size.width/2, y: geometry.size.height),
-                                            width: geometry.size.width,
+                                            position: CGPoint(x: viewWidth/2, y: viewHeight),
+                                            width: viewWidth,
                                             height: 0,
                                             opacity: 0.3,
                                             createdAt: Date(),
@@ -338,7 +342,7 @@ struct WaterDropEffect: View {
                             }
                             
                             // 检查是否碰到底部
-                            if drop.position.y >= geometry.size.height {
+                            if drop.position.y >= viewHeight {
                                 drops.remove(at: i)
                                 break
                             }
@@ -347,12 +351,12 @@ struct WaterDropEffect: View {
                         }
                         
                         // 清理超出范围的水滴
-                        drops.removeAll { $0.position.y > geometry.size.height }
+                        drops.removeAll { $0.position.y > viewHeight }
                         
                         // 更新水面效果
                         for i in splashes.indices {
                             let now = Date()
-                            let timeSinceCreation = now.timeIntervalSince(splashes[i].createdAt)
+//                            let timeSinceCreation = now.timeIntervalSince(splashes[i].createdAt)
                             
                             // 检查是否已经到达延迟开始时间
                             if now < splashes[i].delayStart {
