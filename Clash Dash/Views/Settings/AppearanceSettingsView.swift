@@ -124,14 +124,18 @@ struct AppearanceSettingsView: View {
                     isOn: Binding(
                         get: { enableWiFiBinding },
                         set: { newValue in
-                            if newValue {
-                                if locationManager.authorizationStatus == .denied {
-                                    locationManager.showLocationDeniedAlert = true
-                                    return
-                                }
-                                locationManager.requestWhenInUseAuthorization()
+                            if !newValue {
+                                enableWiFiBinding = false
+                                bindingManager.onEnableChange()
+                                return
                             }
-                            enableWiFiBinding = newValue
+                            
+                            if locationManager.authorizationStatus == .denied {
+                                locationManager.showLocationDeniedAlert = true
+                                return
+                            }
+                            locationManager.requestWhenInUseAuthorization()
+                            enableWiFiBinding = true
                             bindingManager.onEnableChange()
                         }
                     )

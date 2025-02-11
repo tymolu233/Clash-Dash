@@ -160,15 +160,17 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     private let manager = CLLocationManager()
     @Published var authorizationStatus: CLAuthorizationStatus = .notDetermined
     @Published var showLocationDeniedAlert = false
+    private var isRequestingAuthorization = false
     
     override init() {
         super.init()
         manager.delegate = self
         manager.desiredAccuracy = kCLLocationAccuracyReduced
-        authorizationStatus = manager.authorizationStatus
     }
     
     func requestWhenInUseAuthorization() {
+        isRequestingAuthorization = true
+        authorizationStatus = manager.authorizationStatus
         if manager.authorizationStatus == .notDetermined {
             manager.requestWhenInUseAuthorization()
         } else if manager.authorizationStatus == .denied {
@@ -177,13 +179,14 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
     
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        guard isRequestingAuthorization else { return }
+        
         DispatchQueue.main.async { [weak self] in
             self?.authorizationStatus = manager.authorizationStatus
             
             switch manager.authorizationStatus {
             case .authorizedWhenInUse, .authorizedAlways:
                 print("位置权限已授权")
-                // 开始获取位置以访问 Wi-Fi 信息
                 self?.manager.startUpdatingLocation()
             case .denied:
                 print("位置权限被拒绝")
@@ -199,11 +202,12 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
     
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        // 获取到位置后立即停止更新
         manager.stopUpdatingLocation()
+        isRequestingAuthorization = false
     }
     
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         print("位置更新失败: \(error.localizedDescription)")
+        isRequestingAuthorization = false
     }
 } 
