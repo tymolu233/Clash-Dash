@@ -9,10 +9,10 @@ struct MoreView: View {
     @State private var showingCustomRules = false
     @State private var showingRestartService = false
     @State private var showingServiceLog = false
+    @State private var showingWebView = false
     @State private var pluginVersion: String = "未知插件版本"
     
-    // 添加触觉反馈生成器
-    
+    private let logger = LogManager.shared
     
     private var cardBackgroundColor: Color {
         colorScheme == .dark ? 
@@ -38,8 +38,11 @@ struct MoreView: View {
     private func fetchPluginVersion() {
         Task {
             do {
+                logger.info("开始获取插件版本信息")
                 pluginVersion = try await viewModel.getPluginVersion(server: server)
+                logger.info("成功获取插件版本: \(pluginVersion)")
             } catch {
+                logger.error("获取插件版本失败: \(error.localizedDescription)")
                 pluginVersion = "未知版本"
             }
         }
@@ -143,6 +146,18 @@ struct MoreView: View {
                             Text("重启服务")
                         }
                     }
+
+                    Button {
+                        HapticManager.shared.impact(.light)
+                        showingWebView = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "safari")
+                                .foregroundColor(.blue)
+                                .frame(width: 25)
+                            Text("网页访问")
+                        }
+                    }
                 }
             }
 
@@ -173,18 +188,6 @@ struct MoreView: View {
                         }
                     }
                     
-                    // Button {
-                    //     HapticManager.shared.impact(.light)
-                    //     showingCustomRules = true
-                    // } label: {
-                    //     HStack {
-                    //         Image(systemName: "list.bullet.rectangle")
-                    //             .foregroundColor(.blue)
-                    //             .frame(width: 25)
-                    //         Text("附加规则")
-                    //     }
-                    // }
-                    
                     Button {
                         HapticManager.shared.impact(.light)
                         showingRestartService = true
@@ -196,6 +199,63 @@ struct MoreView: View {
                             Text("重启服务")
                         }
                     }
+
+                    Button {
+                        HapticManager.shared.impact(.light)
+                        showingWebView = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "safari")
+                                .foregroundColor(.blue)
+                                .frame(width: 25)
+                            Text("网页访问")
+                        }
+                    }
+                }
+            }
+
+            // 版本信息 Section
+            if server.status == .ok {
+                Section {
+                    VStack(alignment: .leading, spacing: 12) {
+                        // 内核信息
+                        HStack(spacing: 12) {
+                            Image(systemName: "cpu")
+                                .foregroundColor(.blue)
+                                .frame(width: 24)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("内核信息")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Text("\(kernelType)")
+                                    .font(.subheadline)
+                                Text("版本: \(versionDisplay)")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                        
+                        // 插件信息
+                        if server.source == .openWRT {
+                            HStack(spacing: 12) {
+                                Image(systemName: "shippingbox")
+                                    .foregroundColor(.blue)
+                                    .frame(width: 24)
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("插件信息")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    Text(pluginVersion)
+                                        .font(.subheadline)
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    }
+                    .padding(.vertical, 8)
+                } header: {
+                    Text("版本信息")
                 }
             }
         }
@@ -250,31 +310,17 @@ struct MoreView: View {
                 }
             }
         }
-        .background(Color(.systemGroupedBackground).ignoresSafeArea())
-        .overlay(alignment: .bottom) {
-            if server.status == .ok {
-                VStack(spacing: 4) {
-                    HStack {
-                        Image(systemName: "cpu")
-                            .frame(width: 20, alignment: .leading)
-                        Text("\(kernelType) (\(versionDisplay))")
-                    }
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    
-                    if server.source == .openWRT {
-                        HStack {
-                            Image(systemName: "shippingbox")
-                                .frame(width: 20, alignment: .leading)
-                            Text(pluginVersion)
-                        }
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    }
+        .sheet(isPresented: $showingWebView) {
+            ZStack {
+                Color(.systemBackground)
+                    .ignoresSafeArea()
+                
+                NavigationStack {
+                    LuCIWebView(server: server)
                 }
-                .padding(.bottom, 20)
             }
         }
+        .background(Color(.systemGroupedBackground).ignoresSafeArea())
         .onAppear {
             fetchPluginVersion()
         }

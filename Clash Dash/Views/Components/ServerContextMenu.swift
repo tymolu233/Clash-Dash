@@ -5,6 +5,7 @@ struct ServerContextMenu: ViewModifier {
     @ObservedObject var settingsViewModel: SettingsViewModel
     @State private var showingDeleteAlert = false
     @State private var showingServiceLog = false
+    @State private var showingWebView = false
     let server: ClashServer
     let showMoveOptions: Bool
     var onEdit: () -> Void
@@ -118,6 +119,13 @@ struct ServerContextMenu: ViewModifier {
                 } label: {
                     Label("重启服务", systemImage: "arrow.clockwise.circle")
                 }
+
+                Button {
+                    HapticManager.shared.impact(.light)
+                    showingWebView = true
+                } label: {
+                    Label("网页访问", systemImage: "safari")
+                }
             }
 
             // mihomoTProxy 特有功能组
@@ -158,11 +166,23 @@ struct ServerContextMenu: ViewModifier {
                 } label: {
                     Label("重启服务", systemImage: "arrow.clockwise.circle")
                 }
+
+                Button {
+                    HapticManager.shared.impact(.light)
+                    showingWebView = true
+                } label: {
+                    Label("网页访问", systemImage: "safari")
+                }
             }
         }
         .sheet(isPresented: $showingServiceLog) {
             NavigationStack {
                 ServiceLogView(server: server)
+            }
+        }
+        .sheet(isPresented: $showingWebView) {
+            NavigationStack {
+                LuCIWebView(server: server)
             }
         }
         .alert("确认删除", isPresented: $showingDeleteAlert) {
