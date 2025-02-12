@@ -10,9 +10,14 @@ struct MoreView: View {
     @State private var showingRestartService = false
     @State private var showingServiceLog = false
     @State private var showingWebView = false
-    @State private var pluginVersion: String = "未知插件版本"
+    @State private var pluginName: String = "未知插件"
+    @State private var pluginVersion: String = "未知版本"
+    @State private var runningTime: String = "未知运行时长"
+    @State private var kernelRunningTime: String = "未知运行时长"
+    @State private var pluginRunningTime: String = "未知运行时长"
     
     private let logger = LogManager.shared
+    private let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "未知版本"
     
     private var cardBackgroundColor: Color {
         colorScheme == .dark ? 
@@ -39,11 +44,25 @@ struct MoreView: View {
         Task {
             do {
                 logger.info("开始获取插件版本信息")
-                pluginVersion = try await viewModel.getPluginVersion(server: server)
-                logger.info("成功获取插件版本: \(pluginVersion)")
+                let pluginInfo = try await viewModel.getPluginVersion(server: server)
+                let components = pluginInfo.split(separator: " ", maxSplits: 1)
+                pluginName = String(components[0])
+                pluginVersion = components.count > 1 ? String(components[1]) : "未知版本"
+                logger.info("成功获取插件版本: \(pluginInfo)")
+                
+                if server.source == .openWRT {
+                    logger.info("开始获取运行时长")
+                    let (kernel, plugin) = try await viewModel.getRunningTime(server: server)
+                    kernelRunningTime = kernel
+                    pluginRunningTime = plugin
+                    logger.info("成功获取运行时长: 内核(\(kernel)), 插件(\(plugin))")
+                }
             } catch {
                 logger.error("获取插件版本失败: \(error.localizedDescription)")
+                pluginName = "未知插件"
                 pluginVersion = "未知版本"
+                kernelRunningTime = "未知运行时长"
+                pluginRunningTime = "未知运行时长"
             }
         }
     }
@@ -218,6 +237,24 @@ struct MoreView: View {
             if server.status == .ok {
                 Section {
                     VStack(alignment: .leading, spacing: 12) {
+                        // App 信息
+                        HStack(spacing: 12) {
+                            Image(systemName: "app.badge")
+                                .foregroundColor(.blue)
+                                .frame(width: 24)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("App 信息")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Text("Clash Dash")
+                                    .font(.subheadline)
+                                Text("版本: \(appVersion)")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                        
                         // 内核信息
                         HStack(spacing: 12) {
                             Image(systemName: "cpu")
@@ -232,6 +269,11 @@ struct MoreView: View {
                                 Text("版本: \(versionDisplay)")
                                     .font(.caption2)
                                     .foregroundColor(.secondary)
+                                if server.source == .openWRT {
+                                    Text("运行时长: \(kernelRunningTime)")
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                }
                             }
                         }
                         .padding(.vertical, 4)
@@ -246,8 +288,16 @@ struct MoreView: View {
                                     Text("插件信息")
                                         .font(.caption)
                                         .foregroundColor(.secondary)
-                                    Text(pluginVersion)
+                                    Text(pluginName)
                                         .font(.subheadline)
+                                    Text("版本: \(pluginVersion)")
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                    if server.source == .openWRT {
+                                        Text("运行时长: \(pluginRunningTime)")
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                    }
                                 }
                             }
                             .padding(.vertical, 4)
@@ -255,7 +305,7 @@ struct MoreView: View {
                     }
                     .padding(.vertical, 8)
                 } header: {
-                    Text("版本信息")
+                    Text("运行信息")
                 }
             }
         }
