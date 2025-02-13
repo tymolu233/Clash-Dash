@@ -18,6 +18,7 @@ struct MoreView: View {
     
     private let logger = LogManager.shared
     private let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "未知版本"
+    private let buildVersion = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "未知"
     
     private var cardBackgroundColor: Color {
         colorScheme == .dark ? 
@@ -248,7 +249,7 @@ struct MoreView: View {
                                     .foregroundColor(.secondary)
                                 Text("Clash Dash")
                                     .font(.subheadline)
-                                Text("版本: \(appVersion)")
+                                Text("版本: \(appVersion) (\(buildVersion))")
                                     .font(.caption2)
                                     .foregroundColor(.secondary)
                             }
@@ -306,6 +307,7 @@ struct MoreView: View {
                     .padding(.vertical, 8)
                 } header: {
                     Text("运行信息")
+                        .textCase(.none)
                 }
             }
         }

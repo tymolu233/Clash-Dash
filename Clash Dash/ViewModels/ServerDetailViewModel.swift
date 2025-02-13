@@ -1,9 +1,9 @@
 import SwiftUI
-
-
+import os
 
 @MainActor
 class ServerDetailViewModel: ObservableObject {
+    private let logger = LogManager.shared    
     let serverViewModel: ServerViewModel
     
     init() {
@@ -78,9 +78,12 @@ class ServerDetailViewModel: ObservableObject {
             throw NetworkError.invalidResponse(message: "Invalid JSON response")
         }
         
+        logger.debug("版本信息 - 原始响应数据：\(jsonResponse)")
         // 清理结果字符串，移除换行符等，并添加插件名称
         let version = result.trimmingCharacters(in: .whitespacesAndNewlines)
-        return "\(pluginName) \(version)"
+        let versionInfo = "\(pluginName) \(version)"
+        logger.info("版本信息 - \(versionInfo)")
+        return versionInfo
     }
     
     func getRunningTime(server: ClashServer) async throws -> (String, String) {
@@ -133,6 +136,8 @@ class ServerDetailViewModel: ObservableObject {
             throw NetworkError.invalidResponse(message: "Invalid JSON response")
         }
         
+        logger.info("版本信息 - 运行时间原始响应数据：\(jsonResponse)")
+        
         // 分割两个时间戳
         let timestamps = result.split(separator: "\n")
         guard timestamps.count >= 2,
@@ -145,11 +150,14 @@ class ServerDetailViewModel: ObservableObject {
         
         // 计算内核运行时长
         let kernelRunningSeconds = currentTimestamp - kernelTimestamp
-        var kernelTimeString = formatRunningTime(seconds: kernelRunningSeconds)
+        let kernelTimeString = formatRunningTime(seconds: kernelRunningSeconds)
         
         // 计算插件运行时长
         let pluginRunningSeconds = currentTimestamp - pluginTimestamp
-        var pluginTimeString = formatRunningTime(seconds: pluginRunningSeconds)
+        let pluginTimeString = formatRunningTime(seconds: pluginRunningSeconds)
+        
+        logger.info("版本信息 - 内核运行时间：\(kernelTimeString)")
+        logger.info("版本信息 - 插件运行时间：\(pluginTimeString)")
         
         return (kernelTimeString, pluginTimeString)
     }

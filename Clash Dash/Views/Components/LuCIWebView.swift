@@ -51,122 +51,170 @@ struct WebView: UIViewRepresentable {
     
     class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
         var parent: WebView
+        var cookieInjected = false
         
         init(_ parent: WebView) {
             self.parent = parent
         }
         
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-            if message.name == "cookieHandler" {
-                _ = message.body as? String
-            }
+            // 处理 Cookie 消息
         }
         
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            // 确保 Cookie 被正确设置
+            let cookieScript = """
+            document.cookie = 'sysauth=\(parent.token);path=/';
+            document.cookie = 'sysauth_http=\(parent.token);path=/';
+            """
+            webView.evaluateJavaScript(cookieScript) { _, _ in }
+            
+            // 验证 Cookie
             webView.evaluateJavaScript("document.cookie") { _, _ in }
         }
         
         func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
-            _ = navigationAction.request.allHTTPHeaderFields
-            decisionHandler(.allow)
+            if !cookieInjected {
+                syncCookies {
+                    decisionHandler(.allow)
+                }
+                cookieInjected = true
+            } else {
+                decisionHandler(.allow)
+            }
+        }
+        
+        private func syncCookies(completion: @escaping () -> Void) {
+            let cookieStore = WKWebsiteDataStore.default().httpCookieStore
+            let dispatchGroup = DispatchGroup()
+            
+            dispatchGroup.enter()
+            cookieStore.getAllCookies { cookies in
+                let group = DispatchGroup()
+                cookies.forEach { cookie in
+                    group.enter()
+                    cookieStore.delete(cookie) {
+                        group.leave()
+                    }
+                }
+                group.notify(queue: .main) {
+                    dispatchGroup.leave()
+                }
+            }
+            
+            dispatchGroup.enter()
+            let cookies = [
+                createCookie(name: "sysauth", value: parent.token),
+                createCookie(name: "sysauth_http", value: parent.token)
+            ].compactMap { $0 }
+            
+            let group = DispatchGroup()
+            cookies.forEach { cookie in
+                group.enter()
+                cookieStore.setCookie(cookie) {
+                    group.leave()
+                }
+            }
+            
+            group.notify(queue: .main) {
+                dispatchGroup.leave()
+            }
+            
+            dispatchGroup.notify(queue: .main) {
+                completion()
+            }
+        }
+        
+        private func createCookie(name: String, value: String) -> HTTPCookie? {
+            let properties: [HTTPCookiePropertyKey: Any] = [
+                .name: name,
+                .value: value,
+                .domain: parent.url.host ?? "",
+                .path: "/",
+                .secure: "TRUE",
+                .expires: Date().addingTimeInterval(3600)
+            ]
+            return HTTPCookie(properties: properties)
         }
     }
     
     func makeUIView(context: Context) -> WKWebView {
+        // 创建新的非持久化数据存储
+        let websiteDataStore = WKWebsiteDataStore.nonPersistent()
+        
         let configuration = WKWebViewConfiguration()
+        configuration.websiteDataStore = websiteDataStore
+        
         let controller = WKUserContentController()
         configuration.userContentController = controller
         
-        let cookieScript = """
-        function setCookie(name, value, path) {
-            document.cookie = name + '=' + value + ';path=' + path;
-            window.webkit.messageHandlers.cookieHandler.postMessage('设置 Cookie: ' + name + '=' + value);
-        }
-        
-        setCookie('sysauth', '\(token)', '/');
-        setCookie('sysauth_http', '\(token)', '/');
-        
-        window.webkit.messageHandlers.cookieHandler.postMessage('当前所有 Cookie: ' + document.cookie);
-        """
-        
-        let userScript = WKUserScript(
-            source: cookieScript,
+        // 预先注入 Cookie 设置脚本
+        let cookieScript = WKUserScript(
+            source: """
+            function setCookie(name, value) {
+                document.cookie = name + '=' + value + ';path=/';
+            }
+            setCookie('sysauth', '\(token)');
+            setCookie('sysauth_http', '\(token)');
+            """,
             injectionTime: .atDocumentStart,
             forMainFrameOnly: false
         )
-        controller.addUserScript(userScript)
         
+        controller.addUserScript(cookieScript)
         controller.add(context.coordinator, name: "cookieHandler")
         
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = context.coordinator
         
-        let cookieProperties: [HTTPCookiePropertyKey: Any] = [
-            .domain: url.host ?? "",
-            .path: "/",
-            .name: "sysauth",
-            .value: token,
-            .secure: "TRUE",
-            .expires: NSDate(timeIntervalSinceNow: 3600)
-        ]
+        // 清理所有类型的网站数据
+        WKWebsiteDataStore.default().removeData(
+            ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(),
+            modifiedSince: Date(timeIntervalSince1970: 0)
+        ) { }
         
-        if let cookie = HTTPCookie(properties: cookieProperties) {
-            HTTPCookieStorage.shared.setCookie(cookie)
-        }
-        
-        let httpCookieProperties: [HTTPCookiePropertyKey: Any] = [
-            .domain: url.host ?? "",
-            .path: "/",
-            .name: "sysauth_http",
-            .value: token,
-            .secure: "TRUE",
-            .expires: NSDate(timeIntervalSince1970: Date().timeIntervalSince1970 + 3600)
-        ]
-        
-        if let cookie = HTTPCookie(properties: httpCookieProperties) {
-            HTTPCookieStorage.shared.setCookie(cookie)
-        }
-        
-        if let storedCookies = HTTPCookieStorage.shared.cookies {
-            for _ in storedCookies { }
-        }
-        
-        if let cookies = HTTPCookieStorage.shared.cookies {
-            let cookieData = try? NSKeyedArchiver.archivedData(
-                withRootObject: cookies,
-                requiringSecureCoding: false
-            )
-            UserDefaults.standard.set(cookieData, forKey: "LuCIWebViewCookies")
-        }
+        // 清理共享的 Cookie 存储
+        HTTPCookieStorage.shared.removeCookies(since: Date(timeIntervalSince1970: 0))
         
         return webView
     }
     
     func updateUIView(_ webView: WKWebView, context: Context) {
-        var request = URLRequest(url: url)
-        let cookieHeader = "sysauth=\(token); sysauth_http=\(token)"
-        request.setValue(cookieHeader, forHTTPHeaderField: "Cookie")
-        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
-        request.setValue("XMLHttpRequest", forHTTPHeaderField: "X-Requested-With")
-        request.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
-        request.httpShouldHandleCookies = true
-        
+        // 确保在发送请求前清理 Cookie
         webView.configuration.websiteDataStore.httpCookieStore.getAllCookies { cookies in
-            for _ in cookies { }
+            cookies.forEach { cookie in
+                webView.configuration.websiteDataStore.httpCookieStore.delete(cookie)
+            }
+            
+            // 在清理完成后发送请求
+            var request = URLRequest(url: url)
+            let cookieHeader = "sysauth=\(token); sysauth_http=\(token)"
+            request.setValue(cookieHeader, forHTTPHeaderField: "Cookie")
+            request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+            request.setValue("XMLHttpRequest", forHTTPHeaderField: "X-Requested-With")
+            request.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
+            request.httpShouldHandleCookies = true
+            
+            webView.load(request)
         }
-        
-        webView.load(request)
     }
     
     static func dismantleUIView(_ uiView: WKWebView, coordinator: ()) {
-        HTTPCookieStorage.shared.removeCookies(since: Date(timeIntervalSince1970: 0))
-        
+        // 清理所有类型的网站数据
         WKWebsiteDataStore.default().removeData(
-            ofTypes: [WKWebsiteDataTypeCookies],
+            ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(),
             modifiedSince: Date(timeIntervalSince1970: 0)
         ) { }
         
-        UserDefaults.standard.removeObject(forKey: "LuCIWebViewCookies")
+        // 清理共享的 Cookie 存储
+        HTTPCookieStorage.shared.removeCookies(since: Date(timeIntervalSince1970: 0))
+        
+        // 清理 WKWebView 的 Cookie
+        uiView.configuration.websiteDataStore.httpCookieStore.getAllCookies { cookies in
+            cookies.forEach { cookie in
+                uiView.configuration.websiteDataStore.httpCookieStore.delete(cookie)
+            }
+        }
     }
 }
 

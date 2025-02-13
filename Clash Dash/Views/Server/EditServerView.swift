@@ -26,6 +26,18 @@ struct EditServerView: View {
     @State private var openWRTPassword: String
     @State private var luciPackage: LuCIPackage
     
+    // 添加密码显示控制状态
+    @State private var isSecretVisible = false
+    @State private var isPasswordVisible = false
+    
+    // 添加焦点状态
+    @FocusState private var focusedField: Field?
+    
+    private enum Field {
+        case openWRTUrl
+        case other
+    }
+    
     // 添加触觉反馈生成器
     
     
@@ -70,8 +82,28 @@ struct EditServerView: View {
                         .keyboardType(.URL)
                     TextField("控制器端口", text: $port)
                         .keyboardType(.numberPad)
-                    TextField("控制器密钥（可选）", text: $secret)
-                        .textInputAutocapitalization(.never)
+                    
+                    HStack(spacing: 8) {
+                        if isSecretVisible {
+                            TextField("控制器密钥（可选）", text: $secret)
+                                .textInputAutocapitalization(.never)
+                                .textContentType(.password)
+                        } else {
+                            SecureField("控制器密钥（可选）", text: $secret)
+                                .textInputAutocapitalization(.never)
+                                .textContentType(.password)
+                        }
+                        
+                        Button {
+                            isSecretVisible.toggle()
+                            HapticManager.shared.impact(.light)
+                        } label: {
+                            Image(systemName: isSecretVisible ? "eye.slash.fill" : "eye.fill")
+                                .foregroundColor(.secondary)
+                                .frame(width: 24, height: 24)
+                        }
+                        .buttonStyle(.plain)
+                    }
                     
                     Toggle(isOn: $useSSL) {
                         Label {
@@ -96,13 +128,67 @@ struct EditServerView: View {
                         }
                     
                     if isOpenWRT {
-                        TextField("OpenWRT地址（192.168.1.1）", text: $openWRTUrl)
+                        TextField("OpenWRT地址", text: $openWRTUrl)
                             .textContentType(.URL)
                             .autocapitalization(.none)
+                            .textInputAutocapitalization(.never)
+                            .focused($focusedField, equals: .openWRTUrl)
+                            .toolbar {
+                                ToolbarItemGroup(placement: .keyboard) {
+                                    if focusedField == .openWRTUrl {
+                                        Button(url.isEmpty ? "" : "\(url)") {
+                                            openWRTUrl = url
+                                            HapticManager.shared.impact(.light)
+                                        }
+                                        .disabled(url.isEmpty)
+                                        
+                                        Spacer()
+                                        
+                                        Button("完成") {
+                                            focusedField = nil
+                                        }
+                                    }
+                                }
+                            }
                         
-                        TextField("网页端口（80）", text: $openWRTPort)
+                        // Toggle("与外部控制器相同地址", isOn: .init(
+                        //     get: { openWRTUrl == url },
+                        //     set: { if $0 { openWRTUrl = url } }
+                        // ))
+                        // .onChange(of: url) { newValue in
+                        //     if openWRTUrl == url {
+                        //         openWRTUrl = newValue
+                        //     }
+                        // }
+                        
+                        TextField("网页端口", text: $openWRTPort)
                             .keyboardType(.numberPad)
                         
+                        TextField("用户名", text: $openWRTUsername)
+                            .textContentType(.username)
+                            .autocapitalization(.none)
+                        
+                        HStack(spacing: 8) {
+                            if isPasswordVisible {
+                                TextField("密码", text: $openWRTPassword)
+                                    .textContentType(.password)
+                                    .autocapitalization(.none)
+                            } else {
+                                SecureField("密码", text: $openWRTPassword)
+                                    .textContentType(.password)
+                            }
+                            
+                            Button {
+                                isPasswordVisible.toggle()
+                                HapticManager.shared.impact(.light)
+                            } label: {
+                                Image(systemName: isSecretVisible ? "eye.slash.fill" : "eye.fill")
+                                    .foregroundColor(.secondary)
+                                    .frame(width: 24, height: 24)
+                            }
+                            .buttonStyle(.plain)
+                        }
+
                         Toggle(isOn: $openWRTUseSSL) {
                             Label {
                                 Text("使用 HTTPS")
@@ -111,14 +197,6 @@ struct EditServerView: View {
                                     .foregroundColor(openWRTUseSSL ? .green : .secondary)
                             }
                         }
-                            
-                        
-                        TextField("用户名（root）", text: $openWRTUsername)
-                            .textContentType(.username)
-                            .autocapitalization(.none)
-                        
-                        SecureField("密码", text: $openWRTPassword)
-                            .textContentType(.password)
                         
                         Text("选择你使用的管理器")
                             .font(.subheadline)
