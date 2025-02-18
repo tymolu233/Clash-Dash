@@ -84,6 +84,27 @@ struct SubscriptionCard: View {
                         .disabled(isRefreshing)
                     }
                     
+                    if server.luciPackage == .openClash && viewModel.isVersionSupported {
+                        Button {
+                            Task {
+                                isRefreshing = true
+                                do {
+                                    try await viewModel.updateOpenClashSubscription(currentSubscription)
+                                } catch {
+                                    print("更新失败: \(error)")
+                                }
+                                isRefreshing = false
+                            }
+                        } label: {
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                                .foregroundColor(.blue)
+                                .font(.title3)
+                                .rotationEffect(.degrees(isRefreshing ? 360 : 0))
+                                .animation(isRefreshing ? .linear(duration: 1).repeatForever(autoreverses: false) : .default, value: isRefreshing)
+                        }
+                        .disabled(isRefreshing)
+                    }
+                    
                     Button(action: onEdit) {
                         Image(systemName: "pencil.circle.fill")
                             .foregroundColor(.blue)

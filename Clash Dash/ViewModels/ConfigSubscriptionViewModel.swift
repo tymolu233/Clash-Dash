@@ -18,11 +18,14 @@ class ConfigSubscriptionViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var templateOptions: [String] = []
     @Published var isUpdating = false
+    @Published var isVersionSupported = false
     @Published private(set) var packageName: String
     
     private let server: ClashServer
 
     let serverViewModel = ServerViewModel()
+
+    let versionService = VersionService()
 
         
     var currentServer: ClashServer { server }
@@ -37,6 +40,13 @@ class ConfigSubscriptionViewModel: ObservableObject {
                 await checkAndUpdatePackageName()
             }
         }
+        
+        // 如果是 OpenClash，检查版本
+        if server.luciPackage == .openClash {
+            Task {
+                await checkVersion()
+            }
+        }
     }
     
     private func checkAndUpdatePackageName() async {
@@ -48,6 +58,27 @@ class ConfigSubscriptionViewModel: ObservableObject {
         } catch {
             logger.error("检查 Nikki 状态失败: \(error.localizedDescription)")
             // 保持默认的 mihomo
+        }
+    }
+    
+    private func checkVersion() async {
+        do {
+            let scheme = server.openWRTUseSSL ? "https" : "http"
+            guard let openWRTUrl = server.openWRTUrl else { return }
+            let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
+            
+            let versionInfo = try await versionService.getPluginVersion(
+                baseURL: baseURL,
+                token: try await getAuthToken(),
+                pluginType: .openClash
+            )
+            
+            let currentVersion = versionInfo.version
+            let components = currentVersion.split(separator: "-").first?.split(separator: "v").last ?? ""
+            isVersionSupported = (String(components)).compare("0.46.073", options: .numeric) != .orderedAscending
+        } catch {
+            print("获取版本信息失败: \(error)")
+            isVersionSupported = false
         }
     }
     
@@ -106,6 +137,14 @@ class ConfigSubscriptionViewModel: ObservableObject {
             throw NetworkError.invalidURL
         }
         let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
+        
+        // 获取版本信息
+        let versionInfo = try await versionService.getPluginVersion(
+            baseURL: baseURL,
+            token: token,
+            pluginType: server.luciPackage == .openClash ? .openClash : .mihomoTProxy
+        )        
+        
         logger.debug("🔗 订阅 - 请求 URL: \(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)")
         guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
             throw NetworkError.invalidURL
@@ -337,7 +376,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
         }
     }
     
-    private func getAuthToken() async throws -> String {
+    internal func getAuthToken() async throws -> String {
         guard let username = server.openWRTUsername,
               let password = server.openWRTPassword else {
             throw NetworkError.unauthorized(message: "获取 Token 错误")
@@ -1395,5 +1434,40 @@ class ConfigSubscriptionViewModel: ObservableObject {
         
         // 获取更新后的订阅信息
         return try await fetchSubscriptionDetail(subscriptionId)
+    }
+    
+    // 更新单个 OpenClash 订阅
+    func updateOpenClashSubscription(_ subscription: ConfigSubscription) async throws {
+        let token = try await getAuthToken()
+        
+        let scheme = server.openWRTUseSSL ? "https" : "http"
+        guard let openWRTUrl = server.openWRTUrl else {
+            throw NetworkError.invalidURL
+        }
+        let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
+        let timestamp = Int(Date().timeIntervalSince1970 * 1000)
+        guard let url = URL(string: "\(baseURL)/cgi-bin/luci/admin/services/openclash/update_config?filename=subscribe&\(timestamp)") else {
+            throw NetworkError.invalidURL
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("*/*", forHTTPHeaderField: "Accept")
+        request.setValue("no-cache", forHTTPHeaderField: "Cache-Control")
+        request.setValue("no-cache", forHTTPHeaderField: "Pragma")
+        request.setValue("sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
+        
+        let (_, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse,
+              httpResponse.statusCode == 200 else {
+            throw NetworkError.serverError(500)
+        }
+        
+        // 等待3秒
+        try await Task.sleep(nanoseconds: 3_000_000_000)
+        
+        // 重新加载订阅列表
+        await loadSubscriptions()
     }
 }
