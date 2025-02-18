@@ -227,7 +227,11 @@ struct ConnectionsView: View {
                                 
                                 // 设备列表
                                 LazyVStack(spacing: 12) {
-                                    ForEach(Array(devices).sorted(by: { $0.activeCount > $1.activeCount }), id: \.id) { device in
+                                    ForEach(Array(devices).sorted(by: { device1, device2 in
+                                        let name1 = device1.name?.lowercased() ?? device1.id.lowercased()
+                                        let name2 = device2.name?.lowercased() ?? device2.id.lowercased()
+                                        return name1 < name2
+                                    }), id: \.id) { device in
                                         Button {
                                             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                                 if selectedDevices.contains(device.id) {
@@ -260,8 +264,7 @@ struct ConnectionsView: View {
                                                                 Circle()
                                                                     .fill(Color.green)
                                                                     .frame(width: 6, height: 6)
-                                                                    .opacity(showDeviceFilter ? 1 : 0.3)
-                                                                    .animation(.easeInOut(duration: 1).repeatForever(autoreverses: true), value: showDeviceFilter)
+                                                                    .opacity(0.8)
                                                             }
                                                         }
                                                     }
