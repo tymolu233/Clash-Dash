@@ -76,8 +76,9 @@ class ConfigSubscriptionViewModel: ObservableObject {
             let currentVersion = versionInfo.version
             let components = currentVersion.split(separator: "-").first?.split(separator: "v").last ?? ""
             isVersionSupported = (String(components)).compare("0.46.073", options: .numeric) != .orderedAscending
+            logger.debug("当前版本: \(currentVersion), 是否支持 OpenClash 单独订阅更新: \(isVersionSupported)")
         } catch {
-            print("获取版本信息失败: \(error)")
+            logger.error("获取版本信息失败: \(error)")
             isVersionSupported = false
         }
     }
@@ -139,11 +140,11 @@ class ConfigSubscriptionViewModel: ObservableObject {
         let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
         
         // 获取版本信息
-        let versionInfo = try await versionService.getPluginVersion(
-            baseURL: baseURL,
-            token: token,
-            pluginType: server.luciPackage == .openClash ? .openClash : .mihomoTProxy
-        )        
+//        let versionInfo = try await versionService.getPluginVersion(
+//            baseURL: baseURL,
+//            token: token,
+//            pluginType: server.luciPackage == .openClash ? .openClash : .mihomoTProxy
+//        )        
         
         logger.debug("🔗 订阅 - 请求 URL: \(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)")
         guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
