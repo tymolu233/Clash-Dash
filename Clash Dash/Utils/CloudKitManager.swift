@@ -30,6 +30,7 @@ class CloudKitManager: ObservableObject {
         "pinBuiltinProxies",
         "speedTestURL",
         "speedTestTimeout",
+        "allowManualURLTestGroupSwitch",
         "serverStatusTimeout"
     ]
     

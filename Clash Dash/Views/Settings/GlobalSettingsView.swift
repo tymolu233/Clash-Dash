@@ -109,6 +109,7 @@ struct GlobalSettingsView: View {
     @AppStorage("smartProxyGroupDisplay") private var smartProxyGroupDisplay = false
     @AppStorage("enableCloudSync") private var enableCloudSync = false
     @AppStorage("autoSpeedTestBeforeSwitch") private var autoSpeedTestBeforeSwitch = true
+    @AppStorage("allowManualURLTestGroupSwitch") private var allowManualURLTestGroupSwitch = false
     @AppStorage("serverStatusTimeout") private var serverStatusTimeout = 2.0  // 默认2秒
     @State private var showClearCacheAlert = false
     @State private var showSyncErrorAlert = false
@@ -128,6 +129,12 @@ struct GlobalSettingsView: View {
                     title: "切换前自动测速",
                     subtitle: "在切换到新的代理节点前获取最新延迟",
                     isOn: $autoSpeedTestBeforeSwitch
+                )
+                
+                SettingToggleRow(
+                    title: "允许手动切换自动测速组",
+                    subtitle: "允许手动切换自动测速选择分组的节点",
+                    isOn: $allowManualURLTestGroupSwitch
                 )
             } header: {
                 SectionHeader(title: "切换代理设置", systemImage: "network")

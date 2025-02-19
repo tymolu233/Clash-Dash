@@ -9,6 +9,7 @@ struct CompactGroupCard: View {
     @AppStorage("proxyGroupSortOrder") private var proxyGroupSortOrder = ProxyGroupSortOrder.default
     @AppStorage("pinBuiltinProxies") private var pinBuiltinProxies = false
     @AppStorage("autoSpeedTestBeforeSwitch") private var autoSpeedTestBeforeSwitch = true
+    @AppStorage("allowManualURLTestGroupSwitch") private var allowManualURLTestGroupSwitch = false
     @State private var currentNodeOrder: [String]?
     @State private var displayedNodes: [String] = []
     @State private var showURLTestAlert = false
@@ -272,7 +273,7 @@ struct CompactGroupCard: View {
                                     // 添加触觉反馈
                                     HapticManager.shared.impact(.light)
                                     
-                                    if group.type == "URLTest" {
+                                    if group.type == "URLTest" && !allowManualURLTestGroupSwitch {
                                         showURLTestAlert = true
                                         HapticManager.shared.notification(.error)
                                     } else {
@@ -317,7 +318,7 @@ struct CompactGroupCard: View {
         .alert("自动测速选择分组", isPresented: $showURLTestAlert) {
             Button("确定", role: .cancel) { }
         } message: {
-            Text("该分组不支持手动切换节点")
+            Text("该分组不支持手动切换节点，可在全局设置中启用手动切换")
         }
     }
 }

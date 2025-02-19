@@ -1126,6 +1126,7 @@ struct ProxySelectorSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var showURLTestAlert = false
     @AppStorage("proxyGroupSortOrder") private var proxyGroupSortOrder = ProxyGroupSortOrder.default
+    @AppStorage("allowManualURLTestGroupSwitch") private var allowManualURLTestGroupSwitch = false
     
     // 添加计算属性来获取可用节点
     private var availableNodes: [String] {
@@ -1215,7 +1216,7 @@ struct ProxySelectorSheet: View {
                                 
                                 HapticManager.shared.impact(.light)
                                 
-                                if group.type == "URLTest" {
+                                if group.type == "URLTest" && !allowManualURLTestGroupSwitch {
                                     showURLTestAlert = true
                                 } else {
                                     Task {
@@ -1294,7 +1295,7 @@ struct ProxySelectorSheet: View {
             .alert("自动测速选择分组", isPresented: $showURLTestAlert) {
                 Button("确定", role: .cancel) { }
             } message: {
-                Text("该分组不支持动切换节点")
+                Text("该分组不支持手动切换节点，可在全局设置中启用手动切换")
             }
         }
         .presentationDetents([.medium, .large])

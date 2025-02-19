@@ -6,6 +6,8 @@ struct MultiColumnProxyView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.colorScheme) private var colorScheme
     @State private var selectedGroup: ProxyGroup?
+    @AppStorage("allowManualURLTestGroupSwitch") private var allowManualURLTestGroupSwitch = false
+    @State private var showURLTestAlert = false
     
     // 计算每行显示的列数
     private var columnsCount: Int {
@@ -102,8 +104,11 @@ struct MultiColumnProxyView: View {
                                 )
                                 .onTapGesture {
                                     HapticManager.shared.impact(.light)
-                                    if group.type == "URLTest" {
+                                    
+                                    if group.type == "URLTest" && !allowManualURLTestGroupSwitch {
                                         // 显示不支持手动切换的提示
+                                        showURLTestAlert = true
+                                        HapticManager.shared.notification(.error)
                                         return
                                     }
                                     
@@ -142,6 +147,11 @@ struct MultiColumnProxyView: View {
             }
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
+        }
+        .alert("自动测速选择分组", isPresented: $showURLTestAlert) {
+            Button("确定", role: .cancel) { }
+        } message: {
+            Text("该分组不支持手动切换节点，可在全局设置中启用手动切换")
         }
     }
     
