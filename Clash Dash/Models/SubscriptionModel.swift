@@ -473,6 +473,8 @@ class OpenClashClient: ClashClient {
         
         let unit = String(components[1]).uppercased()
         switch unit {
+        case "TB":
+            return value * 1024 * 1024 * 1024 * 1024
         case "GB":
             return value * 1024 * 1024 * 1024
         case "MB":
@@ -762,6 +764,8 @@ class MihomoClient: ClashClient {
         
         let unit = String(components[1]).uppercased()
         switch unit {
+        case "TB":
+            return value * 1024 * 1024 * 1024 * 1024
         case "GB":
             return value * 1024 * 1024 * 1024
         case "MB":

@@ -894,15 +894,26 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             var subRequest = URLRequest(url: subURL)
             subRequest.setValue("sysauth=\(token); sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
             
-            let (subData, _) = try await session.data(for: subRequest)
-            
-            let subscription = try? JSONDecoder().decode(OpenClashConfig.SubscriptionInfo.self, from: subData)
-            guard let subscription = subscription else {
-                // print("❌ 订阅信息解码失败")
-                logger.error("❌ 未获取到订阅信息")
-                continue
+            let subscription: OpenClashConfig.SubscriptionInfo?
+            do {
+                let (subData, _) = try await session.data(for: subRequest)
+                subscription = try JSONDecoder().decode(OpenClashConfig.SubscriptionInfo.self, from: subData)
+                logger.debug("订阅信息解码成功: \(String(describing: subscription))")
+            } catch {
+                logger.warning("获取订阅信息失败: \(error.localizedDescription)")
+                // 设置一个默认的订阅信息
+                subscription = OpenClashConfig.SubscriptionInfo(
+                    surplus: nil,      // 第一个参数
+                    total: nil,        // 第二个参数
+                    dayLeft: nil,      // 第三个参数
+                    httpCode: nil,     // 第四个参数
+                    used: nil,         // 第五个参数
+                    expire: nil,       // 第六个参数
+                    subInfo: "No Sub Info Found",  // 第七个参数
+                    percent: nil       // 第八个参数
+                )
             }
-            logger.debug("订阅信息解码: \(subscription)")
+            
             // 创建配置对象
             let config = OpenClashConfig(
                 name: fileName,
@@ -915,7 +926,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             
             // 根据订阅信息判断是否为订阅配置
             var updatedConfig = config
-            updatedConfig.isSubscription = subscription.subInfo != "No Sub Info Found"
+            updatedConfig.isSubscription = subscription?.subInfo != "No Sub Info Found"
             configs.append(updatedConfig)
             // print("✅ 成功添加配置: \(fileName)")
             logger.info("✅ 成功添加配置: \(fileName)")

@@ -1447,7 +1447,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
         }
         let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
         let timestamp = Int(Date().timeIntervalSince1970 * 1000)
-        guard let url = URL(string: "\(baseURL)/cgi-bin/luci/admin/services/openclash/update_config?filename=subscribe&\(timestamp)") else {
+        guard let url = URL(string: "\(baseURL)/cgi-bin/luci/admin/services/openclash/update_config?filename=\(subscription.name)&\(timestamp)") else {
             throw NetworkError.invalidURL
         }
         
