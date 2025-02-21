@@ -232,6 +232,17 @@ struct ConnectionRow: View {
                             .foregroundColor(.green)
                             .cornerRadius(4)
                         
+                        // 添加 IPv6 标签
+                        if connection.metadata.sourceIP.contains(":") || connection.metadata.destinationIP?.contains(":") == true {
+                            Text("IPv6")
+                                .font(.caption)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color.purple.opacity(0.1))
+                                .foregroundColor(.purple)
+                                .cornerRadius(4)
+                        }
+                        
                         if let tagName = getClientTag(for: connection.metadata.sourceIP) {
                             Text(tagName)
                                 .font(.caption)
