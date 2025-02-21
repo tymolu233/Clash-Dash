@@ -1,4 +1,5 @@
 import SwiftUI
+import Shared
 
 enum ConnectionRowStyle: String, CaseIterable, Identifiable {
     case classic
@@ -23,10 +24,12 @@ struct AppearanceSettingsView: View {
     @AppStorage("connectionRowStyle") private var connectionRowStyle = ConnectionRowStyle.classic
     @AppStorage("lowDelayThreshold") private var lowDelayThreshold = 240
     @AppStorage("mediumDelayThreshold") private var mediumDelayThreshold = 500
+    @AppStorage("widgetDefaultServer") private var widgetDefaultServer: String = ""
     @State private var lowDelaySliderValue: Double = 0
     @State private var mediumDelaySliderValue: Double = 0
     @StateObject private var locationManager = LocationManager()
     @EnvironmentObject private var bindingManager: WiFiBindingManager
+    @State private var showServerSelectionSheet = false
     
     var body: some View {
         Form {
@@ -163,9 +166,29 @@ struct AppearanceSettingsView: View {
             } header: {
                 SectionHeader(title: "Wi-Fi 绑定", systemImage: "wifi")
             }
+            
+            Section {
+                Button(action: {
+                    showServerSelectionSheet = true
+                }) {
+                    SettingRow(
+                        title: "Widget 默认控制器",
+                        value: widgetDefaultServer.isEmpty ? "未设置" : widgetDefaultServer
+                    )
+                }
+            } header: {
+                SectionHeader(title: "Widget 设置", systemImage: "rectangle.on.rectangle")
+            } footer: {
+                Text("设置 Widget 默认显示的控制器信息，无需等待 App 启动即可显示")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .navigationTitle("外观")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showServerSelectionSheet) {
+            ServerSelectionView(selectedServer: $widgetDefaultServer)
+        }
         .alert("需要位置权限", isPresented: $locationManager.showLocationDeniedAlert) {
             Button("取消", role: .cancel) { }
             Button("去设置") {
@@ -175,6 +198,94 @@ struct AppearanceSettingsView: View {
             }
         } message: {
             Text("需要位置权限才能获取 Wi-Fi 信息。请在设置中开启位置权限。")
+        }
+    }
+}
+
+struct ServerSelectionView: View {
+    @Binding var selectedServer: String
+    @Environment(\.dismiss) private var dismiss
+    @StateObject private var serverViewModel = ServerViewModel()
+    private let sharedDataManager = SharedDataManager.shared
+    private let userDefaults = UserDefaults(suiteName: "group.ym.si.clashdash")
+    
+    var body: some View {
+        NavigationStack {
+            List {
+                if serverViewModel.servers.isEmpty {
+                    Section {
+                        Text("没有可用的控制器")
+                            .foregroundColor(.secondary)
+                    }
+                } else {
+                    ForEach(serverViewModel.servers) { server in
+                        Button(action: {
+                            let serverAddress = "\(server.url):\(server.port)"
+                            print("[AppearanceSettings] 选择服务器: \(serverAddress)")
+                            print("[AppearanceSettings] 当前服务器名称: \(server.name)")
+                            
+                            selectedServer = serverAddress
+                            
+                            // 保存 secret 和 SSL 设置
+                            userDefaults?.set(server.clashUseSSL, forKey: "\(serverAddress)_useSSL")
+                            userDefaults?.set(server.secret, forKey: "\(serverAddress)_secret")
+                            print("[AppearanceSettings] Secret 和 SSL 已保存")
+                            
+                            // 同时保存到 SharedDataManager
+                            sharedDataManager.saveClashStatus(
+                                serverAddress: serverAddress,
+                                serverName: server.name,
+                                activeConnections: 0,
+                                uploadTotal: 0,
+                                downloadTotal: 0,
+                                memoryUsage: nil,
+                                secret: server.secret,
+                                useSSL: server.clashUseSSL
+                            )
+                            
+                            // 保存到 widgetDefaultServer
+                            userDefaults?.set(serverAddress, forKey: "widgetDefaultServer")
+                            userDefaults?.synchronize()
+                            
+                            dismiss()
+                        }) {
+                            HStack {
+                                VStack(alignment: .leading) {
+                                    Text(server.name.isEmpty ? "\(server.url):\(server.port)" : server.name)
+                                        .foregroundColor(.primary)
+                                    if !server.name.isEmpty {
+                                        Text("\(server.url):\(server.port)")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+                                Spacer()
+                                if "\(server.url):\(server.port)" == selectedServer {
+                                    Image(systemName: "checkmark")
+                                        .foregroundColor(.accentColor)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("选择控制器")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("取消") {
+                        dismiss()
+                    }
+                }
+            }
+            .onAppear {
+                print("[AppearanceSettings] 视图出现")
+                print("[AppearanceSettings] 当前选中的服务器: \(selectedServer)")
+                
+                Task { @MainActor in
+                    serverViewModel.loadServers()
+                }
+            }
         }
     }
 }

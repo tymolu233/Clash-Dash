@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import Shared
 
 class NetworkMonitor: ObservableObject {
     @Published var uploadSpeed: String = "0 B/s"
@@ -321,7 +322,9 @@ class NetworkMonitor: ObservableObject {
               let memory = try? JSONDecoder().decode(MemoryData.self, from: data) else { return }
         
         DispatchQueue.main.async { [weak self] in
-            self?.memoryUsage = self?.formatBytes(memory.inuse) ?? "0 MB"
+            guard let self = self else { return }
+            
+            self.memoryUsage = self.formatBytes(memory.inuse)
             
             let newMemoryRecord = MemoryRecord(
                 timestamp: Date(),
@@ -329,44 +332,79 @@ class NetworkMonitor: ObservableObject {
             )
             
             // 确保历史记录不会无限增长
-            if self?.memoryHistory.count ?? 0 >= 30 {
-                self?.memoryHistory.removeFirst()
+            if self.memoryHistory.count >= 30 {
+                self.memoryHistory.removeFirst()
             }
-            self?.memoryHistory.append(newMemoryRecord)
+            self.memoryHistory.append(newMemoryRecord)
+            
+            // 同步内存数据到 App Group
+            if let server = self.server {
+                print("[NetworkMonitor] Syncing memory data to App Group")
+                print("[NetworkMonitor] - Memory usage: \(Double(memory.inuse) / 1024 / 1024) MB")
+                SharedDataManager.shared.saveClashStatus(
+                    serverAddress: "\(server.url):\(server.port)",
+                    serverName: server.name,
+                    activeConnections: self.activeConnections,
+                    uploadTotal: Int64(self.rawTotalUpload),
+                    downloadTotal: Int64(self.rawTotalDownload),
+                    memoryUsage: Double(memory.inuse) / 1024 / 1024, // 转换为 MB
+                    secret: server.secret,
+                    useSSL: server.clashUseSSL
+                )
+            }
         }
     }
     
     private func handleConnectionsData(_ text: String) {
-        // print("收到连接数据: \(text)")  // 添加调试日志
-        
         guard let data = text.data(using: .utf8) else {
-            // print("无法将文本转换为数据")
             return
         }
         
         do {
             let connections = try JSONDecoder().decode(ConnectionsData.self, from: data)
             DispatchQueue.main.async { [weak self] in
-                self?.activeConnections = connections.connections.count
-                self?.totalUpload = self?.formatBytes(connections.uploadTotal) ?? "0 MB"
-                self?.totalDownload = self?.formatBytes(connections.downloadTotal) ?? "0 MB"
-                self?.rawTotalUpload = connections.uploadTotal
-                self?.rawTotalDownload = connections.downloadTotal
+                guard let self = self else { return }
+                
+                self.activeConnections = connections.connections.count
+                self.totalUpload = self.formatBytes(connections.uploadTotal)
+                self.totalDownload = self.formatBytes(connections.downloadTotal)
+                self.rawTotalUpload = connections.uploadTotal
+                self.rawTotalDownload = connections.downloadTotal
+                
+                // 同步数据到 App Group
+                if let server = self.server {
+                    print("[NetworkMonitor] Syncing connections data to App Group")
+                    print("[NetworkMonitor] - Active connections: \(self.activeConnections)")
+                    print("[NetworkMonitor] - Upload total: \(self.rawTotalUpload)")
+                    print("[NetworkMonitor] - Download total: \(self.rawTotalDownload)")
+                    print("[NetworkMonitor] - Server name: \(server.name)")
+                    
+                    SharedDataManager.shared.saveClashStatus(
+                        serverAddress: "\(server.url):\(server.port)",
+                        serverName: server.name.isEmpty ? nil : server.name,
+                        activeConnections: self.activeConnections,
+                        uploadTotal: Int64(self.rawTotalUpload),
+                        downloadTotal: Int64(self.rawTotalDownload),
+                        memoryUsage: Double(connections.memory ?? 0) / 1024 / 1024, // 转换为 MB
+                        secret: server.secret,
+                        useSSL: server.clashUseSSL
+                    )
+                }
             }
         } catch {
-            // print("解析连接数据失败: \(error)")
+            print("[NetworkMonitor] Error decoding connections data: \(error)")
             if let decodingError = error as? DecodingError {
                 switch decodingError {
                 case .dataCorrupted(let context):
-                    print("    数据损坏: \(context)")
+                    print("[NetworkMonitor] Data corrupted: \(context)")
                 case .keyNotFound(let key, let context):
-                    print("    找不到键: \(key), 上下文: \(context)")
+                    print("[NetworkMonitor] Key not found: \(key), context: \(context)")
                 case .typeMismatch(let type, let context):
-                    print("    类型不匹配: \(type), 上下文: \(context)")
+                    print("[NetworkMonitor] Type mismatch: \(type), context: \(context)")
                 case .valueNotFound(let type, let context):
-                    print("    值未找到: \(type), 上下文: \(context)")
+                    print("[NetworkMonitor] Value not found: \(type), context: \(context)")
                 @unknown default:
-                    print("    未知解码错误")
+                    print("[NetworkMonitor] Unknown decoding error")
                 }
             }
         }
@@ -526,6 +564,11 @@ struct Connection: Codable {
     let uploadSpeed: Double
     let isAlive: Bool
     
+    enum CodingKeys: String, CodingKey {
+        case id, metadata, upload, download, start, chains, rule, rulePayload
+        case downloadSpeed, uploadSpeed, isAlive
+    }
+    
     init(id: String, metadata: ConnectionMetadata, upload: Int, download: Int, start: String, chains: [String], rule: String, rulePayload: String, downloadSpeed: Double = 0, uploadSpeed: Double = 0, isAlive: Bool = true) {
         self.id = id
         self.metadata = metadata
@@ -538,6 +581,36 @@ struct Connection: Codable {
         self.downloadSpeed = downloadSpeed
         self.uploadSpeed = uploadSpeed
         self.isAlive = isAlive
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        metadata = try container.decode(ConnectionMetadata.self, forKey: .metadata)
+        upload = try container.decode(Int.self, forKey: .upload)
+        download = try container.decode(Int.self, forKey: .download)
+        start = try container.decode(String.self, forKey: .start)
+        chains = try container.decode([String].self, forKey: .chains)
+        rule = try container.decode(String.self, forKey: .rule)
+        rulePayload = try container.decode(String.self, forKey: .rulePayload)
+        downloadSpeed = try container.decodeIfPresent(Double.self, forKey: .downloadSpeed) ?? 0
+        uploadSpeed = try container.decodeIfPresent(Double.self, forKey: .uploadSpeed) ?? 0
+        isAlive = try container.decodeIfPresent(Bool.self, forKey: .isAlive) ?? true
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(metadata, forKey: .metadata)
+        try container.encode(upload, forKey: .upload)
+        try container.encode(download, forKey: .download)
+        try container.encode(start, forKey: .start)
+        try container.encode(chains, forKey: .chains)
+        try container.encode(rule, forKey: .rule)
+        try container.encode(rulePayload, forKey: .rulePayload)
+        try container.encode(downloadSpeed, forKey: .downloadSpeed)
+        try container.encode(uploadSpeed, forKey: .uploadSpeed)
+        try container.encode(isAlive, forKey: .isAlive)
     }
 }
 
