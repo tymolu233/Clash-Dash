@@ -1002,28 +1002,12 @@ class ProxyViewModel: ObservableObject {
         }
     }
     
-    // 添加辅助方法来获取有效延迟
-    private func getEffectiveDelay(_ nodeName: String) -> Int {
-        let delay = self.nodes.first(where: { $0.name == nodeName })?.delay ?? Int.max
-        return delay == 0 ? Int.max : delay
-    }
-    
-    // 添加方法来保存节点顺序
-    func saveNodeOrder(for groupName: String, nodes: [String]) {
-        savedNodeOrder[groupName] = nodes
-    }
-    
-    // 添加方法来清除保存的节点顺序
-    func clearSavedNodeOrder(for groupName: String) {
-        savedNodeOrder.removeValue(forKey: groupName)
-    }
-    
     // 修改 getNodeDelay 方法
     func getNodeDelay(nodeName: String, visitedGroups: Set<String> = []) -> Int {
         // 检查是否是特殊节点（不区分大小写）
         let upperNodeName = nodeName.uppercased()
         if ["REJECT"].contains(upperNodeName) {
-            return 0  // 返回 0 表示拒绝连接
+            return 0
         }
         
         // 防止循环依赖
@@ -1031,7 +1015,12 @@ class ProxyViewModel: ObservableObject {
             return 0
         }
         
-        // 如果是代理组，递归获取当前选中节点的延迟
+        // 1. 首先检查是否是实际节点
+        if let node = nodes.first(where: { $0.name == nodeName }) {
+            return node.delay
+        }
+        
+        // 2. 然后检查是否是代理组
         if let group = groups.first(where: { $0.name == nodeName }) {
             var visited = visitedGroups
             visited.insert(nodeName)
@@ -1055,12 +1044,17 @@ class ProxyViewModel: ObservableObject {
             return getNodeDelay(nodeName: currentNodeName, visitedGroups: visited)
         }
         
-        // 如果是实际节点，返回节点延迟
-        if let node = nodes.first(where: { $0.name.uppercased() == upperNodeName }) {
-            return node.delay
-        }
-        
         return 0
+    }
+    
+    // 添加方法来保存节点顺序
+    func saveNodeOrder(for groupName: String, nodes: [String]) {
+        savedNodeOrder[groupName] = nodes
+    }
+    
+    // 添加方法来清除保存的节点顺序
+    func clearSavedNodeOrder(for groupName: String) {
+        savedNodeOrder.removeValue(forKey: groupName)
     }
 }
 
