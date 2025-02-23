@@ -16,6 +16,8 @@ struct OpenClashRulesView: View {
     @State private var showingHelp = false
     @State private var parsingErrors: [String] = []
     @State private var isSortingMode = false
+    @State private var versionError: String?
+    private let versionService = VersionService()
     
     var body: some View {
         NavigationStack {
@@ -24,6 +26,25 @@ struct OpenClashRulesView: View {
                     ProgressView()
                         .scaleEffect(1.5)
                         .frame(maxWidth: .infinity, maxHeight: 200)
+                } else if let versionError = versionError {
+                    VStack(spacing: 20) {
+                        Image(systemName: "exclamationmark.triangle")
+                            .font(.system(size: 50))
+                            .foregroundColor(.orange)
+                            .padding(.bottom, 10)
+                        
+                        Text("插件版本不支持")
+                            .font(.title2)
+                            .fontWeight(.medium)
+                        
+                        Text(versionError)
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 32)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 200)
+                    .padding(.top, 40)
                 } else {
                     VStack {
                         if !parsingErrors.isEmpty {
@@ -163,7 +184,11 @@ struct OpenClashRulesView: View {
                                 .onMove { from, to in
                                     rules.move(fromOffsets: from, toOffset: to)
                                     Task {
-                                        try? await saveRules(package: server.luciPackage)
+                                        if server.luciPackage == .openClash {
+                                            try? await saveRules(package: server.luciPackage)
+                                        } else {
+                                            await reorderRules()
+                                        }
                                     }
                                 }
                             }
@@ -271,6 +296,7 @@ struct OpenClashRulesView: View {
     private func loadRules(package: LuCIPackage = .openClash) async {
         isLoading = true
         parsingErrors.removeAll()
+        versionError = nil
         defer { isLoading = false }
         
         guard let username = server.openWRTUsername,
@@ -288,6 +314,21 @@ struct OpenClashRulesView: View {
                 throw NetworkError.invalidURL
             }
             let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
+            
+            // 如果不是 OpenClash，检查版本
+            if package != .openClash {
+                let versionInfo = try await versionService.getPluginVersion(
+                    baseURL: baseURL,
+                    token: token,
+                    pluginType: .mihomoTProxy
+                )
+                
+                // 检查是否是 Nikki 且版本号大于等于 v1.18.0
+                if versionInfo.pluginName != "Nikki" || !isVersionGreaterOrEqual(versionInfo.version, "v1.18.0") {
+                    versionError = "使用附加规则需要 Nikki 版本为 v1.18.0 或以上\n当前运行版本: \(versionInfo.version)"
+                    return
+                }
+            }
             
             // 获取自定义规则启用状态
             guard let statusUrl = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
@@ -309,7 +350,7 @@ struct OpenClashRulesView: View {
             } else {
                 statusPayload = [
                     "method": "exec",
-                    "params": ["uci get mihomo.mixin.mixin_file_content"]
+                    "params": ["uci get nikki.mixin.rule"]
                 ]
             }
             
@@ -344,7 +385,7 @@ struct OpenClashRulesView: View {
             } else {
                 payload = [
                     "method": "exec",
-                    "params": ["cat /etc/mihomo/mixin.yaml"]
+                    "params": ["uci show nikki | grep '@rule'"]
                 ]
             }
             
@@ -367,30 +408,76 @@ struct OpenClashRulesView: View {
             
             // 解析规则
             var parsedRules: [OpenClashRule] = []
-            var isInRulesSection = false
-            var currentSection = ""
-            var lineNumber = 0
             
-            let lines = result.components(separatedBy: .newlines)
-            for line in lines {
-                lineNumber += 1
-                let trimmedLine = line.trimmingCharacters(in: .whitespaces)
+            if package == .openClash {
+                // OpenClash 规则解析逻辑
+                var isInRulesSection = false
+                var currentSection = ""
+                var lineNumber = 0
                 
-                // 检查 section 开始
-                if trimmedLine.hasSuffix(":") {
-                    currentSection = trimmedLine.dropLast().trimmingCharacters(in: .whitespaces)
-                    isInRulesSection = currentSection == "rules"
-                    continue
+                let lines = result.components(separatedBy: .newlines)
+                for line in lines {
+                    lineNumber += 1
+                    let trimmedLine = line.trimmingCharacters(in: .whitespaces)
+                    
+                    // 检查 section 开始
+                    if trimmedLine.hasSuffix(":") {
+                        currentSection = trimmedLine.dropLast().trimmingCharacters(in: .whitespaces)
+                        isInRulesSection = currentSection == "rules"
+                        continue
+                    }
+                    
+                    // 如果在 rules section 中且行以 - 开头（包括被注释的规则）
+                    if isInRulesSection && (trimmedLine.hasPrefix("-") || trimmedLine.hasPrefix("##-")) {
+                        do {
+                            let rule = try OpenClashRule(from: trimmedLine, lineNumber: lineNumber)
+                            parsedRules.append(rule)
+                        } catch {
+                            continue
+                        }
+                    }
+                }
+            } else {
+                // Nikki 规则解析逻辑
+                var ruleMap: [Int: [String: String]] = [:]
+                
+                let lines = result.components(separatedBy: .newlines)
+                for line in lines {
+                    let trimmedLine = line.trimmingCharacters(in: .whitespaces)
+                    guard !trimmedLine.isEmpty else { continue }
+                    
+                    let parts = trimmedLine.split(separator: "=", maxSplits: 1)
+                    guard parts.count == 2 else { continue }
+                    
+                    let key = String(parts[0])
+                    var value = String(parts[1]).trimmingCharacters(in: .whitespaces)
+                    if value.hasPrefix("'") && value.hasSuffix("'") {
+                        value = String(value.dropFirst().dropLast())
+                    }
+                    
+                    // 从 key 中提取规则索引
+                    if let ruleIndexMatch = key.firstMatch(of: /@rule\[(\d+)\]/) {
+                        let indexStr = String(ruleIndexMatch.1)
+                        if let index = Int(indexStr) {
+                            if ruleMap[index] == nil {
+                                ruleMap[index] = [:]
+                            }
+                            
+                            // 提取属性名
+                            let propertyName = key.components(separatedBy: ".").last ?? ""
+                            if !propertyName.contains("[") {
+                                ruleMap[index]?[propertyName] = value
+                            }
+                        }
+                    }
                 }
                 
-                // 如果在 rules section 中且行以 - 开头（包括被注释的规则）
-                if isInRulesSection && (trimmedLine.hasPrefix("-") || trimmedLine.hasPrefix("##-")) {
-                    do {
-                        let rule = try OpenClashRule(from: trimmedLine, lineNumber: lineNumber)
+                // 按索引排序并创建规则
+                let sortedIndices = ruleMap.keys.sorted()
+                for index in sortedIndices {
+                    if let ruleDict = ruleMap[index],
+                       let rule = createNikkiRule(from: ruleDict, index: index) {
                         parsedRules.append(rule)
-                    } catch {
-                        // 不再需要记录解析错误，因为错误信息已经包含在规则对象中
-                        continue
                     }
                 }
             }
@@ -403,6 +490,35 @@ struct OpenClashRulesView: View {
             errorMessage = error.localizedDescription
             showError = true
         }
+    }
+    
+    private func createNikkiRule(from dict: [String: String], index: Int) -> OpenClashRule? {
+        guard let type = dict["type"],
+              let match = dict["match"],
+              let node = dict["node"] else {
+            return nil
+        }
+        
+        let enabled = dict["enabled"] == "1"
+        let comment = dict["comment"]  // comment 可能为 nil
+        
+        // 处理 no_resolve
+        var action = node
+        if dict["no_resolve"] == "1" && (type == "IP-CIDR" || type == "IP-CIDR6") {
+            action += ",no-resolve"
+        }
+        
+        let rawContent = "- \(type),\(match),\(action)"
+        return OpenClashRule(
+            target: match,
+            type: type,
+            action: action,
+            isEnabled: enabled,
+            comment: comment,  // 直接传递 nil 或字符串
+            lineNumber: index + 1,
+            rawContent: rawContent
+            
+        )
     }
     
     private func generateRulesContent(originalContent: String) -> String {
@@ -551,43 +667,130 @@ struct OpenClashRulesView: View {
     }
     
     private func toggleRule(_ rule: OpenClashRule, package: LuCIPackage = .openClash) async {
-        // print("🔄 切换规则态: \(rule.target) - 当前状态: \(rule.isEnabled)")
+        guard let username = server.openWRTUsername,
+              let password = server.openWRTPassword else {
+            errorMessage = "未设置 OpenWRT 用户名或密码"
+            showError = true
+            return
+        }
+        
         guard let index = rules.firstIndex(where: { $0.id == rule.id }) else { 
-            // print("❌ 未找到要切换的规则")
             return 
         }
         
         let updatedRule = rule.toggled()
         let originalRule = rules[index]
-        rules[index] = updatedRule
         
         do {
-            try await saveRules(package: package)
+            if package == .openClash {
+                rules[index] = updatedRule
+                try await saveRules(package: package)
+            } else {
+                let token = try await viewModel.getAuthToken(server, username: username, password: password)
+                let scheme = server.openWRTUseSSL ? "https" : "http"
+                guard let openWRTUrl = server.openWRTUrl else {
+                    throw NetworkError.invalidURL
+                }
+                let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
+                
+                guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
+                    throw NetworkError.invalidURL
+                }
+                
+                var request = URLRequest(url: url)
+                request.httpMethod = "POST"
+                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                
+                // 使用 UCI 命令切换规则状态
+                let toggleCommand = [
+                    "uci set nikki.@rule[\(index)].enabled='\(updatedRule.isEnabled ? "1" : "0")'",
+                    "uci commit nikki"
+                ].joined(separator: " && ")
+                
+                let payload: [String: Any] = [
+                    "method": "exec",
+                    "params": [toggleCommand]
+                ]
+                request.httpBody = try JSONSerialization.data(withJSONObject: payload)
+                
+                let (_, response) = try await URLSession.shared.data(for: request)
+                guard let httpResponse = response as? HTTPURLResponse,
+                      httpResponse.statusCode == 200 else {
+                    throw NetworkError.serverError((response as? HTTPURLResponse)?.statusCode ?? 500)
+                }
+                
+                // 更新本地规则状态
+                rules[index] = updatedRule
+            }
         } catch {
-            errorMessage = error.localizedDescription
-            showError = true
             // 恢复原始状态
             rules[index] = originalRule
+            errorMessage = error.localizedDescription
+            showError = true
         }
     }
     
     private func deleteRule(_ rule: OpenClashRule, package: LuCIPackage = .openClash) async {
-        // print("🗑️ 删除规则: \(rule.target)")
         guard let index = rules.firstIndex(where: { $0.id == rule.id }) else { 
-            // print("❌ 未找到要删除的规则")
             return 
         }
         
         let originalRules = rules
-        rules.remove(at: index)
         
         do {
-            try await saveRules(package: package)
+            if package == .openClash {
+                rules.remove(at: index)
+                try await saveRules(package: package)
+            } else {
+                guard let username = server.openWRTUsername,
+                      let password = server.openWRTPassword else {
+                    errorMessage = "未设置 OpenWRT 用户名或密码"
+                    showError = true
+                    return
+                }
+                
+                let token = try await viewModel.getAuthToken(server, username: username, password: password)
+                let scheme = server.openWRTUseSSL ? "https" : "http"
+                guard let openWRTUrl = server.openWRTUrl else {
+                    throw NetworkError.invalidURL
+                }
+                let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
+                
+                guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
+                    throw NetworkError.invalidURL
+                }
+                
+                var request = URLRequest(url: url)
+                request.httpMethod = "POST"
+                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                
+                // 使用 UCI 命令删除规则
+                let deleteCommands = [
+                    "uci delete nikki.@rule[\(index)]",
+                    "uci commit nikki"
+                ].joined(separator: " && ")
+                
+                let payload: [String: Any] = [
+                    "method": "exec",
+                    "params": [deleteCommands]
+                ]
+                request.httpBody = try JSONSerialization.data(withJSONObject: payload)
+                
+                let (_, response) = try await URLSession.shared.data(for: request)
+                guard let httpResponse = response as? HTTPURLResponse,
+                      httpResponse.statusCode == 200 else {
+                    throw NetworkError.serverError((response as? HTTPURLResponse)?.statusCode ?? 500)
+                }
+                
+                // 重新加载规则列表
+                await loadRules(package: package)
+            }
         } catch {
+            if package == .openClash {
+                rules = originalRules
+            }
             errorMessage = error.localizedDescription
             showError = true
-            // 恢复原始状态
-            rules = originalRules
         }
     }
     
@@ -676,40 +879,202 @@ struct OpenClashRulesView: View {
         }
     }
     
+    private func isVersionGreaterOrEqual(_ version: String, _ minVersion: String) -> Bool {
+        let cleanVersion = version.trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "v", with: "")
+        let cleanMinVersion = minVersion.trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "v", with: "")
+        
+        let versionComponents = cleanVersion.split(separator: ".")
+        let minVersionComponents = cleanMinVersion.split(separator: ".")
+        
+        let maxLength = max(versionComponents.count, minVersionComponents.count)
+        
+        for i in 0..<maxLength {
+            let v1 = i < versionComponents.count ? Int(versionComponents[i]) ?? 0 : 0
+            let v2 = i < minVersionComponents.count ? Int(minVersionComponents[i]) ?? 0 : 0
+            
+            if v1 > v2 {
+                return true
+            } else if v1 < v2 {
+                return false
+            }
+        }
+        
+        return true
+    }
+    
     private func addRule(_ rule: OpenClashRule, package: LuCIPackage = .openClash) async {
-        // print("➕ 添加新规则: \(rule.target)")
-        rules.insert(rule, at: 0)
+        guard let username = server.openWRTUsername,
+              let password = server.openWRTPassword else {
+            errorMessage = "未设置 OpenWRT 用户名或密码"
+            showError = true
+            return
+        }
+        
         do {
-            try await saveRules(package: package)
-            // print("✅ 规则添加成功")
+            let token = try await viewModel.getAuthToken(server, username: username, password: password)
+            let scheme = server.openWRTUseSSL ? "https" : "http"
+            guard let openWRTUrl = server.openWRTUrl else {
+                throw NetworkError.invalidURL
+            }
+            let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
+            
+            guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
+                throw NetworkError.invalidURL
+            }
+            
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            
+            if package == .openClash {
+                rules.insert(rule, at: 0)
+                try await saveRules(package: package)
+            } else {
+                // 获取当前规则数量
+                let countPayload: [String: Any] = [
+                    "method": "exec",
+                    "params": ["uci show nikki | grep -c '@rule\\[.*\\]=rule'"]
+                ]
+                request.httpBody = try JSONSerialization.data(withJSONObject: countPayload)
+                let (countData, _) = try await URLSession.shared.data(for: request)
+                let countResponse = try JSONDecoder().decode(OpenClashRuleResponse.self, from: countData)
+                guard let countStr = countResponse.result?.trimmingCharacters(in: .whitespacesAndNewlines),
+                      let count = Int(countStr) else {
+                    throw NetworkError.invalidResponse(message: "无法获取规则数量")
+                }
+                
+                // 使用 UCI 命令添加新规则
+                let addCommands = [
+                    "uci add nikki rule",
+                    "uci set nikki.@rule[\(count)].type='\(rule.type)'",
+                    "uci set nikki.@rule[\(count)].match='\(rule.target)'",
+                    "uci set nikki.@rule[\(count)].node='\(rule.action.replacingOccurrences(of: ",no-resolve", with: ""))'",
+                    "uci set nikki.@rule[\(count)].enabled='1'",
+                    rule.comment.map { "uci set nikki.@rule[\(count)].comment='\($0)'" },
+                    (rule.type == "IP-CIDR" || rule.type == "IP-CIDR6") && rule.action.hasSuffix(",no-resolve") ? "uci set nikki.@rule[\(count)].no_resolve='1'" : nil,
+                    "uci commit nikki"
+                ].compactMap { $0 }.joined(separator: " && ")
+                
+                let payload: [String: Any] = [
+                    "method": "exec",
+                    "params": [addCommands]
+                ]
+                request.httpBody = try JSONSerialization.data(withJSONObject: payload)
+                
+                let (data, response) = try await URLSession.shared.data(for: request)
+                guard let httpResponse = response as? HTTPURLResponse,
+                      httpResponse.statusCode == 200 else {
+                    throw NetworkError.serverError((response as? HTTPURLResponse)?.statusCode ?? 500)
+                }
+                
+                // 重新加载规则列表
+                await loadRules(package: package)
+            }
         } catch {
-            rules.removeFirst()
-            // print("❌ 规则添加失败: \(error.localizedDescription)")
+            if package == .openClash {
+                rules.removeFirst()
+            }
             errorMessage = error.localizedDescription
             showError = true
         }
     }
     
     private func updateRule(_ rule: OpenClashRule, package: LuCIPackage = .openClash) async {
-//        print("📝 更新规则: \(rule.target)")
+        guard let username = server.openWRTUsername,
+              let password = server.openWRTPassword else {
+            errorMessage = "未设置 OpenWRT 用户名或密码"
+            showError = true
+            return
+        }
+        
         guard let index = rules.firstIndex(where: { $0.id == rule.id }) else { 
-            // print("❌ 未找到要更新的规则")
             return 
         }
         let originalRule = rules[index]
-        rules[index] = rule
         
         do {
-            try await saveRules(package: package)
+            if package == .openClash {
+                rules[index] = rule
+                try await saveRules(package: package)
+            } else {
+                let token = try await viewModel.getAuthToken(server, username: username, password: password)
+                let scheme = server.openWRTUseSSL ? "https" : "http"
+                guard let openWRTUrl = server.openWRTUrl else {
+                    throw NetworkError.invalidURL
+                }
+                let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
+                
+                guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
+                    throw NetworkError.invalidURL
+                }
+                
+                var request = URLRequest(url: url)
+                request.httpMethod = "POST"
+                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                
+                // 检查 no-resolve 的变化
+                let originalHasNoResolve = originalRule.action.hasSuffix(",no-resolve")
+                let newHasNoResolve = rule.action.hasSuffix(",no-resolve")
+                let isNoResolveTypeRule = rule.type == "IP-CIDR" || rule.type == "IP-CIDR6"
+                
+                // 构建命令数组
+                var commands = [
+                    "uci set nikki.@rule[\(index)].type='\(rule.type)'",
+                    "uci set nikki.@rule[\(index)].match='\(rule.target)'",
+                    "uci set nikki.@rule[\(index)].node='\(rule.action.replacingOccurrences(of: ",no-resolve", with: ""))'",
+                    "uci set nikki.@rule[\(index)].enabled='\(rule.isEnabled ? "1" : "0")'"
+                ]
+                
+                // 处理 no-resolve
+                if isNoResolveTypeRule {
+                    if newHasNoResolve {
+                        commands.append("uci set nikki.@rule[\(index)].no_resolve='1'")
+                    } else if originalHasNoResolve {
+                        commands.append("uci delete nikki.@rule[\(index)].no_resolve")
+                    }
+                }
+                
+                // 处理 comment
+                if let newComment = rule.comment {
+                    if originalRule.comment != newComment {
+                        commands.append("uci set nikki.@rule[\(index)].comment='\(newComment)'")
+                    }
+                } else if originalRule.comment != nil {
+                    commands.append("uci delete nikki.@rule[\(index)].comment")
+                }
+                
+                // 添加提交命令
+                commands.append("uci commit nikki")
+                
+                let updateCommands = commands.joined(separator: " && ")
+                
+                let payload: [String: Any] = [
+                    "method": "exec",
+                    "params": [updateCommands]
+                ]
+                request.httpBody = try JSONSerialization.data(withJSONObject: payload)
+                
+                let (_, response) = try await URLSession.shared.data(for: request)
+                guard let httpResponse = response as? HTTPURLResponse,
+                      httpResponse.statusCode == 200 else {
+                    throw NetworkError.serverError((response as? HTTPURLResponse)?.statusCode ?? 500)
+                }
+                
+                // 重新加载规则列表
+                await loadRules(package: package)
+            }
         } catch {
-            rules[index] = originalRule
+            if package == .openClash {
+                rules[index] = originalRule
+            }
             errorMessage = error.localizedDescription
             showError = true
         }
     }
     
     private func toggleCustomRules(enabled: Bool, package: LuCIPackage = .openClash) async {
-        // print("🔄 切换自定义规则状态: \(enabled)")
         isProcessing = true
         defer { isProcessing = false }
         
@@ -741,17 +1106,14 @@ struct OpenClashRulesView: View {
             let payload: [String: Any]
             if package == .openClash {  
                 setCmd = "uci set openclash.config.enable_custom_clash_rules='\(enabled ? "1" : "0")' && uci commit openclash"
-                payload = [
-                    "method": "exec",
-                    "params": [setCmd]
-                ]
             } else {
-                setCmd = "uci set mihomo.mixin.mixin_file_content='\(enabled ? "1" : "0")' && uci commit mihomo"
-                payload = [
-                    "method": "exec",
-                    "params": [setCmd]
-                ]
+                setCmd = "uci set nikki.mixin.rule='\(enabled ? "1" : "0")' && uci commit nikki"
             }
+            
+            payload = [
+                "method": "exec",
+                "params": [setCmd]
+            ]
             
             request.httpBody = try JSONSerialization.data(withJSONObject: payload)
             
@@ -762,34 +1124,100 @@ struct OpenClashRulesView: View {
                 throw NetworkError.serverError((response as? HTTPURLResponse)?.statusCode ?? 500)
             }
             
-//            let responseString = String(data: data, encoding: .utf8)
-            
-            // 重启 OpenClash 服务使配置生效
-            // let restartCmd = "/etc/init.d/openclash restart"
-            // let restartPayload: [String: Any] = [
-            //     "method": "exec",
-            //     "params": [restartCmd]
-            // ]
-            
-            // request.httpBody = try JSONSerialization.data(withJSONObject: restartPayload)
-            
-            // let (_, restartResponse) = try await URLSession.shared.data(for: request)
-            
-            // guard let restartHttpResponse = restartResponse as? HTTPURLResponse,
-            //       restartHttpResponse.statusCode == 200 else {
-            //     throw NetworkError.serverError((restartResponse as? HTTPURLResponse)?.statusCode ?? 500)
-            // }
-            
-            // print("✅ 自定义规则状态已更新为: \(enabled ? "启用" : "禁用")")
-            
         } catch {
-            // print("❌ 切换自定义规则状态失败: \(error.localizedDescription)")
             errorMessage = error.localizedDescription
             showError = true
             // 恢复UI状态
             await MainActor.run {
                 self.isCustomRulesEnabled = !enabled
             }
+        }
+    }
+    
+    private func reorderRules() async {
+        guard let username = server.openWRTUsername,
+              let password = server.openWRTPassword else {
+            errorMessage = "未设置 OpenWRT 用户名或密码"
+            showError = true
+            return
+        }
+        
+        do {
+            let token = try await viewModel.getAuthToken(server, username: username, password: password)
+            let scheme = server.openWRTUseSSL ? "https" : "http"
+            guard let openWRTUrl = server.openWRTUrl else {
+                throw NetworkError.invalidURL
+            }
+            let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
+            
+            guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
+                throw NetworkError.invalidURL
+            }
+            
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            
+            // 1. 获取当前规则数量
+            let countPayload: [String: Any] = [
+                "method": "exec",
+                "params": ["uci show nikki | grep -c '@rule\\[.*\\]=rule'"]
+            ]
+            request.httpBody = try JSONSerialization.data(withJSONObject: countPayload)
+            let (countData, _) = try await URLSession.shared.data(for: request)
+            let countResponse = try JSONDecoder().decode(OpenClashRuleResponse.self, from: countData)
+            guard let countStr = countResponse.result?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  let count = Int(countStr) else {
+                throw NetworkError.invalidResponse(message: "无法获取规则数量")
+            }
+            
+            // 2. 构建重排序命令
+            var commands: [String] = []
+            
+            // 先删除所有规则
+            for i in 0..<count {
+                commands.append("uci delete nikki.@rule[\(0)]")
+            }
+            
+            // 按新顺序添加规则
+            for (index, rule) in rules.enumerated() {
+                commands.append("uci add nikki rule")
+                commands.append("uci set nikki.@rule[\(index)].type='\(rule.type)'")
+                commands.append("uci set nikki.@rule[\(index)].match='\(rule.target)'")
+                commands.append("uci set nikki.@rule[\(index)].node='\(rule.action.replacingOccurrences(of: ",no-resolve", with: ""))'")
+                commands.append("uci set nikki.@rule[\(index)].enabled='\(rule.isEnabled ? "1" : "0")'")
+                
+                if let comment = rule.comment {
+                    commands.append("uci set nikki.@rule[\(index)].comment='\(comment)'")
+                }
+                
+                if (rule.type == "IP-CIDR" || rule.type == "IP-CIDR6") && rule.action.hasSuffix(",no-resolve") {
+                    commands.append("uci set nikki.@rule[\(index)].no_resolve='1'")
+                }
+            }
+            
+            // 提交更改
+            commands.append("uci commit nikki")
+            
+            let reorderCommand = commands.joined(separator: " && ")
+            
+            let payload: [String: Any] = [
+                "method": "exec",
+                "params": [reorderCommand]
+            ]
+            request.httpBody = try JSONSerialization.data(withJSONObject: payload)
+            
+            let (_, response) = try await URLSession.shared.data(for: request)
+            guard let httpResponse = response as? HTTPURLResponse,
+                  httpResponse.statusCode == 200 else {
+                throw NetworkError.serverError((response as? HTTPURLResponse)?.statusCode ?? 500)
+            }
+            
+        } catch {
+            errorMessage = error.localizedDescription
+            showError = true
+            // 重新加载规则列表
+            await loadRules(package: .mihomoTProxy)
         }
     }
 }

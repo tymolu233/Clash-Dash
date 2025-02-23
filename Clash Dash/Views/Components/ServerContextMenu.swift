@@ -153,12 +153,12 @@ struct ServerContextMenu: ViewModifier {
                     Label("配置管理", systemImage: "filemenu.and.selection")
                 }
                 
-                // Button {
-                //     HapticManager.shared.impact(.light)
-                //     onShowCustomRules()
-                // } label: {
-                //     Label("附加规则", systemImage: "list.bullet.rectangle")
-                // }
+                Button {
+                    HapticManager.shared.impact(.light)
+                    onShowCustomRules()
+                } label: {
+                    Label("附加规则", systemImage: "list.bullet.rectangle")
+                }
                 
                 Button {
                     HapticManager.shared.impact(.light)

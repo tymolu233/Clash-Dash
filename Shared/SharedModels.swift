@@ -33,18 +33,18 @@ public class SharedDataManager {
         secret: String? = nil,
         useSSL: Bool = false
     ) {
-        print("[SharedDataManager] Saving status:")
-        print("[SharedDataManager] - Server address: \(serverAddress)")
-        print("[SharedDataManager] - Server name: \(serverName ?? "nil")")
-        print("[SharedDataManager] - Active connections: \(activeConnections)")
-        print("[SharedDataManager] - Upload total: \(uploadTotal)")
-        print("[SharedDataManager] - Download total: \(downloadTotal)")
-        print("[SharedDataManager] - Memory usage: \(memoryUsage ?? 0)")
-        print("[SharedDataManager] - Use SSL: \(useSSL)")
-        print("[SharedDataManager] - Secret: \(secret != nil ? "provided" : "nil")")
+        // // print("[SharedDataManager] Saving status:")
+        // // print("[SharedDataManager] - Server address: \(serverAddress)")
+        // // print("[SharedDataManager] - Server name: \(serverName ?? "nil")")
+        // // print("[SharedDataManager] - Active connections: \(activeConnections)")
+        // // print("[SharedDataManager] - Upload total: \(uploadTotal)")
+        // // print("[SharedDataManager] - Download total: \(downloadTotal)")
+        // // print("[SharedDataManager] - Memory usage: \(memoryUsage ?? 0)")
+        // // print("[SharedDataManager] - Use SSL: \(useSSL)")
+        // // print("[SharedDataManager] - Secret: \(secret != nil ? "provided" : "nil")")
         
         let cleanServerAddress = serverAddress.components(separatedBy: ":")[0]
-        print("[SharedDataManager] - Clean server address: \(cleanServerAddress)")
+        // // print("[SharedDataManager] - Clean server address: \(cleanServerAddress)")
         
         // 保存基本信息
         userDefaults.set(serverAddress, forKey: "\(serverAddress)_serverAddress")
@@ -59,39 +59,39 @@ public class SharedDataManager {
         if let secret = secret {
             // 1. 使用直接格式
             userDefaults.set(secret, forKey: "\(cleanServerAddress)_secret")
-            print("[SharedDataManager] Secret saved with direct key")
+            // // print("[SharedDataManager] Secret saved with direct key")
             
             // 2. 使用带 app group 前缀的格式
             userDefaults.set(secret, forKey: "group.ym.si.clashdash_\(cleanServerAddress)_secret")
-            print("[SharedDataManager] Secret saved with app group key")
+            // // print("[SharedDataManager] Secret saved with app group key")
             
             // 3. 使用 Keys.serverKey 格式
             userDefaults.set(secret, forKey: Keys.serverKey(cleanServerAddress, Keys.secret))
-            print("[SharedDataManager] Secret saved with serverKey format")
+            // // print("[SharedDataManager] Secret saved with serverKey format")
             
             // 4. 使用完整地址格式（包含端口）
             userDefaults.set(secret, forKey: "\(serverAddress)_secret")
-            print("[SharedDataManager] Secret saved with full address key")
+            // print("[SharedDataManager] Secret saved with full address key")
         }
         
         userDefaults.synchronize()
-        print("[SharedDataManager] Status saved successfully")
+        // print("[SharedDataManager] Status saved successfully")
         
         // 验证保存的数据
         let savedStatus = getClashStatus(for: serverAddress)
-        print("[SharedDataManager] Verifying saved data:")
-        print("[SharedDataManager] - Server address: \(savedStatus.serverAddress)")
-        print("[SharedDataManager] - Active connections: \(savedStatus.activeConnections)")
-        print("[SharedDataManager] - Upload total: \(savedStatus.uploadTotal)")
-        print("[SharedDataManager] - Download total: \(savedStatus.downloadTotal)")
-        print("[SharedDataManager] - Memory usage: \(savedStatus.memoryUsage ?? 0)")
+        // print("[SharedDataManager] Verifying saved data:")
+        // print("[SharedDataManager] - Server address: \(savedStatus.serverAddress)")
+        // print("[SharedDataManager] - Active connections: \(savedStatus.activeConnections)")
+        // print("[SharedDataManager] - Upload total: \(savedStatus.uploadTotal)")
+        // print("[SharedDataManager] - Download total: \(savedStatus.downloadTotal)")
+        // print("[SharedDataManager] - Memory usage: \(savedStatus.memoryUsage ?? 0)")
     }
     
     public func getClashStatus(for serverAddress: String? = nil) -> ClashStatus {
-        print("[SharedDataManager] Getting status")
+        // print("[SharedDataManager] Getting status")
         
         let targetAddress = serverAddress ?? findLastUpdatedServer() ?? "未连接"
-        print("[SharedDataManager] Target address: \(targetAddress)")
+        // print("[SharedDataManager] Target address: \(targetAddress)")
         
         let status = ClashStatus(
             serverAddress: userDefaults.string(forKey: "\(targetAddress)_serverAddress") ?? targetAddress,
@@ -102,47 +102,47 @@ public class SharedDataManager {
             memoryUsage: userDefaults.double(forKey: "\(targetAddress)_memoryUsage")
         )
         
-        print("[SharedDataManager] Retrieved status:")
-        print("[SharedDataManager] - Server address: \(status.serverAddress)")
-        print("[SharedDataManager] - Server name: \(status.serverName ?? "nil")")
-        print("[SharedDataManager] - Active connections: \(status.activeConnections)")
-        print("[SharedDataManager] - Upload total: \(status.uploadTotal)")
-        print("[SharedDataManager] - Download total: \(status.downloadTotal)")
-        print("[SharedDataManager] - Memory usage: \(status.memoryUsage ?? 0)")
+        // print("[SharedDataManager] Retrieved status:")
+        // print("[SharedDataManager] - Server address: \(status.serverAddress)")
+        // print("[SharedDataManager] - Server name: \(status.serverName ?? "nil")")
+        // print("[SharedDataManager] - Active connections: \(status.activeConnections)")
+        // print("[SharedDataManager] - Upload total: \(status.uploadTotal)")
+        // print("[SharedDataManager] - Download total: \(status.downloadTotal)")
+        // print("[SharedDataManager] - Memory usage: \(status.memoryUsage ?? 0)")
         return status
     }
     
     public func getLastUpdateTime(for serverAddress: String) -> Date? {
         let lastUpdate = userDefaults.object(forKey: Keys.serverKey(serverAddress, Keys.lastUpdateTime)) as? Date
-        print("[SharedDataManager] Last update time for \(serverAddress): \(lastUpdate?.description ?? "nil")")
+        // print("[SharedDataManager] Last update time for \(serverAddress): \(lastUpdate?.description ?? "nil")")
         return lastUpdate
     }
     
     public func getSecret(for serverAddress: String) -> String? {
         let cleanServerAddress = serverAddress.components(separatedBy: ":")[0]
-        print("[SharedDataManager] Getting secret for \(cleanServerAddress)")
+        // print("[SharedDataManager] Getting secret for \(cleanServerAddress)")
         
         // 1. 尝试直接格式
         if let secret = userDefaults.string(forKey: "\(cleanServerAddress)_secret") {
-            print("[SharedDataManager] Found secret with direct key")
+            // print("[SharedDataManager] Found secret with direct key")
             return secret
         }
         
         // 2. 尝试带 app group 前缀的格式
         if let secret = userDefaults.string(forKey: "group.ym.si.clashdash_\(cleanServerAddress)_secret") {
-            print("[SharedDataManager] Found secret with app group key")
+            // print("[SharedDataManager] Found secret with app group key")
             return secret
         }
         
         // 3. 尝试使用完整地址格式（包含端口）
         if let secret = userDefaults.string(forKey: "\(serverAddress)_secret") {
-            print("[SharedDataManager] Found secret with full address key")
+            // print("[SharedDataManager] Found secret with full address key")
             return secret
         }
         
         // 4. 尝试使用 Keys.serverKey 格式
         if let secret = userDefaults.string(forKey: Keys.serverKey(cleanServerAddress, Keys.secret)) {
-            print("[SharedDataManager] Found secret with serverKey format")
+            // print("[SharedDataManager] Found secret with serverKey format")
             return secret
         }
         
@@ -151,13 +151,13 @@ public class SharedDataManager {
         for key in allKeys {
             if key.contains(cleanServerAddress) && key.hasSuffix("_secret") {
                 if let secret = userDefaults.string(forKey: key) {
-                    print("[SharedDataManager] Found secret with key: \(key)")
+                    // print("[SharedDataManager] Found secret with key: \(key)")
                     return secret
                 }
             }
         }
         
-        print("[SharedDataManager] Secret not found for \(serverAddress)")
+        // print("[SharedDataManager] Secret not found for \(serverAddress)")
         return nil
     }
     

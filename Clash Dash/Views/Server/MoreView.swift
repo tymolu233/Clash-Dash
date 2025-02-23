@@ -207,6 +207,18 @@ struct MoreView: View {
                             Text("订阅管理")
                         }
                     }
+
+                    Button {
+                        HapticManager.shared.impact(.light)
+                        showingCustomRules = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "list.bullet.rectangle")
+                                .foregroundColor(.blue)
+                                .frame(width: 25)
+                            Text("附加规则")
+                        }
+                    }
                     
                     Button {
                         HapticManager.shared.impact(.light)

@@ -373,11 +373,11 @@ class NetworkMonitor: ObservableObject {
                 
                 // 同步数据到 App Group
                 if let server = self.server {
-                    print("[NetworkMonitor] Syncing connections data to App Group")
-                    print("[NetworkMonitor] - Active connections: \(self.activeConnections)")
-                    print("[NetworkMonitor] - Upload total: \(self.rawTotalUpload)")
-                    print("[NetworkMonitor] - Download total: \(self.rawTotalDownload)")
-                    print("[NetworkMonitor] - Server name: \(server.name)")
+                    // print("[NetworkMonitor] Syncing connections data to App Group")
+                    // print("[NetworkMonitor] - Active connections: \(self.activeConnections)")
+                    // print("[NetworkMonitor] - Upload total: \(self.rawTotalUpload)")
+                    // print("[NetworkMonitor] - Download total: \(self.rawTotalDownload)")
+                    // print("[NetworkMonitor] - Server name: \(server.name)")
                     
                     SharedDataManager.shared.saveClashStatus(
                         serverAddress: "\(server.url):\(server.port)",
