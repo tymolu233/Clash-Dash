@@ -1089,9 +1089,13 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             configPath = "/etc/openclash/config/\(configFilename)"
         } else {
             // mihomoTProxy
+            // 检查是否使用 nikki
+            let isNikki = try await isUsingNikki(server, token: token)
+            let packagePrefix = isNikki ? "nikki" : "mihomo"
+            
             configPath = isSubscription ? 
-                "/etc/mihomo/subscriptions/\(configFilename)" :
-                "/etc/mihomo/profiles/\(configFilename)"
+                "/etc/\(packagePrefix)/subscriptions/\(configFilename)" :
+                "/etc/\(packagePrefix)/profiles/\(configFilename)"
         }
 
         let command: [String: Any] = [
@@ -1125,24 +1129,17 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         }
         let baseURL = "\(scheme)://\(openWRTUrl):\(server.openWRTPort ?? "80")"
         
-        // print("开始保存配置文件: \(configFilename)")
         logger.info("📝 开始保存配置文件: \(configFilename)")
         guard let username = server.openWRTUsername,
               let password = server.openWRTPassword else {
-            // print("❌ 未找到认证信息")
             logger.error("❌ 未找到认证信息")
             throw NetworkError.unauthorized(message: "未找到认证信息")
         }
         
-        // print("🔑 获取认证令牌...")
-        // logger.log("🔑 获取认证令牌...")
         let token = try await getAuthToken(server, username: username, password: password)
-        // print("✅ 获取令牌成功: \(token)")
-        // logger.log("✅ 获取令牌成功: \(token)")
         
         // 构建请求
         guard let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys?auth=\(token)") else {
-            // print("❌ 无效的 URL")
             throw NetworkError.invalidURL
         }
         
@@ -1155,13 +1152,15 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             configPath = "'/etc/openclash/config/\(configFilename)'"
         } else {
             // mihomoTProxy
+            // 检查是否使用 nikki
+            let isNikki = try await isUsingNikki(server, token: token)
+            let packagePrefix = isNikki ? "nikki" : "mihomo"
+            
             configPath = isSubscription ? 
-                "'/etc/mihomo/subscriptions/\(configFilename)'" :
-                "'/etc/mihomo/profiles/\(configFilename)'"
+                "'/etc/\(packagePrefix)/subscriptions/\(configFilename)'" :
+                "'/etc/\(packagePrefix)/profiles/\(configFilename)'"
         }
 
-        // print("🔍 写入配置文件路径: \(configPath)")
-        
         // 构建写入命令,使用 echo 直接写入
         let cmd = "echo '\(escapedContent)' > \(configPath) 2>&1 && echo '写入成功' || echo '写入失败'"
         
@@ -1180,19 +1179,16 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         let (_, response) = try await session.data(for: request)
         
         if let httpResponse = response as? HTTPURLResponse {
-            // print("📥 写入响应状态码: \(httpResponse.statusCode)")
             logger.info("📥 写入响应状态码: \(httpResponse.statusCode)")
         }
         
         guard let httpResponse = response as? HTTPURLResponse,
               httpResponse.statusCode == 200 else {
-            print("❌ 写入失败")
             logger.error("❌ 写入失败")
             throw NetworkError.serverError((response as? HTTPURLResponse)?.statusCode ?? 500)
         }
         
         // 验证文件是否成功写入
-        // print("🔍 验证文件写入...")
         logger.info("🔍 验证文件写入...")
         
         // 使用 fs.stat 验证文件
@@ -1218,16 +1214,13 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         let fileDate = Date(timeIntervalSince1970: TimeInterval(statResponse.result.mtime))
         let timeDiff = Date().timeIntervalSince(fileDate)
         
-        // print("⏱ 文件修改时间差: \(timeDiff)秒")
         logger.info("⏱ 文件修改时间差: \(timeDiff)秒")
         
         if timeDiff < 0 || timeDiff > 5 {
-            print("❌ 文件时间验证失败")
             logger.error("❌ 文件时间验证失败")
             throw NetworkError.invalidResponse(message: "文件时间验证失败")
         }
         
-        // print("✅ 配置文件保存成功")
         logger.info("✅ 配置文件保存成功")
     }
     

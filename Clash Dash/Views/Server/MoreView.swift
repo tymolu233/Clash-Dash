@@ -207,6 +207,18 @@ struct MoreView: View {
                             Text("订阅管理")
                         }
                     }
+                    
+                    Button {
+                        HapticManager.shared.impact(.light)
+                        showingSwitchConfig = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "filemenu.and.selection")
+                                .foregroundColor(.blue)
+                                .frame(width: 25)
+                            Text("配置管理")
+                        }
+                    }
 
                     Button {
                         HapticManager.shared.impact(.light)
