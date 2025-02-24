@@ -170,7 +170,7 @@ struct SimpleWidgetEntryView : View {
                 Spacer()
                 if #available(iOSApplicationExtension 17.0, *) {
                     Button(intent: RefreshIntent()) {
-                        Image(systemName: "arrow.clockwise")
+                        Image(systemName: "arrow.triangle.2.circlepath")
                             .font(.caption2)
                             .foregroundColor(.blue)
                             .symbolEffect(.bounce, value: entry.date)
@@ -180,7 +180,7 @@ struct SimpleWidgetEntryView : View {
             }
             
             // 流量信息
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 6) {
                 // 下载
                 VStack(alignment: .leading, spacing: 2) {
                     Text("下载")
@@ -220,9 +220,9 @@ struct SimpleWidgetEntryView : View {
             HStack(spacing: 8) {
                 // 连接状态
                 HStack(spacing: 4) {
-                    Circle()
-                        .fill(Color.green)
-                        .frame(width: 6, height: 6)
+                    Image(systemName: "waveform.path.ecg")
+                        .font(.caption2)
+                        .foregroundColor(.green)
                     Text("\(entry.status.activeConnections)")
                         .font(.system(.caption, design: .rounded))
                         .bold()
@@ -233,22 +233,27 @@ struct SimpleWidgetEntryView : View {
                 .cornerRadius(6)
                 
                 if let memory = entry.status.memoryUsage {
-                    Text("\(String(format: "%.1f", memory))MB")
-                        .font(.system(.caption, design: .rounded))
-                        .bold()
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color.blue.opacity(0.1))
-                        .cornerRadius(6)
-                        .lineLimit(1)
+                    HStack(spacing: 4) {
+                        Image(systemName: "memorychip")
+                            .font(.caption2)
+                            .foregroundColor(.blue)
+                        Text("\(Int(memory))MB")
+                            .font(.system(.caption, design: .rounded))
+                            .bold()
+                    }
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Color.blue.opacity(0.1))
+                    .cornerRadius(6)
+                    .lineLimit(1)
                 }
             }
         }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
         
         if #available(iOSApplicationExtension 17.0, *) {
             content
-                .padding(.horizontal, 6)
-                .padding(.vertical, 8)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .containerBackground(for: .widget) {
                     LinearGradient(
@@ -264,8 +269,6 @@ struct SimpleWidgetEntryView : View {
                 }
         } else {
             content
-                .padding(.horizontal, 6)
-                .padding(.vertical, 8)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(
                     LinearGradient(
@@ -300,20 +303,25 @@ struct SimpleWidgetEntryView : View {
                 Spacer()
                 if #available(iOSApplicationExtension 17.0, *) {
                     Button(intent: RefreshIntent()) {
-                        Image(systemName: "arrow.clockwise")
+                        Image(systemName: "arrow.triangle.2.circlepath")
                             .font(.caption2)
                             .foregroundColor(.blue)
                             .symbolEffect(.bounce, value: entry.date)
                     }
                     .buttonStyle(.plain)
-                }
-                HStack(spacing: 4) {
-                    Image(systemName: "clock.fill")
-                        .font(.caption2)
-                        .foregroundColor(.orange)
+                    
                     Text("更新时间: \(entry.date, style: .time)")
                         .font(.system(.caption, design: .rounded))
                         .foregroundColor(.secondary)
+                } else {
+                    HStack(spacing: 4) {
+                        Image(systemName: "clock.fill")
+                            .font(.caption2)
+                            .foregroundColor(.orange)
+                        Text("更新时间: \(entry.date, style: .time)")
+                            .font(.system(.caption, design: .rounded))
+                            .foregroundColor(.secondary)
+                    }
                 }
             }
             .padding(.horizontal, 8)
@@ -329,9 +337,10 @@ struct SimpleWidgetEntryView : View {
                             .font(.system(.caption, design: .rounded))
                             .foregroundColor(.secondary)
                         HStack(spacing: 6) {
-                            Circle()
-                                .fill(Color.green)
-                                .frame(width: 8, height: 8)
+                            // 
+                            Image(systemName: "waveform.path.ecg")
+                            .font(.caption2)
+                            .foregroundColor(.green)
                             Text("\(entry.status.activeConnections)")
                                 .font(.system(.title2, design: .rounded))
                                 .bold()
