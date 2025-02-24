@@ -143,6 +143,13 @@ struct ClashServer: Identifiable, Codable {
         return URL(string: "\(scheme)://\(cleanURL):\(port)")
     }
     
+    /// 专门用于 Clash API 请求的 URL
+    var clashBaseURL: URL? {
+        let cleanURL = url.replacingOccurrences(of: "^https?://", with: "", options: .regularExpression)
+        let scheme = clashUseSSL ? "https" : "http"
+        return URL(string: "\(scheme)://\(cleanURL):\(port)")
+    }
+    
     var proxyProvidersURL: URL? {
         baseURL?.appendingPathComponent("providers/proxies")
     }

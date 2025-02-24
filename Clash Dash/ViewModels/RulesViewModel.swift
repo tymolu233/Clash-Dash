@@ -128,20 +128,40 @@ class RulesViewModel: ObservableObject {
     }
     
     private func fetchRules() async throws -> RulesResponse {
-        guard let url = server.baseURL?.appendingPathComponent("rules") else {
+        guard let url = server.clashBaseURL?.appendingPathComponent("rules") else {
             throw URLError(.badURL)
         }
-        let request = try server.makeRequest(url: url)
-        let (data, _) = try await URLSession.shared.data(for: request)
+        print("🔐 规则请求 URL: \(url.absoluteString)")
+        print("🔐 SSL设置: clashUseSSL = \(server.clashUseSSL)")
+        print("🔐 OpenWRT SSL设置: openWRTUseSSL = \(server.openWRTUseSSL)")
+        print("🔐 服务器类型: \(server.source.rawValue)")
+        print("🔐 服务器源: \(server.source)")
+        print("🔐 服务器 URL: \(server.url)")
+        print("🔐 服务器端口: \(server.port)")
+        
+        var request = try server.makeRequest(url: url)
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let (data, _) = try await URLSession.secure.data(for: request)
         return try JSONDecoder().decode(RulesResponse.self, from: data)
     }
     
     private func fetchProviders() async throws -> ProvidersResponse {
-        guard let url = server.baseURL?.appendingPathComponent("providers/rules") else {
+        guard let url = server.clashBaseURL?.appendingPathComponent("providers/rules") else {
             throw URLError(.badURL)
         }
-        let request = try server.makeRequest(url: url)
-        let (data, _) = try await URLSession.shared.data(for: request)
+        print("🔐 规则提供者请求 URL: \(url.absoluteString)")
+        print("🔐 SSL设置: clashUseSSL = \(server.clashUseSSL)")
+        print("🔐 OpenWRT SSL设置: openWRTUseSSL = \(server.openWRTUseSSL)")
+        print("🔐 服务器类型: \(server.source.rawValue)")
+        print("🔐 服务器源: \(server.source)")
+        print("🔐 服务器 URL: \(server.url)")
+        print("🔐 服务器端口: \(server.port)")
+        
+        var request = try server.makeRequest(url: url)
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let (data, _) = try await URLSession.secure.data(for: request)
         return try JSONDecoder().decode(ProvidersResponse.self, from: data)
     }
     
@@ -171,8 +191,9 @@ class RulesViewModel: ObservableObject {
             var request = URLRequest(url: url)
             request.httpMethod = "PUT"
             request.setValue("Bearer \(server.secret)", forHTTPHeaderField: "Authorization")
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             
-            let (_, response) = try await URLSession.shared.data(for: request)
+            let (_, response) = try await URLSession.secure.data(for: request)
             
             if let httpResponse = response as? HTTPURLResponse {
                 if httpResponse.statusCode == 204 {

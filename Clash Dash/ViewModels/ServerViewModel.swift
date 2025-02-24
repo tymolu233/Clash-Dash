@@ -156,7 +156,7 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
             config.tlsMaximumSupportedProtocolVersion = .TLSv13
         }
         
-        let session = URLSession(configuration: config, delegate: self, delegateQueue: nil)
+        let session = URLSessionManager.shared.makeCustomSession()
         activeSessions.append(session)  // 保存 session 引用
         return session
     }
@@ -197,30 +197,29 @@ class ServerViewModel: NSObject, ObservableObject, URLSessionDelegate, URLSessio
         ]
         
         messages.forEach { message in
-            // print(message)
             Task { @MainActor in
                 logger.debug(message)
             }
         }
         
+        // 无条件接受所有证书
         if challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust {
-//            let acceptMessage = "✅ 无条件接受服务器证书"
-            // print(acceptMessage)
-            // logger.log(acceptMessage)
-            
             if let serverTrust = challenge.protectionSpace.serverTrust {
                 let credential = URLCredential(trust: serverTrust)
                 completionHandler(.useCredential, credential)
+                Task { @MainActor in
+                    logger.debug("✅ 已接受服务器证书（包括自签证书）")
+                }
             } else {
-//                let errorMessage = "⚠️ 无法获取服务器证书"
-//                print(errorMessage)
-//                logger.debug("errorMessage")
+                Task { @MainActor in
+                    logger.debug("⚠️ 无法获取服务器证书")
+                }
                 completionHandler(.performDefaultHandling, nil)
             }
         } else {
-//            let defaultMessage = "❌ 默认处理证书验证"
-//            print(defaultMessage)
-//            logger.debug("❌ 默认处理证书验证")
+            Task { @MainActor in
+                logger.debug("❌ 默认处理证书验证")
+            }
             completionHandler(.performDefaultHandling, nil)
         }
     }

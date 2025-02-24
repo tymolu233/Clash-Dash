@@ -84,6 +84,18 @@ struct WebView: UIViewRepresentable {
             }
         }
         
+        // 添加自签名证书支持
+        func webView(_ webView: WKWebView, didReceive challenge: URLAuthenticationChallenge, completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
+            if challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust {
+                if let serverTrust = challenge.protectionSpace.serverTrust {
+                    let credential = URLCredential(trust: serverTrust)
+                    completionHandler(.useCredential, credential)
+                    return
+                }
+            }
+            completionHandler(.performDefaultHandling, nil)
+        }
+        
         private func syncCookies(completion: @escaping () -> Void) {
             let cookieStore = WKWebsiteDataStore.default().httpCookieStore
             let dispatchGroup = DispatchGroup()
@@ -142,6 +154,7 @@ struct WebView: UIViewRepresentable {
         // 创建新的非持久化数据存储
         let websiteDataStore = WKWebsiteDataStore.nonPersistent()
         
+        // 配置 WKWebView
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = websiteDataStore
         
@@ -273,6 +286,9 @@ class LuCIWebViewModel: ObservableObject {
             guard let finalURL = URL(string: baseURL + path) else {
                 throw NetworkError.invalidURL
             }
+            
+            print("🔐 Web 访问 URL: \(finalURL.absoluteString)")
+            print("🔐 OpenWRT SSL设置: \(server.openWRTUseSSL)")
             
             url = finalURL
             isLoading = false

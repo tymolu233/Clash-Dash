@@ -163,7 +163,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
             ]
             request.httpBody = try JSONSerialization.data(withJSONObject: command)
             
-            let session = URLSession.shared
+            let session = URLSession.secure
             let (data, response) = try await session.data(for: request)
             
             guard let httpResponse = response as? HTTPURLResponse,
@@ -266,7 +266,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
             ]
             request.httpBody = try JSONSerialization.data(withJSONObject: getAllCommand)
             
-            let session = URLSession.shared
+            let session = URLSession.secure
             let (data, response) = try await session.data(for: request)
             
             guard let httpResponse = response as? HTTPURLResponse,
@@ -403,7 +403,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await URLSession.secure.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse,
               httpResponse.statusCode == 200 else {
@@ -454,7 +454,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
                 ]
                 request.httpBody = try JSONSerialization.data(withJSONObject: countCommand)
                 
-                let (countData, _) = try await URLSession.shared.data(for: request)
+                let (countData, _) = try await URLSession.secure.data(for: request)
                 let countResponse: UCIResponse = try JSONDecoder().decode(UCIResponse.self, from: countData)
                 
                 guard let countStr = countResponse.result.trimmingCharacters(in: .whitespacesAndNewlines).components(separatedBy: .newlines).first,
@@ -535,7 +535,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
                 ]
                 request.httpBody = try JSONSerialization.data(withJSONObject: addCommand)
                 
-                let (data, response) = try await URLSession.shared.data(for: request)
+                let (data, response) = try await URLSession.secure.data(for: request)
                 
                 guard let httpResponse = response as? HTTPURLResponse,
                     httpResponse.statusCode == 200 else {
@@ -609,7 +609,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
                 ]
                 request.httpBody = try JSONSerialization.data(withJSONObject: addCommand)
                 
-                let (data, response) = try await URLSession.shared.data(for: request)
+                let (data, response) = try await URLSession.secure.data(for: request)
                 
                 guard let httpResponse = response as? HTTPURLResponse,
                     httpResponse.statusCode == 200 else {
@@ -817,7 +817,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
                     ]
                     request.httpBody = try JSONSerialization.data(withJSONObject: command)
                     
-                    let session = URLSession.shared
+                    let session = URLSession.secure
                     let (data, response) = try await session.data(for: request)
                     
                     guard let httpResponse = response as? HTTPURLResponse,
@@ -893,7 +893,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
                 ]
                 request.httpBody = try JSONSerialization.data(withJSONObject: updateCommand)
                 
-                let (data, response) = try await URLSession.shared.data(for: request)
+                let (data, response) = try await URLSession.secure.data(for: request)
                 
                 guard let httpResponse = response as? HTTPURLResponse,
                     httpResponse.statusCode == 200 else {
@@ -949,7 +949,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
             request.httpBody = try JSONSerialization.data(withJSONObject: command)
             
             // print("📤 发送切换命令...")
-            let session = URLSession.shared
+            let session = URLSession.secure
             let (data, response) = try await session.data(for: request)
             
             guard let httpResponse = response as? HTTPURLResponse,
@@ -1002,7 +1002,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: command)
         
-        let session = URLSession.shared
+        let session = URLSession.secure
         let (data, response) = try await session.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse,
@@ -1101,7 +1101,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
             ]
             request.httpBody = try JSONSerialization.data(withJSONObject: command)
             
-            let (data, response) = try await URLSession.shared.data(for: request)
+            let (data, response) = try await URLSession.secure.data(for: request)
             
             guard let httpResponse = response as? HTTPURLResponse,
                   httpResponse.statusCode == 200 else {
@@ -1165,7 +1165,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
                 ]
                 request.httpBody = try JSONSerialization.data(withJSONObject: command)
                 
-                let (data, response) = try await URLSession.shared.data(for: request)
+                let (data, response) = try await URLSession.secure.data(for: request)
                 
                 guard let httpResponse = response as? HTTPURLResponse,
                     httpResponse.statusCode == 200 else {
@@ -1223,7 +1223,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
                 ]
                 request.httpBody = try JSONSerialization.data(withJSONObject: command)
                 
-                let (data, response) = try await URLSession.shared.data(for: request)
+                let (data, response) = try await URLSession.secure.data(for: request)
                 
                 guard let httpResponse = response as? HTTPURLResponse,
                     httpResponse.statusCode == 200 else {
@@ -1279,7 +1279,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: command)
         
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await URLSession.secure.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse,
               httpResponse.statusCode == 200 else {
@@ -1327,7 +1327,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: getDetailCommand)
         
-        let (detailData, detailResponse) = try await URLSession.shared.data(for: request)
+        let (detailData, detailResponse) = try await URLSession.secure.data(for: request)
         guard let detailHttpResponse = detailResponse as? HTTPURLResponse,
               detailHttpResponse.statusCode == 200 else {
             throw NetworkError.serverError(500)
@@ -1418,7 +1418,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
         // print(command)
         request.httpBody = try JSONSerialization.data(withJSONObject: command)
         
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await URLSession.secure.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse,
               httpResponse.statusCode == 200 else {
@@ -1458,7 +1458,7 @@ class ConfigSubscriptionViewModel: ObservableObject {
         request.setValue("no-cache", forHTTPHeaderField: "Pragma")
         request.setValue("sysauth_http=\(token)", forHTTPHeaderField: "Cookie")
         
-        let (_, response) = try await URLSession.shared.data(for: request)
+        let (_, response) = try await URLSession.secure.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse,
               httpResponse.statusCode == 200 else {

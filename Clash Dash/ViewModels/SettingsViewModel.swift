@@ -28,10 +28,15 @@ class SettingsViewModel: ObservableObject {
     
     private func makeRequest(path: String, server: ClashServer) -> URLRequest? {
         let scheme = server.clashUseSSL ? "https" : "http"
+        logger.debug("🔐 SSL设置: clashUseSSL = \(server.clashUseSSL)")
+        logger.debug("📡 使用协议: \(scheme)")
+        
         guard let url = URL(string: "\(scheme)://\(server.url):\(server.port)/\(path)") else {
-            print("无效的 URL")
+            logger.error("❌ 无效的 URL")
             return nil
         }
+        
+        logger.debug("🌐 完整URL: \(url.absoluteString)")
         
         var request = URLRequest(url: url)
         request.setValue("Bearer \(server.secret)", forHTTPHeaderField: "Authorization")
@@ -40,16 +45,35 @@ class SettingsViewModel: ObservableObject {
     }
     
     func fetchConfig(server: ClashServer) {
-        guard let request = makeRequest(path: "configs", server: server) else { return }
+        logger.debug("开始获取配置...")
+        guard let request = makeRequest(path: "configs", server: server) else { 
+            logger.error("创建请求失败")
+            return 
+        }
         
-        URLSession.shared.dataTask(with: request) { data, response, error in
-            guard let data = data else { return }
+        URLSession.secure.dataTask(with: request) { [weak self] data, response, error in
+            if let error = error {
+                logger.error("请求错误: \(error.localizedDescription)")
+                return
+            }
+            
+            if let httpResponse = response as? HTTPURLResponse {
+                logger.debug("响应状态码: \(httpResponse.statusCode)")
+            }
+            
+            guard let data = data else {
+                logger.error("没有收到数据")
+                return 
+            }
             
             if let config = try? JSONDecoder().decode(ClashConfig.self, from: data) {
-                DispatchQueue.main.async { [weak self] in
+                DispatchQueue.main.async {
                     self?.config = config
                     self?.updateUIFromConfig(config)
+                    logger.info("配置更新成功")
                 }
+            } else {
+                logger.error("解码配置失败")
             }
         }.resume()
     }
@@ -124,7 +148,7 @@ class SettingsViewModel: ObservableObject {
             return
         }
         
-        URLSession.shared.dataTask(with: request) { data, response, error in
+        URLSession.secure.dataTask(with: request) { data, response, error in
             if let httpResponse = response as? HTTPURLResponse {
                 if httpResponse.statusCode == 204 {
                     logger.info("配置更新成功：\(path) = \(value)")
@@ -153,7 +177,7 @@ class SettingsViewModel: ObservableObject {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try? JSONSerialization.data(withJSONObject: [:])
         
-        URLSession.shared.dataTask(with: request) { data, response, error in
+        URLSession.secure.dataTask(with: request) { data, response, error in
             if let httpResponse = response as? HTTPURLResponse,
                (200...299).contains(httpResponse.statusCode) {
                 logger.info("配置重载成功")
@@ -179,7 +203,7 @@ class SettingsViewModel: ObservableObject {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try? JSONSerialization.data(withJSONObject: [:])
         
-        URLSession.shared.dataTask(with: request) { data, response, error in
+        URLSession.secure.dataTask(with: request) { data, response, error in
             if let httpResponse = response as? HTTPURLResponse,
                (200...299).contains(httpResponse.statusCode) {
                 logger.info("GEO 数据库更新成功")
@@ -205,7 +229,7 @@ class SettingsViewModel: ObservableObject {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try? JSONSerialization.data(withJSONObject: [:])
         
-        URLSession.shared.dataTask(with: request) { data, response, error in
+        URLSession.secure.dataTask(with: request) { data, response, error in
             if let httpResponse = response as? HTTPURLResponse,
                (200...299).contains(httpResponse.statusCode) {
                 logger.info("FakeIP 缓存清除成功")
@@ -231,7 +255,7 @@ class SettingsViewModel: ObservableObject {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try? JSONSerialization.data(withJSONObject: [:])
         
-        URLSession.shared.dataTask(with: request) { data, response, error in
+        URLSession.secure.dataTask(with: request) { data, response, error in
             if let httpResponse = response as? HTTPURLResponse,
                (200...299).contains(httpResponse.statusCode) {
                 logger.info("核心重启成功")
@@ -257,7 +281,7 @@ class SettingsViewModel: ObservableObject {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try? JSONSerialization.data(withJSONObject: [:])
         
-        URLSession.shared.dataTask(with: request) { data, response, error in
+        URLSession.secure.dataTask(with: request) { data, response, error in
             if let httpResponse = response as? HTTPURLResponse,
                (200...299).contains(httpResponse.statusCode) {
                 logger.info("核心更新成功")
@@ -292,7 +316,7 @@ class SettingsViewModel: ObservableObject {
     func getCurrentMode(server: ClashServer, completion: @escaping (String) -> Void) {
         guard let request = makeRequest(path: "configs", server: server) else { return }
         
-        URLSession.shared.dataTask(with: request) { data, response, error in
+        URLSession.secure.dataTask(with: request) { data, response, error in
             guard let data = data,
                   let config = try? JSONDecoder().decode(ClashConfig.self, from: data) else {
                 return

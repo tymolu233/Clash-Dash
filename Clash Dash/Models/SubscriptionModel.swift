@@ -83,7 +83,7 @@ struct ProxyProviderResponse: Codable {
 // HTTP 客户端协议
 protocol HTTPClient {
     func login() async throws -> String
-    func makeRequest(method: String, url: URL, headers: [String: String], body: Data?) async throws -> (Data, URLResponse)
+    func makeRequest(_ request: URLRequest) async throws -> (Data, URLResponse)
 }
 
 // 默认 HTTP 客户端实现
@@ -109,18 +109,12 @@ class DefaultHTTPClient: HTTPClient {
             "params": [server.openWRTUsername ?? "root", server.openWRTPassword ?? ""]
         ] as [String : Any]
         
-        // print("Sending login request to: \(url)")
-        
         let loginBody = try JSONSerialization.data(withJSONObject: loginData)
-        // print("Login request body: \(String(data: loginBody, encoding: .utf8) ?? "")")
         request.httpBody = loginBody
         
-        let (data, _) = try await URLSession.shared.data(for: request)
+        let (data, _) = try await URLSession.secure.data(for: request)
         
-        // 打印接收到的数据
         if let responseString = String(data: data, encoding: .utf8) {
-            // print("Login response: \(responseString)")
-            
             // 检查响应是否为空或无效
             if responseString.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Login response is empty"])
@@ -159,7 +153,6 @@ class DefaultHTTPClient: HTTPClient {
                 return response.result
                 
             } catch {
-                // print("Error decoding login response: \(error)")
                 if let jsonError = error as? DecodingError {
                     switch jsonError {
                     case .dataCorrupted(let context):
@@ -181,19 +174,8 @@ class DefaultHTTPClient: HTTPClient {
         }
     }
     
-    func makeRequest(method: String, url: URL, headers: [String: String], body: Data?) async throws -> (Data, URLResponse) {
-        var request = URLRequest(url: url)
-        request.httpMethod = method
-        
-        for (key, value) in headers {
-            request.setValue(value, forHTTPHeaderField: key)
-        }
-        
-        if let body = body {
-            request.httpBody = body
-        }
-        
-        return try await URLSession.shared.data(for: request)
+    func makeRequest(_ request: URLRequest) async throws -> (Data, URLResponse) {
+        return try await URLSession.secure.data(for: request)
     }
 }
 
@@ -224,22 +206,20 @@ class OpenClashClient: ClashClient {
         let baseURL = "\(scheme)://\(server.openWRTUrl ?? server.url):\(server.openWRTPort ?? server.port)"
         let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys")!
         
-        let headers = [
-            "Content-Type": "application/json",
-            "Cookie": "sysauth=\(token!);sysauth_http=\(token!)"
-        ]
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("sysauth=\(token!);sysauth_http=\(token!)", forHTTPHeaderField: "Cookie")
         
         let requestData = [
             "method": "exec",
             "params": ["uci get openclash.config.config_path"]
         ] as [String : Any]
         
-        // print("Getting current config from: \(url)")
-        // print("Headers: \(headers)")
-        // print("Request data: \(requestData)")
-        
         let body = try JSONSerialization.data(withJSONObject: requestData)
-        let (data, response) = try await httpClient.makeRequest(method: "POST", url: url, headers: headers, body: body)
+        request.httpBody = body
+        
+        let (data, response) = try await httpClient.makeRequest(request)
         
         if let httpResponse = response as? HTTPURLResponse {
             LogManager.shared.info("Config response status code: \(httpResponse.statusCode)")
@@ -323,22 +303,18 @@ class OpenClashClient: ClashClient {
             URLQueryItem(name: "filename", value: config)
         ]
         
-        let headers = [
-            "Cookie": "sysauth=\(token!);sysauth_http=\(token!)",
-            "Content-Type": "application/x-www-form-urlencoded; charset=utf-8"
-        ]
+        var request = URLRequest(url: urlComponents.url!)
+        request.httpMethod = "GET"
+        request.setValue("sysauth=\(token!);sysauth_http=\(token!)", forHTTPHeaderField: "Cookie")
+        request.setValue("application/x-www-form-urlencoded; charset=utf-8", forHTTPHeaderField: "Content-Type")
         
-        // LogManager.shared.info("订阅信息 - 发送请求到: \(urlComponents.url!)")
-        // LogManager.shared.info("订阅信息 - 请求头: \(headers)")
-        
-        let (data, response) = try await httpClient.makeRequest(method: "GET", url: urlComponents.url!, headers: headers, body: nil)
+        let (data, response) = try await httpClient.makeRequest(request)
         
         if let httpResponse = response as? HTTPURLResponse {
             LogManager.shared.info("订阅信息 - 响应状态码: \(httpResponse.statusCode)")
             LogManager.shared.info("订阅信息 - 响应头: \(httpResponse.allHeaderFields)")
         }
         
-        // 打印接收到的数据
         if let responseString = String(data: data, encoding: .utf8) {
             LogManager.shared.info("订阅信息 - 接收到的响应: \(responseString)")
             
@@ -424,12 +400,12 @@ class OpenClashClient: ClashClient {
         let baseURL = "\(scheme)://\(server.url):\(server.port)"
         let url = URL(string: "\(baseURL)/providers/proxies")!
         
-        let headers = [
-            "Authorization": "Bearer \(server.secret)",
-            "Content-Type": "application/json"
-        ]
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(server.secret)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        let (data, _) = try await httpClient.makeRequest(method: "GET", url: url, headers: headers, body: nil)
+        let (data, _) = try await httpClient.makeRequest(request)
         let response = try JSONDecoder().decode(ProxyProviderResponse.self, from: data)
         
         var result: [String: SubscriptionCardInfo] = [:]
@@ -514,25 +490,20 @@ class MihomoClient: ClashClient {
         let baseURL = "\(scheme)://\(server.openWRTUrl ?? server.url):\(server.openWRTPort ?? server.port)"
         let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys")!
         
-        let headers = [
-            "Content-Type": "application/json",
-            "Cookie": "sysauth=\(token!);sysauth_http=\(token!)"
-        ]
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("sysauth=\(token!);sysauth_http=\(token!)", forHTTPHeaderField: "Cookie")
         
         let packageName = try await getPackageName()
-        
         let requestData = [
-            "id": 1,
             "method": "exec",
             "params": ["uci get \(packageName).config.profile"]
         ] as [String : Any]
         
-        LogManager.shared.info("Getting current config from: \(url)")
-        LogManager.shared.info("Headers: \(headers)")
-        LogManager.shared.info("Request data: \(requestData)")
-        
         let body = try JSONSerialization.data(withJSONObject: requestData)
-        let (data, response) = try await httpClient.makeRequest(method: "POST", url: url, headers: headers, body: body)
+        request.httpBody = body
+        let (data, response) = try await httpClient.makeRequest(request)
         
         if let httpResponse = response as? HTTPURLResponse {
             LogManager.shared.info("订阅信息 - 响应状态码: \(httpResponse.statusCode)")
@@ -649,10 +620,10 @@ class MihomoClient: ClashClient {
         let baseURL = "\(scheme)://\(server.openWRTUrl ?? server.url):\(server.openWRTPort ?? server.port)"
         let url = URL(string: "\(baseURL)/cgi-bin/luci/rpc/sys")!
         
-        let headers = [
-            "Content-Type": "application/json",
-            "Cookie": "sysauth=\(token!);sysauth_http=\(token!)"
-        ]
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("sysauth=\(token!);sysauth_http=\(token!)", forHTTPHeaderField: "Cookie")
         
         // 检查是否使用 nikki
         let serverViewModel = await ServerViewModel()
@@ -666,7 +637,8 @@ class MihomoClient: ClashClient {
         ] as [String : Any]
         
         let body = try JSONSerialization.data(withJSONObject: requestData)
-        let (data, _) = try await httpClient.makeRequest(method: "POST", url: url, headers: headers, body: body)
+        request.httpBody = body
+        let (data, _) = try await httpClient.makeRequest(request)
         
         // 打印接收到的数据
         if let responseString = String(data: data, encoding: .utf8) {
@@ -714,12 +686,12 @@ class MihomoClient: ClashClient {
         let baseURL = "\(scheme)://\(server.url):\(server.port)"
         let url = URL(string: "\(baseURL)/providers/proxies")!
         
-        let headers = [
-            "Authorization": "Bearer \(server.secret)",
-            "Content-Type": "application/json"
-        ]
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(server.secret)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        let (data, _) = try await httpClient.makeRequest(method: "GET", url: url, headers: headers, body: nil)
+        let (data, _) = try await httpClient.makeRequest(request)
         let response = try JSONDecoder().decode(ProxyProviderResponse.self, from: data)
         
         var result: [String: SubscriptionCardInfo] = [:]

@@ -45,7 +45,7 @@ class ServerDetailViewModel: ObservableObject {
                 "params": ["opkg status luci-app-nikki 2>/dev/null | grep 'Status: install'"]
             ]
             request.httpBody = try JSONSerialization.data(withJSONObject: checkCommand)
-            let (checkData, _) = try await URLSession.shared.data(for: request)
+            let (checkData, _) = try await URLSession.secure.data(for: request)
             let checkResponse = try JSONDecoder().decode(UCIResponse.self, from: checkData)
             
             // 如果找到 nikki 包的安装状态，说明使用的是 nikki
@@ -65,7 +65,7 @@ class ServerDetailViewModel: ObservableObject {
         
         request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
         
-        let session = URLSession.shared
+        let session = URLSession.secure
         let (data, response) = try await session.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse,
@@ -123,7 +123,7 @@ class ServerDetailViewModel: ObservableObject {
         
         request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
         
-        let session = URLSession.shared
+        let session = URLSession.secure
         let (data, response) = try await session.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse,

@@ -193,7 +193,7 @@ class ProxyViewModel: ObservableObject {
                 return 
             }
             // print("📡 发送 proxies 请求...")
-            let (proxiesData, _) = try await URLSession.shared.data(for: proxiesRequest)
+            let (proxiesData, _) = try await URLSession.secure.data(for: proxiesRequest)
             
             // 2. 获取 providers 数据
             guard let providersRequest = makeRequest(path: "providers/proxies") else { 
@@ -202,7 +202,7 @@ class ProxyViewModel: ObservableObject {
                 return 
             }
             // print("📡 发送 providers 请求...")
-            let (providersData, _) = try await URLSession.shared.data(for: providersRequest)
+            let (providersData, _) = try await URLSession.secure.data(for: providersRequest)
             
             var allNodes: [ProxyNode] = []
             
@@ -353,7 +353,7 @@ class ProxyViewModel: ObservableObject {
             }
             
             do {
-                let (data, response) = try await URLSession.shared.data(for: request)
+                let (data, response) = try await URLSession.secure.data(for: request)
                 
                 // 检查 HTTPS 响应
                 if server.clashUseSSL,
@@ -443,7 +443,7 @@ class ProxyViewModel: ObservableObject {
         request.httpBody = try? JSONEncoder().encode(body)
         
         do {
-            let (_, response) = try await URLSession.shared.data(for: request)
+            let (_, response) = try await URLSession.secure.data(for: request)
             logger.info("切换请求成功")
             
             if server.clashUseSSL,
@@ -457,7 +457,7 @@ class ProxyViewModel: ObservableObject {
                 logger.info("正在断开旧连接...")
                 // 获取当前活跃的连接
                 guard let connectionsRequest = makeRequest(path: "connections") else { return }
-                let (data, _) = try await URLSession.shared.data(for: connectionsRequest)
+                let (data, _) = try await URLSession.secure.data(for: connectionsRequest)
                 
                 if let connectionsResponse = try? JSONDecoder().decode(ConnectionsResponse.self, from: data) {
                     // 遍所有活跃连接
@@ -469,7 +469,7 @@ class ProxyViewModel: ObservableObject {
                             closeRequest.httpMethod = "DELETE"
                             
                             // 发送关闭请求
-                            let (_, closeResponse) = try await URLSession.shared.data(for: closeRequest)
+                            let (_, closeResponse) = try await URLSession.secure.data(for: closeRequest)
                             if let closeHttpResponse = closeResponse as? HTTPURLResponse,
                                closeHttpResponse.statusCode == 204 {
                                 logger.debug("成功关闭连接: \(connection.id)")
@@ -534,7 +534,7 @@ class ProxyViewModel: ObservableObject {
         objectWillChange.send()
         
         do {
-            let (data, response) = try await URLSession.shared.data(for: request)
+            let (data, response) = try await URLSession.secure.data(for: request)
             // print("✅ 收到延迟测试响应")
             
             if server.clashUseSSL,
@@ -648,7 +648,7 @@ class ProxyViewModel: ObservableObject {
         // print("发送测速请求: \(finalUrl)")
         
         do {
-            let (data, response) = try await URLSession.shared.data(for: request)
+            let (data, response) = try await URLSession.secure.data(for: request)
             // print("收到服务器响应: \(response)")
             
             if server.clashUseSSL,
@@ -727,7 +727,7 @@ class ProxyViewModel: ObservableObject {
         // print("\(request.url)")
         
         do {
-            let (_, response) = try await URLSession.shared.data(for: request)
+            let (_, response) = try await URLSession.secure.data(for: request)
             
             if server.clashUseSSL,
                let httpsResponse = response as? HTTPURLResponse,
@@ -773,7 +773,7 @@ class ProxyViewModel: ObservableObject {
         objectWillChange.send()
         
         do {
-            let (_, response) = try await URLSession.shared.data(for: request)
+            let (_, response) = try await URLSession.secure.data(for: request)
             
             if server.clashUseSSL,
                let httpsResponse = response as? HTTPURLResponse,
@@ -828,7 +828,7 @@ class ProxyViewModel: ObservableObject {
         }
         
         do {
-            let (data, response) = try await URLSession.shared.data(for: request)
+            let (data, response) = try await URLSession.secure.data(for: request)
             
             if server.clashUseSSL,
                let httpsResponse = response as? HTTPURLResponse,

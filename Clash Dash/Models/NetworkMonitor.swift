@@ -336,22 +336,6 @@ class NetworkMonitor: ObservableObject {
                 self.memoryHistory.removeFirst()
             }
             self.memoryHistory.append(newMemoryRecord)
-            
-            // 同步内存数据到 App Group
-            if let server = self.server {
-                print("[NetworkMonitor] Syncing memory data to App Group")
-                print("[NetworkMonitor] - Memory usage: \(Double(memory.inuse) / 1024 / 1024) MB")
-                SharedDataManager.shared.saveClashStatus(
-                    serverAddress: "\(server.url):\(server.port)",
-                    serverName: server.name,
-                    activeConnections: self.activeConnections,
-                    uploadTotal: Int64(self.rawTotalUpload),
-                    downloadTotal: Int64(self.rawTotalDownload),
-                    memoryUsage: Double(memory.inuse) / 1024 / 1024, // 转换为 MB
-                    secret: server.secret,
-                    useSSL: server.clashUseSSL
-                )
-            }
         }
     }
     
@@ -370,26 +354,6 @@ class NetworkMonitor: ObservableObject {
                 self.totalDownload = self.formatBytes(connections.downloadTotal)
                 self.rawTotalUpload = connections.uploadTotal
                 self.rawTotalDownload = connections.downloadTotal
-                
-                // 同步数据到 App Group
-                if let server = self.server {
-                    // print("[NetworkMonitor] Syncing connections data to App Group")
-                    // print("[NetworkMonitor] - Active connections: \(self.activeConnections)")
-                    // print("[NetworkMonitor] - Upload total: \(self.rawTotalUpload)")
-                    // print("[NetworkMonitor] - Download total: \(self.rawTotalDownload)")
-                    // print("[NetworkMonitor] - Server name: \(server.name)")
-                    
-                    SharedDataManager.shared.saveClashStatus(
-                        serverAddress: "\(server.url):\(server.port)",
-                        serverName: server.name.isEmpty ? nil : server.name,
-                        activeConnections: self.activeConnections,
-                        uploadTotal: Int64(self.rawTotalUpload),
-                        downloadTotal: Int64(self.rawTotalDownload),
-                        memoryUsage: Double(connections.memory ?? 0) / 1024 / 1024, // 转换为 MB
-                        secret: server.secret,
-                        useSSL: server.clashUseSSL
-                    )
-                }
             }
         } catch {
             print("[NetworkMonitor] Error decoding connections data: \(error)")

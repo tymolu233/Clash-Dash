@@ -356,7 +356,7 @@ struct OpenClashRulesView: View {
             
             statusRequest.httpBody = try JSONSerialization.data(withJSONObject: statusPayload)
             
-            let (statusData, _) = try await URLSession.shared.data(for: statusRequest)
+            let (statusData, _) = try await URLSession.secure.data(for: statusRequest)
             if let statusResponse = try? JSONDecoder().decode(OpenClashRuleResponse.self, from: statusData),
                let statusResult = statusResponse.result {
                 let enabled = statusResult.trimmingCharacters(in: .whitespacesAndNewlines) == "1"
@@ -391,7 +391,7 @@ struct OpenClashRulesView: View {
             
             request.httpBody = try JSONSerialization.data(withJSONObject: payload)
             
-            let (data, _) = try await URLSession.shared.data(for: request)
+            let (data, _) = try await URLSession.secure.data(for: request)
             let response = try JSONDecoder().decode(OpenClashRuleResponse.self, from: data)
             
             if let error = response.error {
@@ -635,7 +635,7 @@ struct OpenClashRulesView: View {
         ]
         
         request.httpBody = try JSONSerialization.data(withJSONObject: readCommand)
-        let (readData, _) = try await URLSession.shared.data(for: request)
+        let (readData, _) = try await URLSession.secure.data(for: request)
         let readResponse = try JSONDecoder().decode(OpenClashRuleResponse.self, from: readData)
         
         let originalContent = readResponse.result ?? ""
@@ -651,7 +651,7 @@ struct OpenClashRulesView: View {
         ]
         
         request.httpBody = try JSONSerialization.data(withJSONObject: writeCommand)
-        let (writeData, response) = try await URLSession.shared.data(for: request)
+        let (writeData, response) = try await URLSession.secure.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse,
               httpResponse.statusCode == 200 else {
@@ -713,7 +713,7 @@ struct OpenClashRulesView: View {
                 ]
                 request.httpBody = try JSONSerialization.data(withJSONObject: payload)
                 
-                let (_, response) = try await URLSession.shared.data(for: request)
+                let (_, response) = try await URLSession.secure.data(for: request)
                 guard let httpResponse = response as? HTTPURLResponse,
                       httpResponse.statusCode == 200 else {
                     throw NetworkError.serverError((response as? HTTPURLResponse)?.statusCode ?? 500)
@@ -776,7 +776,7 @@ struct OpenClashRulesView: View {
                 ]
                 request.httpBody = try JSONSerialization.data(withJSONObject: payload)
                 
-                let (_, response) = try await URLSession.shared.data(for: request)
+                let (_, response) = try await URLSession.secure.data(for: request)
                 guard let httpResponse = response as? HTTPURLResponse,
                       httpResponse.statusCode == 200 else {
                     throw NetworkError.serverError((response as? HTTPURLResponse)?.statusCode ?? 500)
@@ -938,7 +938,7 @@ struct OpenClashRulesView: View {
                     "params": ["uci show nikki | grep -c '@rule\\[.*\\]=rule'"]
                 ]
                 request.httpBody = try JSONSerialization.data(withJSONObject: countPayload)
-                let (countData, _) = try await URLSession.shared.data(for: request)
+                let (countData, _) = try await URLSession.secure.data(for: request)
                 let countResponse = try JSONDecoder().decode(OpenClashRuleResponse.self, from: countData)
                 guard let countStr = countResponse.result?.trimmingCharacters(in: .whitespacesAndNewlines),
                       let count = Int(countStr) else {
@@ -963,7 +963,7 @@ struct OpenClashRulesView: View {
                 ]
                 request.httpBody = try JSONSerialization.data(withJSONObject: payload)
                 
-                let (data, response) = try await URLSession.shared.data(for: request)
+                let (data, response) = try await URLSession.secure.data(for: request)
                 guard let httpResponse = response as? HTTPURLResponse,
                       httpResponse.statusCode == 200 else {
                     throw NetworkError.serverError((response as? HTTPURLResponse)?.statusCode ?? 500)
@@ -1056,7 +1056,7 @@ struct OpenClashRulesView: View {
                 ]
                 request.httpBody = try JSONSerialization.data(withJSONObject: payload)
                 
-                let (_, response) = try await URLSession.shared.data(for: request)
+                let (_, response) = try await URLSession.secure.data(for: request)
                 guard let httpResponse = response as? HTTPURLResponse,
                       httpResponse.statusCode == 200 else {
                     throw NetworkError.serverError((response as? HTTPURLResponse)?.statusCode ?? 500)
@@ -1117,7 +1117,7 @@ struct OpenClashRulesView: View {
             
             request.httpBody = try JSONSerialization.data(withJSONObject: payload)
             
-            let (_, response) = try await URLSession.shared.data(for: request)
+            let (_, response) = try await URLSession.secure.data(for: request)
             
             guard let httpResponse = response as? HTTPURLResponse,
                   httpResponse.statusCode == 200 else {
@@ -1164,7 +1164,7 @@ struct OpenClashRulesView: View {
                 "params": ["uci show nikki | grep -c '@rule\\[.*\\]=rule'"]
             ]
             request.httpBody = try JSONSerialization.data(withJSONObject: countPayload)
-            let (countData, _) = try await URLSession.shared.data(for: request)
+            let (countData, _) = try await URLSession.secure.data(for: request)
             let countResponse = try JSONDecoder().decode(OpenClashRuleResponse.self, from: countData)
             guard let countStr = countResponse.result?.trimmingCharacters(in: .whitespacesAndNewlines),
                   let count = Int(countStr) else {
@@ -1207,7 +1207,7 @@ struct OpenClashRulesView: View {
             ]
             request.httpBody = try JSONSerialization.data(withJSONObject: payload)
             
-            let (_, response) = try await URLSession.shared.data(for: request)
+            let (_, response) = try await URLSession.secure.data(for: request)
             guard let httpResponse = response as? HTTPURLResponse,
                   httpResponse.statusCode == 200 else {
                 throw NetworkError.serverError((response as? HTTPURLResponse)?.statusCode ?? 500)

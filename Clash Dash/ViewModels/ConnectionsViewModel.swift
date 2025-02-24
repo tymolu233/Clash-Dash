@@ -528,14 +528,7 @@ class ConnectionsViewModel: ObservableObject {
     }
     
     private func makeSession() -> URLSession {
-        let config = URLSessionConfiguration.default
-        if server?.clashUseSSL == true {
-            config.urlCache = nil
-            config.requestCachePolicy = .reloadIgnoringLocalAndRemoteCacheData
-            config.tlsMinimumSupportedProtocolVersion = .TLSv12
-            config.tlsMaximumSupportedProtocolVersion = .TLSv13
-        }
-        return URLSession(configuration: config)
+        return URLSessionManager.shared.makeCustomSession()
     }
     
     func closeConnection(_ id: String) {

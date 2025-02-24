@@ -192,7 +192,7 @@ struct ModeSwitchCard: View {
             var request = URLRequest(url: url)
             request.setValue("Bearer \(server.secret)", forHTTPHeaderField: "Authorization")
             
-            let (data, _) = try await URLSession.shared.data(for: request)
+            let (data, _) = try await URLSession.secure.data(for: request)
             if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
                let mode = json["mode"] as? String {
                 await MainActor.run {

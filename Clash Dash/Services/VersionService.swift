@@ -52,7 +52,7 @@ class VersionService {
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: checkCommand)
         
-        let (checkData, _) = try await URLSession.shared.data(for: request)
+        let (checkData, _) = try await URLSession.secure.data(for: request)
         let checkResponse = try JSONDecoder().decode(UCIResponse.self, from: checkData)
         
         return !checkResponse.result.isEmpty
@@ -96,7 +96,7 @@ class VersionService {
         
         request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
         
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await URLSession.secure.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse,
               httpResponse.statusCode == 200 else {
