@@ -157,7 +157,7 @@ struct SimpleWidgetEntryView : View {
     // 小尺寸 Widget
     @ViewBuilder
     private var smallWidget: some View {
-        let content = VStack(alignment: .leading, spacing: 8) {
+        let content = VStack(alignment: .leading, spacing: 0) {
             // 顶部：控制器信息
             HStack(spacing: 4) {
                 Image(systemName: "network")
@@ -178,6 +178,9 @@ struct SimpleWidgetEntryView : View {
                     .buttonStyle(.plain)
                 }
             }
+            .padding(.bottom, 4)
+            
+            Spacer()
             
             // 流量信息
             VStack(alignment: .leading, spacing: 6) {
@@ -214,7 +217,7 @@ struct SimpleWidgetEntryView : View {
                 }
             }
             
-            Spacer(minLength: 4)
+            Spacer()
             
             // 底部状态信息
             HStack(spacing: 8) {
@@ -248,6 +251,7 @@ struct SimpleWidgetEntryView : View {
                     .lineLimit(1)
                 }
             }
+            .padding(.top, 4)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
@@ -256,16 +260,19 @@ struct SimpleWidgetEntryView : View {
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .containerBackground(for: .widget) {
-                    LinearGradient(
-                        gradient: Gradient(colors: [
-                            Color(uiColor: .systemBackground),
-                            Color(uiColor: .systemBackground).opacity(0.95),
-                            Color.blue.opacity(0.1),
-                            Color.green.opacity(0.1)
-                        ]),
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
+                    ContainerRelativeShape()
+                        .fill(
+                            LinearGradient(
+                                gradient: Gradient(colors: [
+                                    Color(uiColor: .systemBackground),
+                                    Color(uiColor: .systemBackground).opacity(0.95),
+                                    Color.blue.opacity(0.1),
+                                    Color.green.opacity(0.1)
+                                ]),
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
                 }
         } else {
             content
@@ -419,16 +426,19 @@ struct SimpleWidgetEntryView : View {
                 .padding(.vertical, 6)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .containerBackground(for: .widget) {
-                    LinearGradient(
-                        gradient: Gradient(colors: [
-                            Color(uiColor: .systemBackground),
-                            Color(uiColor: .systemBackground).opacity(0.95),
-                            Color.blue.opacity(0.1),
-                            Color.green.opacity(0.1)
-                        ]),
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
+                    ContainerRelativeShape()
+                        .fill(
+                            LinearGradient(
+                                gradient: Gradient(colors: [
+                                    Color(uiColor: .systemBackground),
+                                    Color(uiColor: .systemBackground).opacity(0.95),
+                                    Color.blue.opacity(0.1),
+                                    Color.green.opacity(0.1)
+                                ]),
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
                 }
         } else {
             content
@@ -466,12 +476,7 @@ struct SimpleWidget: Widget {
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: Provider()) { entry in
-            if #available(iOSApplicationExtension 17.0, *) {
-                SimpleWidgetEntryView(entry: entry)
-                    .containerBackground(.background, for: .widget)
-            } else {
-                SimpleWidgetEntryView(entry: entry)
-            }
+            SimpleWidgetEntryView(entry: entry)
         }
         .configurationDisplayName("Clash Dash Widget")
         .description("显示 Clash Dash 控制器的状态")
