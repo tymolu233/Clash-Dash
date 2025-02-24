@@ -167,6 +167,16 @@ struct SimpleWidgetEntryView : View {
                     .font(.system(.caption2, design: .rounded))
                     .foregroundColor(.secondary)
                     .lineLimit(1)
+                Spacer()
+                if #available(iOSApplicationExtension 17.0, *) {
+                    Button(intent: RefreshIntent()) {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.caption2)
+                            .foregroundColor(.blue)
+                            .symbolEffect(.bounce, value: entry.date)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
             
             // 流量信息
@@ -288,6 +298,15 @@ struct SimpleWidgetEntryView : View {
                         .foregroundColor(.secondary)
                 }
                 Spacer()
+                if #available(iOSApplicationExtension 17.0, *) {
+                    Button(intent: RefreshIntent()) {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.caption2)
+                            .foregroundColor(.blue)
+                            .symbolEffect(.bounce, value: entry.date)
+                    }
+                    .buttonStyle(.plain)
+                }
                 HStack(spacing: 4) {
                     Image(systemName: "clock.fill")
                         .font(.caption2)
@@ -438,11 +457,17 @@ struct SimpleWidget: Widget {
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: Provider()) { entry in
-            SimpleWidgetEntryView(entry: entry)
+            if #available(iOSApplicationExtension 17.0, *) {
+                SimpleWidgetEntryView(entry: entry)
+                    .containerBackground(.background, for: .widget)
+            } else {
+                SimpleWidgetEntryView(entry: entry)
+            }
         }
         .configurationDisplayName("Clash Dash Widget")
         .description("显示 Clash Dash 控制器的状态")
         .supportedFamilies([.systemSmall, .systemMedium])
+        .contentMarginsDisabled()
     }
 }
 
