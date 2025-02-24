@@ -30,18 +30,26 @@ class WidgetNetworkManager {
                 // 计算内存使用量（MB）
                 let memoryUsage = connectionsData.memory.map { Double($0) / 1024.0 / 1024.0 }
                 
+                // 获取服务器信息
+                print("[Widget] 开始获取保存的服务器信息: \(serverAddress)")
+                let savedStatus = self.sharedDataManager.getClashStatus(for: serverAddress)
+                print("[Widget] 获取到的服务器信息:")
+                print("[Widget] - 保存的地址: \(savedStatus.serverAddress)")
+                print("[Widget] - 保存的名称: \(savedStatus.serverName ?? "nil")")
+                
                 // 创建状态
                 let status = ClashStatus(
                     serverAddress: serverAddress,
-                    serverName: nil,
+                    serverName: savedStatus.serverName,
                     activeConnections: connectionsData.connections.count,
                     uploadTotal: Int64(connectionsData.uploadTotal),
                     downloadTotal: Int64(connectionsData.downloadTotal),
                     memoryUsage: memoryUsage
                 )
                 
-                print("[Widget] Status created:")
-                print("[Widget] - Server: \(status.serverAddress)")
+                print("[Widget] 创建的新状态:")
+                print("[Widget] - Server address: \(status.serverAddress)")
+                print("[Widget] - Server name: \(status.serverName ?? "nil")")
                 print("[Widget] - Connections: \(status.activeConnections)")
                 print("[Widget] - Upload: \(status.uploadTotal)")
                 print("[Widget] - Download: \(status.downloadTotal)")

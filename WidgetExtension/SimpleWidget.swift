@@ -42,7 +42,8 @@ struct Provider: TimelineProvider {
             networkManager.fetchStatus(for: defaultServer) { newStatus in
                 if let status = newStatus {
                     print("[Widget] 成功获取服务器状态")
-                    print("[Widget] - Server: \(status.serverAddress)")
+                    print("[Widget] - Server address: \(status.serverAddress)")
+                    print("[Widget] - Server name: \(status.serverName ?? "nil")")
                     print("[Widget] - Connections: \(status.activeConnections)")
                     print("[Widget] - Upload: \(status.uploadTotal)")
                     print("[Widget] - Download: \(status.downloadTotal)")
@@ -86,13 +87,18 @@ struct Provider: TimelineProvider {
             networkManager.fetchStatus(for: defaultServer) { newStatus in
                 if let status = newStatus {
                     print("[Widget] Timeline: 成功获取新数据")
-                    print("[Widget] - Server: \(status.serverAddress)")
+                    print("[Widget] - Server address: \(status.serverAddress)")
+                    print("[Widget] - Server name: \(status.serverName ?? "nil")")
                     print("[Widget] - Connections: \(status.activeConnections)")
                     print("[Widget] - Upload: \(status.uploadTotal)")
                     print("[Widget] - Download: \(status.downloadTotal)")
                     print("[Widget] - Memory: \(status.memoryUsage ?? 0) MB")
                     
                     let entry = SimpleEntry(date: currentDate, status: status)
+                    print("[Widget] 创建的 Entry:")
+                    print("[Widget] - Entry server name: \(entry.status.serverName ?? "nil")")
+                    print("[Widget] - Entry server address: \(entry.status.serverAddress)")
+                    
                     let nextUpdate = Calendar.current.date(byAdding: .minute, value: 1, to: currentDate) ?? currentDate
                     print("[Widget] Timeline: 下次更新时间: \(nextUpdate)")
                     let timeline = Timeline(entries: [entry], policy: .after(nextUpdate))
@@ -435,7 +441,7 @@ struct SimpleWidget: Widget {
             SimpleWidgetEntryView(entry: entry)
         }
         .configurationDisplayName("Clash Dash Widget")
-        .description("显示 Clash Dash 状态")
+        .description("显示 Clash Dash 控制器的状态")
         .supportedFamilies([.systemSmall, .systemMedium])
     }
 }
