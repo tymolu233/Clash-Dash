@@ -61,7 +61,10 @@ class CloudKitManager: ObservableObject {
         "defaultConnectionSortAscending",
         "default_servers",
         "lowDelayThreshold",
-        "mediumDelayThreshold"
+        "mediumDelayThreshold",
+        "showSpeedNumberAnimation",
+        "showNumberAnimation",
+        "widgetDefaultServer"
     ]
     
     private let excludedKeys = Set([

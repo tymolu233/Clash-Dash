@@ -10,6 +10,8 @@ struct StatusCard: View {
     @ObservedObject var monitor: NetworkMonitor
     @AppStorage("showWaveEffect") private var showWaveEffect = true
     @AppStorage("showWaterDropEffect") private var showWaterDropEffect = true
+    @AppStorage("showNumberAnimation") private var showNumberAnimation = true
+    @AppStorage("showSpeedNumberAnimation") private var showSpeedNumberAnimation = false
     
     private var cardBackgroundColor: Color {
         colorScheme == .dark ? 
@@ -37,6 +39,20 @@ struct StatusCard: View {
         }
     }
     
+    // 判断是否是实时速度卡片
+    private var isSpeedCard: Bool {
+        return (title == "下载" || title == "上传") && !title.contains("总量")
+    }
+    
+    // 判断是否应该使用动画效果
+    private var shouldUseAnimation: Bool {
+        if isSpeedCard {
+            return showNumberAnimation && showSpeedNumberAnimation
+        } else {
+            return showNumberAnimation
+        }
+    }
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -48,17 +64,23 @@ struct StatusCard: View {
                     .foregroundColor(.secondary)
             }
             
-            Text(value)
-                .font(.title2)
-                .bold()
-                .minimumScaleFactor(0.5)
+            // 使用条件判断决定是否使用动画数字视图
+            if shouldUseAnimation {
+                AnimatedNumberView(value: value, color: .primary)
+                    .minimumScaleFactor(0.5)
+            } else {
+                Text(value)
+                    .font(.title2)
+                    .bold()
+                    .minimumScaleFactor(0.5)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
         .background(
             ZStack {
                 cardBackgroundColor
-                if showWaveEffect && (title == "下载" || title == "上传") && !title.contains("总量") {
+                if showWaveEffect && isSpeedCard {
                     WaveBackground(
                         color: color,
                         speed: extractSpeed(),

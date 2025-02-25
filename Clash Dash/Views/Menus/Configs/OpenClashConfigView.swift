@@ -4,7 +4,7 @@ struct OpenClashConfigView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var viewModel: ServerViewModel
     let server: ClashServer
-    
+                                     
     @State private var configs: [OpenClashConfig] = []
     @State private var isLoading = false
     @State private var showError = false

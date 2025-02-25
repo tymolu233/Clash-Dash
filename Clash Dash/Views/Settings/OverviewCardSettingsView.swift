@@ -6,6 +6,8 @@ struct OverviewCardSettingsView: View {
     @AppStorage("modeSwitchCardStyle") private var modeSwitchCardStyle = ModeSwitchCardStyle.classic
     @AppStorage("showWaveEffect") private var showWaveEffect = false
     @AppStorage("showWaterDropEffect") private var showWaterDropEffect = true
+    @AppStorage("showNumberAnimation") private var showNumberAnimation = true
+    @AppStorage("showSpeedNumberAnimation") private var showSpeedNumberAnimation = false
     @AppStorage("speedChartStyle") private var speedChartStyle = SpeedChartStyle.line
     
     var body: some View {
@@ -64,6 +66,20 @@ struct OverviewCardSettingsView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Toggle("流量卡片水滴效果", isOn: $showWaterDropEffect)
                     Text("一滴水滴约为 10MB 的流量")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Toggle("数字变化动画效果", isOn: $showNumberAnimation)
+                    Text("数据变化时显示平滑过渡动画")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Toggle("实时速度数字动画", isOn: $showSpeedNumberAnimation)
+                    Text("上传下载实时速度数字变化时应用动画效果")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
