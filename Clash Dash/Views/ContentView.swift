@@ -468,7 +468,9 @@ struct ContentView: View {
                     // print("⚠️ Wi-Fi 绑定功能未启用，跳过获取 Wi-Fi 信息")
                     currentWiFiSSID = ""
                 }
-            }
+            } 
+            // 移除应用进入后台时停止灵动岛活动的代码
+            // 灵动岛活动应该在后台继续运行
         }
         // 添加对 enableWiFiBinding 变化的监听
         .onChange(of: enableWiFiBinding) { newValue in

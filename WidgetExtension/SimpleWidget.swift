@@ -2,6 +2,7 @@ import WidgetKit
 import SwiftUI
 import Shared
 import Network
+import ActivityKit
 
 struct SimpleEntry: TimelineEntry {
     let date: Date
@@ -516,6 +517,153 @@ struct SimpleWidget_Previews: PreviewProvider {
             ))
             .previewContext(WidgetPreviewContext(family: .systemMedium))
         }
+    }
+}
+
+// MARK: - Live Activity 视图
+@available(iOS 16.1, *)
+struct ClashSpeedLiveActivity: Widget {
+    var body: some WidgetConfiguration {
+        ActivityConfiguration(for: ClashSpeedAttributes.self) { context in
+            // 锁屏/灵动岛视图
+            LiveActivityView(context: context)
+        } dynamicIsland: { context in
+            // 灵动岛视图
+            DynamicIsland {
+                // 扩展视图
+                DynamicIslandExpandedRegion(.leading) {
+                    HStack {
+                        Image(systemName: "arrow.up.circle.fill")
+                            .foregroundColor(.green)
+                        Text(context.state.uploadSpeed)
+                            .font(.system(size: 14, weight: .semibold))
+                    }
+                    .onAppear {
+                        print("🎬 DynamicIsland.leading 出现")
+                    }
+                }
+                
+                DynamicIslandExpandedRegion(.trailing) {
+                    HStack {
+                        Text(context.state.downloadSpeed)
+                            .font(.system(size: 14, weight: .semibold))
+                        Image(systemName: "arrow.down.circle.fill")
+                            .foregroundColor(.blue)
+                    }
+                    .onAppear {
+                        print("🎬 DynamicIsland.trailing 出现")
+                    }
+                }
+                
+                DynamicIslandExpandedRegion(.center) {
+                    Text(context.state.serverName)
+                        .font(.system(size: 12, weight: .medium))
+                        .lineLimit(1)
+                        .onAppear {
+                            print("🎬 DynamicIsland.center 出现")
+                        }
+                }
+                
+                DynamicIslandExpandedRegion(.bottom) {
+                    HStack {
+                        Label("\(context.state.activeConnections)", systemImage: "network")
+                            .font(.system(size: 13))
+                    }
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .onAppear {
+                        print("🎬 DynamicIsland.bottom 出现")
+                    }
+                }
+            } compactLeading: {
+                // 紧凑前导视图
+                HStack {
+                    Image(systemName: "arrow.up.circle.fill")
+                        .foregroundColor(.green)
+                    Text(context.state.uploadSpeed)
+                        .font(.system(size: 12, weight: .semibold))
+                        .lineLimit(1)
+                }
+                .onAppear {
+                    print("🎬 DynamicIsland.compactLeading 出现")
+                }
+            } compactTrailing: {
+                // 紧凑尾随视图
+                HStack {
+                    Text(context.state.downloadSpeed)
+                        .font(.system(size: 12, weight: .semibold))
+                        .lineLimit(1)
+                    Image(systemName: "arrow.down.circle.fill")
+                        .foregroundColor(.blue)
+                }
+                .onAppear {
+                    print("🎬 DynamicIsland.compactTrailing 出现")
+                }
+            } minimal: {
+                // 最小视图
+                Image(systemName: "network")
+                    .foregroundColor(.blue)
+                    .onAppear {
+                        print("🎬 DynamicIsland.minimal 出现")
+                    }
+            }
+        }
+        .contentMarginsDisabled()
+        .configurationDisplayName("网络速度")
+        .description("在灵动岛显示实时网络速度")
+    }
+}
+
+@available(iOS 16.1, *)
+struct LiveActivityView: View {
+    let context: ActivityViewContext<ClashSpeedAttributes>
+    
+    var body: some View {
+        VStack {
+            Text(context.attributes.serverName)
+                .font(.headline)
+                .padding(.top, 8)
+                .onAppear {
+                    print("🎬 LiveActivityView 出现")
+                    print("📱 服务器: \(context.attributes.serverName)")
+                    print("📊 上传: \(context.state.uploadSpeed)")
+                    print("📊 下载: \(context.state.downloadSpeed)")
+                    print("📊 连接: \(context.state.activeConnections)")
+                }
+            
+            HStack(spacing: 20) {
+                VStack {
+                    HStack {
+                        Image(systemName: "arrow.up.circle.fill")
+                            .foregroundColor(.green)
+                        Text(context.state.uploadSpeed)
+                            .font(.system(size: 16, weight: .semibold))
+                    }
+                    .padding(.bottom, 4)
+                    
+                    HStack {
+                        Image(systemName: "arrow.down.circle.fill")
+                            .foregroundColor(.blue)
+                        Text(context.state.downloadSpeed)
+                            .font(.system(size: 16, weight: .semibold))
+                    }
+                }
+                
+                Divider()
+                    .frame(height: 40)
+                
+                VStack {
+                    Text("连接数")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    Text("\(context.state.activeConnections)")
+                        .font(.system(size: 20, weight: .bold))
+                }
+            }
+            .padding()
+        }
+        .activityBackgroundTint(Color.black.opacity(0.2))
+        .activitySystemActionForegroundColor(Color.black)
     }
 } 
 

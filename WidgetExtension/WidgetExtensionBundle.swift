@@ -22,6 +22,9 @@ struct WidgetLauncher {
 struct WidgetsBundle16: WidgetBundle {
     var body: some Widget {
         SimpleWidget()
+        if #available(iOS 16.1, *) {
+            ClashSpeedLiveActivity()
+        }
     }
 }
 
@@ -30,5 +33,8 @@ struct WidgetsBundle18: WidgetBundle {
     var body: some Widget {
         SimpleWidget()
         WidgetButton()
+        if #available(iOS 16.1, *) {
+            ClashSpeedLiveActivity()
+        }
     }
 }

@@ -21,6 +21,28 @@
 	</dict>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
+	<key>NSLiveActivityAttributes</key>
+	<dict>
+		<key>ClashSpeedAttributes</key>
+		<dict>
+			<key>NSLiveActivityContentMarginsDisabled</key>
+			<false/>
+			<key>NSLiveActivityDismissalPolicy</key>
+			<string>After</string>
+			<key>NSLiveActivityVisualPriority</key>
+			<string>High</string>
+		</dict>
+	</dict>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>processing</string>
+		<string>remote-notification</string>
+	</array>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>ym.si.clashdash.updateLiveActivity</string>
+	</array>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
