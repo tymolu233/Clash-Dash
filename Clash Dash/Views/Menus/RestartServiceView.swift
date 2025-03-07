@@ -137,7 +137,9 @@ struct RestartServiceView: View {
                     var logRequest = URLRequest(url: logURL)
                     logRequest.setValue("sysauth_http=\(token); sysauth=\(token)", forHTTPHeaderField: "Cookie")
                     
-                    let (logData, _) = try await URLSession.shared.data(for: logRequest)
+                    // 对HTTPS连接始终使用支持自签名证书的会话
+                    let session = server.openWRTUseSSL ? URLSession.secure : URLSession.shared
+                    let (logData, _) = try await session.data(for: logRequest)
                     let logResponse = try JSONDecoder().decode(StartLogResponse.self, from: logData)
                     
                     if !logResponse.startlog.isEmpty {
@@ -292,7 +294,8 @@ struct RestartServiceView: View {
         
         request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
         
-        let session = URLSession.shared
+        // 对HTTPS连接始终使用支持自签名证书的会话
+        let session = server.openWRTUseSSL ? URLSession.secure : URLSession.shared
         let (data, response) = try await session.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse,
