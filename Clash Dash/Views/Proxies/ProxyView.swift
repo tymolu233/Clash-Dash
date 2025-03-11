@@ -293,6 +293,8 @@ struct ProxyView: View {
                 }
             case .multiColumn:
                 MultiColumnProxyView(server: server)
+            case .zash:
+                ZashProxyView(server: server)
             }
         }
         .task {

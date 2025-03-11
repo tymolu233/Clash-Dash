@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct HelpView: View {
+    @Environment(\.openURL) private var openURL
+    
     var body: some View {
         List {
             Section("基本使用") {
@@ -30,6 +32,72 @@ struct HelpView: View {
                         .foregroundColor(.secondary)
                 }
                 .padding(.vertical, 8)
+            }
+            
+            Section("常见问题") {
+                DisclosureGroup("为什么没有订阅信息卡片出现？") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("订阅信息卡片是需要 Clash Dash 从后端获取到订阅信息后才会展示。具体的逻辑：")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        
+                        Text("1. 如果您添加的控制器中添加了 OpenWrt 的登录信息，那会尝试从 OpenWrt 运行的插件处获取，如果获取失败，则会尝试从 Clash 控制器处获取。")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        
+                        Text("2. 从 Clash 控制器处获取的时候，只有当配置文件中使用了 proxy-providers 字段的时候才有可能提供订阅信息。")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        
+                        Text("3. 所以如果你没有订阅信息卡片出现，请确保您的 OpenClash 或者 Nikki 上能够展示订阅信息，或者 Clash 的配置文件中使用了 proxy-providers 配置。您也可以查看运行日志来进行确认。")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        
+                        HStack {
+                            Text("查看")
+                                .font(.subheadline)
+                            Button {
+                                if let url = URL(string: "https://wiki.metacubex.one/en/config/proxy-providers") {
+                                    openURL(url)
+                                }
+                            } label: {
+                                Text("proxy-providers 配置文档")
+                                    .font(.subheadline)
+                                    .foregroundColor(.blue)
+                                    .underline()
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
+                        .padding(.top, 4)
+                    }
+                    .padding(.vertical, 8)
+                }
+                
+                DisclosureGroup("为什么我的代理页面没有图标？") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("需要在 Clash 配置文件中配置 icon 字段。")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        
+                        HStack {
+                            Text("查看")
+                                .font(.subheadline)
+                            Button {
+                                if let url = URL(string: "https://wiki.metacubex.one/config/proxy-groups/?h=icon#icon") {
+                                    openURL(url)
+                                }
+                            } label: {
+                                Text("icon 配置文档")
+                                    .font(.subheadline)
+                                    .foregroundColor(.blue)
+                                    .underline()
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
+                        .padding(.top, 4)
+                    }
+                    .padding(.vertical, 8)
+                }
             }
         }
         .navigationTitle("使用帮助")

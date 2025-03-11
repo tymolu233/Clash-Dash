@@ -29,6 +29,88 @@ struct AddServerHelpView: View {
                     .background(Color(.systemBackground))
                     .cornerRadius(12)
                     .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+
+
+                    // OpenWrt 插件安装
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack {
+                            Image(systemName: "wrench.and.screwdriver.fill")
+                                .foregroundColor(.orange)
+                            Text("OpenWrt 插件安装")
+                                .font(.headline)
+                        }
+                        
+                        Text("如果添加 OpenWrt 控制时提示 404 没有安装对应的插件，请先登录 OpenWrt 或登录终端查找并安装对应的插件：")
+                            .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        
+                        Text("luci-mod-rpc luci-lib-ipkg luci-compat")
+                            .padding(10)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(cardBackground)
+                            .cornerRadius(8)
+                            .contextMenu {
+                                Button(action: {
+                                    UIPasteboard.general.string = "luci-mod-rpc luci-lib-ipkg luci-compat"
+                                    HapticManager.shared.notification(.success)
+                                }) {
+                                    Label("复制", systemImage: "doc.on.doc")
+                                }
+                            }
+                        
+                        Text("并重启 uhttpd")
+                            .foregroundColor(.secondary)
+                        
+                        Text("如果您使用的是 opkg 包管理器，可登录 OpenWrt 终端后运行下列命令进行安装：")
+                            .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("opkg update")
+                                .font(.system(.body, design: .monospaced))
+                                .padding(.vertical, 4)
+                                .contextMenu {
+                                    Button(action: {
+                                        UIPasteboard.general.string = "opkg update"
+                                        HapticManager.shared.notification(.success)
+                                    }) {
+                                        Label("复制", systemImage: "doc.on.doc")
+                                    }
+                                }
+                            
+                            Text("opkg install luci-mod-rpc luci-lib-ipkg luci-compat")
+                                .font(.system(.body, design: .monospaced))
+                                .padding(.vertical, 4)
+                                .contextMenu {
+                                    Button(action: {
+                                        UIPasteboard.general.string = "opkg install luci-mod-rpc luci-lib-ipkg luci-compat"
+                                        HapticManager.shared.notification(.success)
+                                    }) {
+                                        Label("复制", systemImage: "doc.on.doc")
+                                    }
+                                }
+                            
+                            Text("/etc/init.d/uhttpd restart")
+                                .font(.system(.body, design: .monospaced))
+                                .padding(.vertical, 4)
+                                .contextMenu {
+                                    Button(action: {
+                                        UIPasteboard.general.string = "/etc/init.d/uhttpd restart"
+                                        HapticManager.shared.notification(.success)
+                                    }) {
+                                        Label("复制", systemImage: "doc.on.doc")
+                                    }
+                                }
+                        }
+                        .padding(10)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(cardBackground)
+                        .cornerRadius(8)
+                    }
+                    .padding(16)
+                    .background(Color(.systemBackground))
+                    .cornerRadius(12)
+                    .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
                     
                     // MihomoTProxy 说明
                     VStack(alignment: .leading, spacing: 16) {
@@ -127,6 +209,8 @@ struct AddServerHelpView: View {
                     .background(Color(.systemBackground))
                     .cornerRadius(12)
                     .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+                    
+                    
                 }
                 .padding()
             }

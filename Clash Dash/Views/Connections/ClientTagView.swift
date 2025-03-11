@@ -6,6 +6,8 @@ struct ClientTagView: View {
     let viewModel: ConnectionsViewModel
     @ObservedObject var tagViewModel: ClientTagViewModel
     @State private var searchText = ""
+    @State private var showingManualAddSheet = false
+    @State private var manualIP = ""
     
     private var uniqueActiveConnections: [ClashConnection] {
         let activeConnections = viewModel.connections.filter { $0.isAlive }
@@ -19,14 +21,29 @@ struct ClientTagView: View {
             }
         }
         
-        return uniqueConnections
+        // 按IP地址排序
+        return uniqueConnections.sorted { $0.metadata.sourceIP < $1.metadata.sourceIP }
+    }
+    
+    private var taggedActiveIPs: Set<String> {
+        Set(tagViewModel.tags.map { $0.ip })
+    }
+    
+    private var offlineTaggedConnections: [ClientTag] {
+        // 返回已有标签但当前不在活跃连接中的设备
+        let activeIPs = Set(uniqueActiveConnections.map { $0.metadata.sourceIP })
+        return tagViewModel.tags.filter { !activeIPs.contains($0.ip) }
+            .sorted { $0.ip < $1.ip } // 按IP排序
     }
     
     private var filteredTags: [ClientTag] {
         if searchText.isEmpty {
-            return tagViewModel.tags
+            return tagViewModel.tags.sorted { $0.ip < $1.ip } // 按IP排序
         }
-        return tagViewModel.tags.filter { $0.name.localizedCaseInsensitiveContains(searchText) || $0.ip.localizedCaseInsensitiveContains(searchText) }
+        return tagViewModel.tags.filter { 
+            $0.name.localizedCaseInsensitiveContains(searchText) || 
+            $0.ip.localizedCaseInsensitiveContains(searchText) 
+        }.sorted { $0.ip < $1.ip } // 按IP排序
     }
     
     private var filteredConnections: [ClashConnection] {
@@ -36,6 +53,16 @@ struct ClientTagView: View {
         return uniqueActiveConnections.filter { 
             $0.metadata.sourceIP.localizedCaseInsensitiveContains(searchText) ||
             ($0.metadata.process ?? "").localizedCaseInsensitiveContains(searchText)
+        }
+    }
+    
+    private var filteredOfflineConnections: [ClientTag] {
+        if searchText.isEmpty {
+            return offlineTaggedConnections
+        }
+        return offlineTaggedConnections.filter {
+            $0.name.localizedCaseInsensitiveContains(searchText) ||
+            $0.ip.localizedCaseInsensitiveContains(searchText)
         }
     }
     
@@ -58,9 +85,17 @@ struct ClientTagView: View {
                             activeConnectionsSection
                         }
                         
-                        if filteredTags.isEmpty && filteredConnections.isEmpty {
+                        if !filteredOfflineConnections.isEmpty {
+                            offlineConnectionsSection
+                        }
+                        
+                        if filteredTags.isEmpty && filteredConnections.isEmpty && filteredOfflineConnections.isEmpty {
                             emptyStateView
                         }
+                        
+                        addManualTagButton
+                            .padding(.top, 20)
+                            .padding(.horizontal)
                     }
                     .padding(.vertical, 12)
                 }
@@ -73,6 +108,14 @@ struct ClientTagView: View {
                         dismiss()
                     }
                 }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        showingManualAddSheet = true
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                }
             }
             .sheet(isPresented: $tagViewModel.showingSheet) {
                 if let editingTag = tagViewModel.editingTag {
@@ -80,6 +123,9 @@ struct ClientTagView: View {
                 } else if let ip = tagViewModel.selectedIP {
                     TagSheet(ip: ip, viewModel: tagViewModel, mode: .add)
                 }
+            }
+            .sheet(isPresented: $showingManualAddSheet) {
+                manualAddSheet
             }
         }
     }
@@ -144,6 +190,82 @@ struct ClientTagView: View {
         }
     }
     
+    private var offlineConnectionsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Label("离线设备", systemImage: "wifi.slash")
+                    .font(.headline)
+                Spacer()
+                Text("\(filteredOfflineConnections.count)个")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
+            .padding(.horizontal)
+            
+            LazyVStack(spacing: 8) {
+                ForEach(filteredOfflineConnections) { tag in
+                    OfflineDeviceCard(tag: tag, viewModel: tagViewModel)
+                        .transition(.opacity.combined(with: .move(edge: .trailing)))
+                }
+            }
+        }
+    }
+    
+    private var addManualTagButton: some View {
+        Button {
+            showingManualAddSheet = true
+        } label: {
+            HStack {
+                Spacer()
+                Label("手动添加标签", systemImage: "plus.circle")
+                    .font(.system(.body, design: .rounded).weight(.medium))
+                Spacer()
+            }
+            .padding()
+            .background(Color.accentColor.opacity(0.1))
+            .foregroundColor(.accentColor)
+            .cornerRadius(10)
+        }
+    }
+    
+    private var manualAddSheet: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("IP地址", text: $manualIP)
+                        .keyboardType(.numbersAndPunctuation)
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.never)
+                } header: {
+                    Text("手动添加IP地址")
+                } footer: {
+                    Text("输入任意设备的IP地址以添加标签，无需该设备当前处于连接状态")
+                }
+            }
+            .navigationTitle("添加IP地址")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("取消") {
+                        manualIP = ""
+                        showingManualAddSheet = false
+                    }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("下一步") {
+                        if !manualIP.isEmpty {
+                            tagViewModel.showAddTagSheet(for: manualIP)
+                            manualIP = ""
+                            showingManualAddSheet = false
+                        }
+                    }
+                    .disabled(manualIP.isEmpty)
+                    .fontWeight(.medium)
+                }
+            }
+        }
+    }
+    
     private var emptyStateView: some View {
         VStack(spacing: 16) {
             Image(systemName: "magnifyingglass")
@@ -157,6 +279,54 @@ struct ClientTagView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.top, 60)
+    }
+}
+
+// 离线设备卡片
+struct OfflineDeviceCard: View {
+    let tag: ClientTag
+    @ObservedObject var viewModel: ClientTagViewModel
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            offlineIcon
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(tag.name)
+                    .font(.system(.headline, design: .rounded))
+                Text(tag.ip)
+                    .font(.system(.subheadline, design: .monospaced))
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+            
+            Button {
+                viewModel.editTag(tag)
+            } label: {
+                Image(systemName: "pencil.circle.fill")
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(.secondary)
+                    .font(.system(size: 22))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.vertical, 10)
+        .padding(.horizontal, 12)
+        .background(Color(.secondarySystemGroupedBackground))
+        .cornerRadius(10)
+        .padding(.horizontal)
+    }
+    
+    private var offlineIcon: some View {
+        ZStack {
+            Circle()
+                .fill(Color.gray.opacity(0.1))
+            Image(systemName: "wifi.slash")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(.gray)
+        }
+        .frame(width: 28, height: 28)
     }
 }
 

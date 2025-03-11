@@ -455,27 +455,43 @@ class ProxyViewModel: ObservableObject {
             // 检查是否需要断开旧连接
             if UserDefaults.standard.bool(forKey: "autoDisconnectOldProxy") {
                 logger.info("正在断开旧连接...")
+                
                 // 获取当前活跃的连接
                 guard let connectionsRequest = makeRequest(path: "connections") else { return }
                 let (data, _) = try await URLSession.secure.data(for: connectionsRequest)
                 
                 if let connectionsResponse = try? JSONDecoder().decode(ConnectionsResponse.self, from: data) {
-                    // 遍所有活跃连接
-                    for connection in connectionsResponse.connections {
-                        // 如果连接的代理链包含当前切换的代理名称,则关闭该连接
-                        if connection.chains.contains(proxyName) {
-                            // 构建关闭连接的请求
-                            guard var closeRequest = makeRequest(path: "connections/\(connection.id)") else { continue }
-                            closeRequest.httpMethod = "DELETE"
-                            
-                            // 发送关闭请求
-                            let (_, closeResponse) = try await URLSession.secure.data(for: closeRequest)
-                            if let closeHttpResponse = closeResponse as? HTTPURLResponse,
-                               closeHttpResponse.statusCode == 204 {
-                                logger.debug("成功关闭连接: \(connection.id)")
-                            }
+                    let totalConnections = connectionsResponse.connections.count
+                    logger.info("当前活跃连接数: \(totalConnections)")
+                    
+                    // 找到需要断开的连接
+                    let connectionsToClose = connectionsResponse.connections.filter { connection in
+                        connection.chains.contains(proxyName)
+                    }
+                    logger.info("找到 \(connectionsToClose.count) 个需要断开的连接")
+                    
+                    // 遍历并关闭连接
+                    for connection in connectionsToClose {
+                        // 构建关闭连接的请求
+                        guard var closeRequest = makeRequest(path: "connections/\(connection.id)") else { 
+                            logger.error("创建关闭连接请求失败: \(connection.id)")
+                            continue 
+                        }
+                        closeRequest.httpMethod = "DELETE"
+                        
+                        // 发送关闭请求
+                        let (_, closeResponse) = try await URLSession.secure.data(for: closeRequest)
+                        if let closeHttpResponse = closeResponse as? HTTPURLResponse,
+                           closeHttpResponse.statusCode == 204 {
+                            logger.debug("成功关闭连接: \(connection.id), 目标: \(connection.metadata.host):\(connection.metadata.destinationPort)")
+                        } else {
+                            logger.error("关闭连接失败: \(connection.id)")
                         }
                     }
+                    
+                    logger.info("完成断开旧连接操作，成功关闭 \(connectionsToClose.count) 个连接")
+                } else {
+                    logger.error("获取连接信息失败")
                 }
             }
             

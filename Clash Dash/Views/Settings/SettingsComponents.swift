@@ -128,6 +128,7 @@ enum ProxyViewStyle: String, CaseIterable, Identifiable {
     case detailed = "detailed"
     case compact = "compact"
     case multiColumn = "multiColumn"
+    case zash = "zash"
     
     var id: String { self.rawValue }
     
@@ -136,6 +137,7 @@ enum ProxyViewStyle: String, CaseIterable, Identifiable {
         case .detailed: return "详细"
         case .compact: return "简洁"
         case .multiColumn: return "多列"
+        case .zash: return "Zash"
         }
     }
 }
