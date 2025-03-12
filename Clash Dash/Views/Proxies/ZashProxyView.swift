@@ -12,6 +12,11 @@ struct ZashProxyView: View {
     @State private var lastWidth: CGFloat = 0
     @State private var isLoaded = false
     
+    // 添加内存缓存优化
+    @State private var cachedGridColumnWidth: CGFloat = 0
+    @State private var cachedGridColumns: [GridItem] = []
+    @State private var cachedCardWidths: [String: CGFloat] = [:]
+    
     init(server: ClashServer) {
         self.server = server
         self._viewModel = StateObject(wrappedValue: ProxyViewModel(server: server))
@@ -166,6 +171,41 @@ struct ZashProxyView: View {
     private func refreshData() async {
         await viewModel.fetchProxies()
     }
+    
+    // 缓存生成的网格列
+    private func calculateGridColumns(for width: CGFloat) -> [GridItem] {
+        // 如果宽度未变化且已缓存列，直接返回缓存
+        if width == cachedGridColumnWidth && !cachedGridColumns.isEmpty {
+            return cachedGridColumns
+        }
+        
+        let columnWidth: CGFloat = width >= 700 ? 320 : 300
+        let columns = max(1, Int(width / columnWidth))
+        let calculatedColumns = Array(repeating: GridItem(.flexible(), spacing: 16), count: columns)
+        
+        // 更新缓存
+        cachedGridColumnWidth = width
+        cachedGridColumns = calculatedColumns
+        
+        return calculatedColumns
+    }
+    
+    // 获取或计算卡片宽度
+    private func getCardWidth(for id: String, in size: CGSize) -> CGFloat {
+        if let cachedWidth = cachedCardWidths[id] {
+            return cachedWidth
+        }
+        
+        let columns = calculateGridColumns(for: size.width)
+        let spacing: CGFloat = 16
+        let horizontalPadding: CGFloat = 24
+        let width = (size.width - (spacing * CGFloat(columns.count - 1)) - (horizontalPadding * 2)) / CGFloat(columns.count)
+        
+        // 更新缓存
+        cachedCardWidths[id] = width
+        
+        return width
+    }
 }
 
 // Zash 样式的代理组卡片 - 简化版本
@@ -178,6 +218,9 @@ struct ZashGroupCard: View {
     @AppStorage("mediumDelayThreshold") private var mediumDelayThreshold = 500
     // 缓存计算结果
     @State private var cardSize: (width: CGFloat, height: CGFloat) = (width: 160, height: 90)
+    
+    // 添加固定卡片高度 - 预渲染优化
+    private let cardHeight: CGFloat = 90
     
     // 优化计算，减少频繁计算
     private var cardBackgroundColor: Color {
@@ -313,6 +356,7 @@ struct ZashGroupCard: View {
             // 当容器宽度变化时更新卡片尺寸缓存
             self.cardSize = calculateCardDimensions(containerWidth: newWidth)
         }
+        .frame(height: cardHeight) // 设置固定高度
     }
     
     // 优化尺寸计算，减少不必要的计算
@@ -537,6 +581,9 @@ struct ZashProviderCard: View {
     @State private var showingUpdateSuccess = false
     @State private var showingSheet = false
     @State private var cardSize: (width: CGFloat, height: CGFloat) = (width: 160, height: 90)
+    
+    // 添加固定卡片高度 - 预渲染优化
+    private let cardHeight: CGFloat = 90
     
     private var cardBackgroundColor: Color {
         colorScheme == .dark ? Color(.systemGray6) : Color(.systemBackground)
@@ -784,6 +831,7 @@ struct ZashProviderCard: View {
             // 当容器宽度变化时更新卡片尺寸缓存
             self.cardSize = calculateCardDimensions(containerWidth: newWidth)
         }
+        .frame(height: cardHeight) // 设置固定高度
     }
     
     // 解析日期
@@ -826,6 +874,9 @@ struct ZashNodeCard: View {
     @Environment(\.colorScheme) private var colorScheme
     @AppStorage("lowDelayThreshold") private var lowDelayThreshold = 240
     @AppStorage("mediumDelayThreshold") private var mediumDelayThreshold = 500
+    
+    // 添加固定卡片高度 - 预渲染优化
+    private let cardHeight: CGFloat = 90
     
     private var cardBackgroundColor: Color {
         colorScheme == .dark ? Color(.systemGray6) : Color(.systemBackground)
@@ -996,6 +1047,7 @@ struct ZashNodeCard: View {
             )
         }
         .animation(.spring(response: 0.3), value: isSelected)
+        .frame(height: cardHeight) // 设置固定高度
     }
 }
 
@@ -1719,6 +1771,9 @@ struct ZashNodeCardOptimized: View {
     @AppStorage("lowDelayThreshold") private var lowDelayThreshold = 240
     @AppStorage("mediumDelayThreshold") private var mediumDelayThreshold = 500
     
+    // 添加固定卡片高度 - 预渲染优化
+    private let cardHeight: CGFloat = 90
+    
     private var cardBackgroundColor: Color {
         colorScheme == .dark ? Color(.systemGray6) : Color(.systemBackground)
     }
@@ -1863,6 +1918,7 @@ struct ZashNodeCardOptimized: View {
             )
         }
         .buttonStyle(PlainButtonStyle()) // 使用PlainButtonStyle避免按钮动画
+        .frame(height: cardHeight) // 设置固定高度
     }
 }
 
