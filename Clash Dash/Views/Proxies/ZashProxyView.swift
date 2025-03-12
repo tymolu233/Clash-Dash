@@ -10,6 +10,7 @@ struct ZashProxyView: View {
     @State private var showURLTestAlert = false
     @State private var cachedColumns: [GridItem] = []
     @State private var lastWidth: CGFloat = 0
+    @State private var isLoaded = false
     
     init(server: ClashServer) {
         self.server = server
@@ -23,57 +24,27 @@ struct ZashProxyView: View {
                     if viewModel.groups.isEmpty {
                         LoadingView()
                     } else {
-                        // 代理组网格
-                        let columns = getColumns(availableWidth: geometry.size.width)
-                        LazyVGrid(columns: columns, spacing: 8) {
-                            ForEach(viewModel.getSortedGroups(), id: \.name) { group in
-                                ZashGroupCard(group: group, viewModel: viewModel, containerWidth: geometry.size.width)
-                                    .onTapGesture {
-                                        HapticManager.shared.impact(.light)
-                                        selectedGroup = group
-                                    }
-                            }
-                        }
-                        .padding(.horizontal, 12)
+                        // 分开渲染代理组网格和提供者网格，减少一次性渲染的视图数量
+                        groupsGridView(width: geometry.size.width)
+                            .padding(.bottom, 8)
                         
                         // 代理提供者部分
                         if !UserDefaults.standard.bool(forKey: "hideProxyProviders") {
-                            let httpProviders = viewModel.providers
-                                .filter { ["HTTP", "FILE"].contains($0.vehicleType.uppercased()) }
-                                .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
-                            
-                            if !httpProviders.isEmpty {
-                                VStack(alignment: .leading, spacing: 8) {
-                                    Text("代理提供者")
-                                        .font(.system(.title3, design: .rounded))
-                                        .fontWeight(.semibold)
-                                        .padding(.horizontal, 12)
-                                    
-                                    LazyVGrid(columns: columns, spacing: 8) {
-                                        ForEach(httpProviders, id: \.name) { provider in
-                                            ZashProviderCard(
-                                                provider: provider,
-                                                nodes: viewModel.providerNodes[provider.name] ?? [],
-                                                viewModel: viewModel,
-                                                containerWidth: geometry.size.width
-                                            )
-                                        }
-                                    }
-                                    .padding(.horizontal, 12)
-                                }
-                            }
+                            providersGridView(width: geometry.size.width)
                         }
                     }
                 }
                 .padding(.vertical, 12)
+                .opacity(isLoaded ? 1.0 : 0.3)
+                .animation(.easeIn(duration: 0.3), value: isLoaded)
             }
         }
         .background(Color(.systemGroupedBackground))
         .refreshable {
-            await viewModel.fetchProxies()
+            await refreshData()
         }
         .task {
-            await viewModel.fetchProxies()
+            await loadData()
         }
         .sheet(item: $selectedGroup) { group in
             NavigationStack {
@@ -91,6 +62,59 @@ struct ZashProxyView: View {
             Button("确定", role: .cancel) { }
         } message: {
             Text("该分组不支持手动切换节点，可在全局设置中启用手动切换")
+        }
+    }
+    
+    // 代理组网格视图
+    @ViewBuilder
+    private func groupsGridView(width: CGFloat) -> some View {
+        let columns = getColumns(availableWidth: width)
+        
+        // 使用ID参数提高重用效率
+        LazyVGrid(columns: columns, spacing: 8) {
+            ForEach(viewModel.getSortedGroups(), id: \.name) { group in
+                ZashGroupCard(group: group, viewModel: viewModel, containerWidth: width)
+                    .onTapGesture {
+                        HapticManager.shared.impact(.light)
+                        selectedGroup = group
+                    }
+                    .id("\(group.name)-\(group.now)")
+            }
+        }
+        .padding(.horizontal, 12)
+    }
+    
+    // 代理提供者网格视图
+    @ViewBuilder
+    private func providersGridView(width: CGFloat) -> some View {
+        let httpProviders = viewModel.providers
+            .filter { ["HTTP", "FILE"].contains($0.vehicleType.uppercased()) }
+            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+        
+        if !httpProviders.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("代理提供者")
+                    .font(.system(.title3, design: .rounded))
+                    .fontWeight(.semibold)
+                    .padding(.horizontal, 12)
+                
+                let columns = getColumns(availableWidth: width)
+                
+                // 使用ID参数提高重用效率
+                LazyVGrid(columns: columns, spacing: 8) {
+                    ForEach(httpProviders, id: \.name) { provider in
+                        let nodes = viewModel.providerNodes[provider.name] ?? []
+                        ZashProviderCard(
+                            provider: provider,
+                            nodes: nodes,
+                            viewModel: viewModel,
+                            containerWidth: width
+                        )
+                        .id("\(provider.name)-\(provider.updatedAt ?? "")")
+                    }
+                }
+                .padding(.horizontal, 12)
+            }
         }
     }
     
@@ -122,17 +146,25 @@ struct ZashProxyView: View {
         return newColumns
     }
     
-    private func makeSheetColumns(availableWidth: CGFloat) -> [GridItem] {
-        let horizontalPadding: CGFloat = 32
-        let spacing: CGFloat = 12
-        let minCardWidth: CGFloat = 160
-        let maxCardWidth: CGFloat = 200
+    // 加载数据
+    private func loadData() async {
+        // 重置加载状态
+        isLoaded = false
         
-        let width = availableWidth - horizontalPadding
-        let optimalColumnCount = max(2, Int(width / (minCardWidth + spacing)))
-        let cardWidth = min(maxCardWidth, (width - (CGFloat(optimalColumnCount - 1) * spacing)) / CGFloat(optimalColumnCount))
+        // 获取代理数据
+        await viewModel.fetchProxies()
         
-        return Array(repeating: GridItem(.fixed(cardWidth), spacing: spacing), count: optimalColumnCount)
+        // 延迟显示以允许布局计算完成
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            withAnimation {
+                isLoaded = true
+            }
+        }
+    }
+    
+    // 刷新数据
+    private func refreshData() async {
+        await viewModel.fetchProxies()
     }
 }
 
@@ -247,7 +279,14 @@ struct ZashGroupCard: View {
                 RoundedRectangle(cornerRadius: 12)
                     .fill(cardBackgroundColor)
                 
-                // 顶部光泽效果 (简化)
+                // 边框高亮 (使用固定颜色，与延迟无关)
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(
+                        Color.secondary.opacity(colorScheme == .dark ? 0.2 : 0.1),
+                        lineWidth: 0.5
+                    )
+                
+                // 顶部光泽效果 (简化，只在暗模式下显示)
                 if colorScheme == .dark {
                     RoundedRectangle(cornerRadius: 12)
                         .fill(
@@ -258,17 +297,13 @@ struct ZashGroupCard: View {
                             )
                         )
                 }
-                
-                // 边框高亮 (简化)
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(delayColor.opacity(colorScheme == .dark ? 0.3 : 0.15), lineWidth: 0.5)
             }
         )
         .shadow(
-            color: Color.black.opacity(colorScheme == .dark ? 0.2 : 0.05),
-            radius: 4,
+            color: Color.black.opacity(colorScheme == .dark ? 0.15 : 0.05),
+            radius: 3,
             x: 0,
-            y: 2
+            y: 1
         )
         .onAppear {
             // 在视图出现时更新卡片尺寸缓存
@@ -446,6 +481,7 @@ private struct UpdateTimeInfo: View {
     private func formatRelativeTime(_ date: Date) -> String {
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .short
+        formatter.locale = Locale(identifier: "zh_CN")
         return formatter.localizedString(for: date, relativeTo: Date())
     }
 }
@@ -511,10 +547,18 @@ struct ZashProviderCard: View {
         let currentProvider = viewModel.providers.first { $0.name == provider.name } ?? provider
         guard let info = currentProvider.subscriptionInfo,
               info.total > 0 || info.upload > 0 || info.download > 0 else { return nil }
-        let used = Double(info.upload + info.download)
-        let usedFormatted = formatBytes(Int64(used))
+        let remaining = max(0, info.total - info.upload - info.download)
+        let remainingFormatted = formatBytes(Int64(remaining))
         let totalFormatted = formatBytes(info.total)
-        return "\(usedFormatted) / \(totalFormatted)"
+        return "\(remainingFormatted) / \(totalFormatted)"
+    }
+    
+    // 获取剩余流量百分比
+    private var remainingPercentage: Double {
+        let currentProvider = viewModel.providers.first { $0.name == provider.name } ?? provider
+        guard let info = currentProvider.subscriptionInfo,
+              info.total > 0 else { return 1.0 }
+        return max(0, min(1.0, 1.0 - Double(info.upload + info.download) / Double(info.total)))
     }
     
     // 格式化字节
@@ -552,10 +596,35 @@ struct ZashProviderCard: View {
                     
                     // 流量信息
                     if let usage = usageInfo {
-                        Text(usage)
-                            .font(.system(.caption, design: .rounded))
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(usage)
+                                .font(.system(.caption, design: .rounded))
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                            
+                            // 添加流量进度条
+                            GeometryReader { geometry in
+                                ZStack(alignment: .leading) {
+                                    // 背景
+                                    RoundedRectangle(cornerRadius: 2)
+                                        .fill(Color(.systemGray5))
+                                        .frame(height: 4)
+                                    
+                                    // 进度 - 剩余流量
+                                    RoundedRectangle(cornerRadius: 2)
+                                        .fill(
+                                            LinearGradient(
+                                                colors: [.blue, .purple],
+                                                startPoint: .leading,
+                                                endPoint: .trailing
+                                            )
+                                        )
+                                        .frame(width: geometry.size.width * remainingPercentage, height: 4)
+                                }
+                            }
+                            .frame(height: 4)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     } else {
                         Text("无流量信息")
                             .font(.system(.caption, design: .rounded))
@@ -566,7 +635,7 @@ struct ZashProviderCard: View {
                     // 更新时间
                     if let updatedAt = provider.updatedAt,
                        let updateDate = parseDate(updatedAt) {
-                        Text(formatRelativeTime(updateDate))
+                        Text(formatRelativeTime(updateDate) + "更新")
                             .font(.system(.caption2, design: .rounded))
                             .foregroundStyle(.tertiary)
                             .lineLimit(1)
@@ -588,7 +657,11 @@ struct ZashProviderCard: View {
                     RoundedRectangle(cornerRadius: 12)
                         .fill(cardBackgroundColor)
                     
-                    // 顶部光泽效果 (简化)
+                    // 边框 (简化)
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color(.systemGray4).opacity(colorScheme == .dark ? 0.2 : 0.3), lineWidth: 0.5)
+                    
+                    // 顶部光泽效果 (简化，只在暗模式下显示)
                     if colorScheme == .dark {
                         RoundedRectangle(cornerRadius: 12)
                             .fill(
@@ -599,17 +672,13 @@ struct ZashProviderCard: View {
                                 )
                             )
                     }
-                    
-                    // 边框 (简化)
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color(.systemGray4).opacity(colorScheme == .dark ? 0.2 : 0.3), lineWidth: 0.5)
                 }
             )
             .shadow(
-                color: Color.black.opacity(colorScheme == .dark ? 0.2 : 0.05),
-                radius: 4,
+                color: Color.black.opacity(colorScheme == .dark ? 0.15 : 0.05),
+                radius: 3,
                 x: 0,
-                y: 2
+                y: 1
             )
             .scaleEffect(isUpdating ? 0.98 : 1.0)
             .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isUpdating)
@@ -674,8 +743,8 @@ struct ZashProviderCard: View {
                             Circle()
                                 .fill(Color(.systemBackground))
                                 .shadow(
-                                    color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.1),
-                                    radius: 3,
+                                    color: Color.black.opacity(colorScheme == .dark ? 0.2 : 0.1),
+                                    radius: 2,
                                     x: 0,
                                     y: 1
                                 )
@@ -728,6 +797,7 @@ struct ZashProviderCard: View {
     private func formatRelativeTime(_ date: Date) -> String {
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .short
+        formatter.locale = Locale(identifier: "zh_CN")
         return formatter.localizedString(for: date, relativeTo: Date())
     }
     
@@ -897,7 +967,7 @@ struct ZashNodeCard: View {
                             .stroke(Color.blue, lineWidth: 2)
                     }
                     
-                    // 顶部光泽效果 (简化)
+                    // 顶部光泽效果 (简化，只在暗模式下显示)
                     if colorScheme == .dark {
                         RoundedRectangle(cornerRadius: 12)
                             .fill(
@@ -911,17 +981,17 @@ struct ZashNodeCard: View {
                 }
             )
             .shadow(
-                color: Color.black.opacity(colorScheme == .dark ? 0.2 : 0.05),
-                radius: 4,
+                color: Color.black.opacity(colorScheme == .dark ? 0.15 : 0.05),
+                radius: 3,
                 x: 0,
-                y: 2
+                y: 1
             )
-            // 根据延迟状态添加微小的边框高亮
+            // 根据延迟状态添加微小的边框高亮 - 改为与延迟无关的固定颜色
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
                     .stroke(
-                        delayColor.opacity(colorScheme == .dark ? 0.3 : 0.15),
-                        lineWidth: 0.5
+                        isSelected ? Color.blue : Color.secondary.opacity(colorScheme == .dark ? 0.2 : 0.1),
+                        lineWidth: isSelected ? 2 : 0.5
                     )
             )
         }
@@ -970,6 +1040,7 @@ struct ZashProviderDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
     @State private var searchText = ""
+    @State private var isLoaded = false
     
     private var filteredNodes: [ProxyNode] {
         if searchText.isEmpty {
@@ -1043,6 +1114,8 @@ struct ZashProviderDetailView: View {
                 )
             }
             .padding(.vertical)
+            .opacity(isLoaded ? 1.0 : 0.3)
+            .animation(.easeIn(duration: 0.3), value: isLoaded)
         }
         .background(Color(.systemGroupedBackground).ignoresSafeArea())
         .navigationTitle(provider.name)
@@ -1061,6 +1134,14 @@ struct ZashProviderDetailView: View {
             ToolbarItem(placement: .topBarLeading) {
                 Button("关闭") {
                     dismiss()
+                }
+            }
+        }
+        .onAppear {
+            // 延迟显示内容，减轻初始化负担
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                withAnimation {
+                    isLoaded = true
                 }
             }
         }
@@ -1140,7 +1221,6 @@ struct ZashInfoCard: View {
                         
                         Spacer()
                         
-                        let usedBytes = formatBytes(Int64(info.upload + info.download))
                         let totalBytes = formatBytes(info.total)
                         let remainingBytes = formatBytes(max(0, info.total - info.upload - info.download))
                         Text("\(remainingBytes) / \(totalBytes)")
@@ -1316,6 +1396,7 @@ struct ZashInfoCard: View {
     private func formatRelativeTime(_ date: Date) -> String {
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .short
+        formatter.locale = Locale(identifier: "zh_CN")
         return formatter.localizedString(for: date, relativeTo: Date())
     }
 }
@@ -1369,7 +1450,6 @@ struct ZashNodesGrid: View {
             return cachedColumns
         }
         
-        // 重新计算列
         let spacing: CGFloat = 12
         let minCardWidth: CGFloat = 160
         let maxCardWidth: CGFloat = 200
@@ -1495,8 +1575,8 @@ struct ZashGroupDetailView: View {
         .background(
             RoundedRectangle(cornerRadius: 10)
                 .fill(colorScheme == .dark ? Color(.systemGray5) : Color(.systemBackground))
-                .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.1), radius: 3, x: 0, y: 1)
-        )
+                        .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.1), radius: 3, x: 0, y: 1)
+                )
         .overlay(
             RoundedRectangle(cornerRadius: 10)
                 .stroke(Color.blue.opacity(0.2), lineWidth: 1)
@@ -1771,7 +1851,7 @@ struct ZashNodeCardOptimized: View {
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
                     .stroke(
-                        isSelected ? Color.blue : delayColor.opacity(colorScheme == .dark ? 0.3 : 0.15),
+                        isSelected ? Color.blue : Color.secondary.opacity(colorScheme == .dark ? 0.2 : 0.1),
                         lineWidth: isSelected ? 2 : 0.5
                     )
             )
