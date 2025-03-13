@@ -963,7 +963,7 @@ struct OpenClashRulesView: View {
                 ]
                 request.httpBody = try JSONSerialization.data(withJSONObject: payload)
                 
-                let (data, response) = try await URLSession.secure.data(for: request)
+                let (_, response) = try await URLSession.secure.data(for: request)
                 guard let httpResponse = response as? HTTPURLResponse,
                       httpResponse.statusCode == 200 else {
                     throw NetworkError.serverError((response as? HTTPURLResponse)?.statusCode ?? 500)
@@ -1175,7 +1175,7 @@ struct OpenClashRulesView: View {
             var commands: [String] = []
             
             // 先删除所有规则
-            for i in 0..<count {
+            for _ in 0..<count {
                 commands.append("uci delete nikki.@rule[\(0)]")
             }
             

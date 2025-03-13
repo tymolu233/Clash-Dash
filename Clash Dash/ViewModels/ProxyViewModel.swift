@@ -26,7 +26,7 @@ struct ProxyHistory: Codable, Hashable {
     let delay: Int
 }
 
-struct ProxyGroup: Identifiable {
+struct ProxyGroup: Identifiable, Hashable {
     let id = UUID()
     let name: String
     let type: String
@@ -42,6 +42,17 @@ struct ProxyGroup: Identifiable {
         self.all = all
         self.alive = alive
         self.icon = icon
+    }
+    
+    // 实现 Hashable
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(name)
+        hasher.combine(now)
+    }
+    
+    // 实现 Equatable
+    static func == (lhs: ProxyGroup, rhs: ProxyGroup) -> Bool {
+        return lhs.name == rhs.name && lhs.now == rhs.now
     }
 }
 
