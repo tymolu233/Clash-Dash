@@ -25,6 +25,7 @@ struct AppearanceSettingsView: View {
     @AppStorage("lowDelayThreshold") private var lowDelayThreshold = 240
     @AppStorage("mediumDelayThreshold") private var mediumDelayThreshold = 500
     @AppStorage("widgetDefaultServer") private var widgetDefaultServer: String = ""
+    @AppStorage("showDelayRingChart") private var showDelayRingChart = false
     @State private var lowDelaySliderValue: Double = 0
     @State private var mediumDelaySliderValue: Double = 0
     @StateObject private var locationManager = LocationManager()
@@ -46,6 +47,10 @@ struct AppearanceSettingsView: View {
                         Text(style.description)
                             .tag(style)
                     }
+                }
+                
+                if proxyViewStyle == .zash {
+                    Toggle("显示延迟环形图", isOn: $showDelayRingChart)
                 }
 
                 NavigationLink {

@@ -261,6 +261,7 @@ struct ZashGroupCard: View {
     @Environment(\.colorScheme) private var colorScheme
     @AppStorage("lowDelayThreshold") private var lowDelayThreshold = 240
     @AppStorage("mediumDelayThreshold") private var mediumDelayThreshold = 500
+    @AppStorage("showDelayRingChart") private var showDelayRingChart = false
     // 添加选中状态属性
     var isSelected: Bool = false
     
@@ -295,6 +296,16 @@ struct ZashGroupCard: View {
         default:
             return type
         }
+    }
+    
+    // 判断是否显示延迟信息
+    private var shouldShowDelayInfo: Bool {
+        return showDelayRingChart || (group.icon != nil && !group.icon!.isEmpty)
+    }
+    
+    // 判断是否显示图标
+    private var shouldShowIcon: Bool {
+        return group.icon != nil && !group.icon!.isEmpty
     }
     
     var body: some View {
@@ -340,12 +351,18 @@ struct ZashGroupCard: View {
             Spacer()
                 .id("spacer-\(group.name)")
             
-            // 右侧图标
-            if let iconUrl = group.icon, !iconUrl.isEmpty {
-                CachedAsyncImage(url: iconUrl)
-                    .frame(width: 28, height: 28)
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
-                    .id("icon-\(group.name)-\(iconUrl)")
+            // 右侧使用延迟环形图表替代简单图标，根据设置决定是否显示
+            if shouldShowDelayInfo {
+                DelayRingChart(
+                    group: group,
+                    viewModel: viewModel,
+                    size: 46,
+                    strokeWidth: 3,
+                    showIcon: shouldShowIcon,
+                    showDelayRing: showDelayRingChart
+                )
+                .padding(.vertical, 2)
+                .padding(.trailing, 2)
             }
         }
         .padding(.horizontal, 12)
@@ -1053,62 +1070,62 @@ struct ZashProviderDetailView: View {
     
     var body: some View {
         GeometryReader { geometry in
-            ScrollView {
-                VStack(spacing: 16) {
-                    // 提供者信息卡片
-                    ZashInfoCard(provider: provider)
+        ScrollView {
+            VStack(spacing: 16) {
+                // 提供者信息卡片
+                ZashInfoCard(provider: provider)
+                
+                // 搜索栏 - 修改样式使其更加明显
+                HStack {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundColor(.secondary)
                     
-                    // 搜索栏 - 修改样式使其更加明显
-                    HStack {
-                        Image(systemName: "magnifyingglass")
-                            .foregroundColor(.secondary)
-                        
-                        TextField("搜索节点", text: $searchText)
-                            .font(.system(.body, design: .rounded))
-                            .autocorrectionDisabled()
-                            .textInputAutocapitalization(.never)
-                        
-                        if !searchText.isEmpty {
-                            Button(action: {
-                                searchText = ""
-                            }) {
-                                Image(systemName: "xmark.circle.fill")
-                                    .foregroundColor(.secondary)
-                            }
+                    TextField("搜索节点", text: $searchText)
+                        .font(.system(.body, design: .rounded))
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.never)
+                    
+                    if !searchText.isEmpty {
+                        Button(action: {
+                            searchText = ""
+                        }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.secondary)
                         }
                     }
-                    .padding(10)
-                    .background(
-                        RoundedRectangle(cornerRadius: 10)
-                            .fill(colorScheme == .dark ? Color(.systemGray6) : Color(.systemBackground))
-                                .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.1), radius: 3, x: 0, y: 1)
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10)
-                            .strokeBorder(colorScheme == .dark ? Color.gray.opacity(0.5) : Color.blue.opacity(0.2), lineWidth: colorScheme == .dark ? 1.0 : 0.5)
-                    )
-                    .padding(.horizontal)
+                }
+                .padding(10)
+                .background(
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(colorScheme == .dark ? Color(.systemGray6) : Color(.systemBackground))
+                        .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.1), radius: 3, x: 0, y: 1)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .strokeBorder(colorScheme == .dark ? Color.gray.opacity(0.5) : Color.blue.opacity(0.2), lineWidth: colorScheme == .dark ? 1.0 : 0.5)
+                )
+                .padding(.horizontal)
+                
+                // 节点统计信息
+                HStack {
+                    Text("共 \(nodes.count) 个节点")
+                        .font(.system(.subheadline, design: .rounded))
+                        .foregroundStyle(.secondary)
                     
-                    // 节点统计信息
-                    HStack {
-                        Text("共 \(nodes.count) 个节点")
-                            .font(.system(.subheadline, design: .rounded))
-                            .foregroundStyle(.secondary)
-                        
-                        Spacer()
-                        
-                        // 延迟统计
-                        let stats = getDelayStats()
-                        HStack(spacing: 8) {
-                            DelayStatBadge(count: stats.green, color: .green, label: "低延迟")
-                            DelayStatBadge(count: stats.yellow, color: .yellow, label: "中延迟")
-                            DelayStatBadge(count: stats.orange, color: .orange, label: "高延迟")
-                            DelayStatBadge(count: stats.gray, color: .gray, label: "超时")
-                        }
+                    Spacer()
+                    
+                    // 延迟统计
+                    let stats = getDelayStats()
+                    HStack(spacing: 8) {
+                        DelayStatBadge(count: stats.green, color: .green, label: "低延迟")
+                        DelayStatBadge(count: stats.yellow, color: .yellow, label: "中延迟")
+                        DelayStatBadge(count: stats.orange, color: .orange, label: "高延迟")
+                        DelayStatBadge(count: stats.gray, color: .gray, label: "超时")
                     }
-                    .padding(.horizontal)
-                    
-                    // 节点列表
+                }
+                .padding(.horizontal)
+                
+                // 节点列表
                     if filteredNodes.isEmpty {
                         Text("没有找到节点")
                             .font(.system(.body, design: .rounded))
@@ -1133,9 +1150,9 @@ struct ZashProviderDetailView: View {
                         }
                         .padding(.horizontal)
                     }
-                }
-                .padding(.vertical)
             }
+            .padding(.vertical)
+        }
         }
         .navigationTitle(provider.name)
         .navigationBarTitleDisplayMode(.inline)
@@ -1472,7 +1489,7 @@ struct ZashNodeCardOptimized: View {
                 HStack(alignment: .top, spacing: 8) {
                     // 节点名称
                     Text(nodeName)
-                        .font(.system(.body, design: .rounded))
+                .font(.system(.body, design: .rounded))
                         .fontWeight(.semibold)
                         .foregroundColor(.primary)
                         .lineLimit(2)
@@ -1517,7 +1534,7 @@ struct ZashNodeCardOptimized: View {
                             // 测速动画
                             ZashDelayTestingView()
                                 .id("testing-\(nodeName)")
-                        } else {
+        } else {
                             // 延迟文本 - 使用缓存的延迟文本
                             Text(cachedDelayText)
                                 .font(.system(.caption, design: .rounded))
@@ -1567,16 +1584,16 @@ struct ZashNodeCardOptimized: View {
             let delay = self.cachedNodeDelay
             if delay == 0 {
                 
-                self.cachedDelayColor = .gray
+                self.cachedDelayColor = DelayColor.disconnected
             } else if delay < lowDelayThreshold {
                 
-                self.cachedDelayColor = .green
+                self.cachedDelayColor = DelayColor.low
             } else if delay < mediumDelayThreshold {
                 
-                self.cachedDelayColor = .yellow
+                self.cachedDelayColor = DelayColor.medium
             } else {
                 
-                self.cachedDelayColor = .orange
+                self.cachedDelayColor = DelayColor.high
             }
             
             // 计算并缓存节点类型标签
@@ -1679,23 +1696,23 @@ struct ZashGroupDetailView: View {
     
     var body: some View {
         GeometryReader { geometry in
-            ScrollView {
-                VStack(spacing: 16) {
-                    // 搜索栏 - 修改样式使其更加明显
-                    searchBarView
-                    
-                    // 节点统计信息
-                    statsView
-                    
-                    // 节点列表
-                    if filteredNodes.isEmpty {
-                        Text("没有找到节点")
-                            .font(.system(.body, design: .rounded))
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .padding()
-                    } else {
-                        // 使用懒加载方式优化列表渲染
+        ScrollView {
+            VStack(spacing: 16) {
+                // 搜索栏 - 修改样式使其更加明显
+                searchBarView
+                
+                // 节点统计信息
+                statsView
+                
+                // 节点列表
+                if filteredNodes.isEmpty {
+                    Text("没有找到节点")
+                        .font(.system(.body, design: .rounded))
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .padding()
+                } else {
+                    // 使用懒加载方式优化列表渲染
                         LazyVGrid(columns: getColumns(availableWidth: geometry.size.width), spacing: 12) {
                             ForEach(filteredNodes, id: \.self) { nodeName in
                                 let isNodeSelected = viewModel.groups.first(where: { $0.name == group.name })?.now == nodeName
@@ -1715,11 +1732,11 @@ struct ZashGroupDetailView: View {
                             }
                         }
                         .padding(.horizontal)
-                    }
                 }
-                .padding(.vertical)
-                // 设置为始终可见
-                .opacity(1.0)
+            }
+            .padding(.vertical)
+            // 设置为始终可见
+            .opacity(1.0)
             }
         }
         .background(Color(.systemGroupedBackground).ignoresSafeArea())
@@ -1883,6 +1900,208 @@ struct ZashGroupDetailView: View {
         }
         
         self.delayStats = (green, yellow, orange, gray)
+    }
+}
+
+// 添加延迟环形图表组件
+struct DelayRingChart: View {
+    let group: ProxyGroup
+    @ObservedObject var viewModel: ProxyViewModel
+    let size: CGFloat
+    let strokeWidth: CGFloat
+    let showIcon: Bool
+    let showDelayRing: Bool
+    
+    @AppStorage("lowDelayThreshold") private var lowDelayThreshold = 240
+    @AppStorage("mediumDelayThreshold") private var mediumDelayThreshold = 500
+    @Environment(\.colorScheme) private var colorScheme
+    
+    // 使用DelayColor中定义的颜色，保持一致性
+    private var delayColors: (low: Color, medium: Color, high: Color, timeout: Color) {
+        return (
+            low: DelayColor.low,
+            medium: DelayColor.medium,
+            high: DelayColor.high,
+            timeout: DelayColor.disconnected
+        )
+    }
+    
+    // 计算延迟分布
+    private var delayStats: (green: Int, yellow: Int, orange: Int, gray: Int) {
+        var green = 0
+        var yellow = 0
+        var orange = 0
+        var gray = 0
+        
+        for nodeName in group.all {
+            let delay = viewModel.getNodeDelay(nodeName: nodeName)
+            if delay == 0 {
+                gray += 1
+            } else if delay < lowDelayThreshold {
+                green += 1
+            } else if delay < mediumDelayThreshold {
+                yellow += 1
+            } else {
+                orange += 1
+            }
+        }
+        
+        return (green, yellow, orange, gray)
+    }
+    
+    // 计算当前选中节点的延迟
+    private var selectedNodeDelay: Int {
+        return viewModel.getNodeDelay(nodeName: group.now)
+    }
+    
+    // 获取当前选中节点的延迟颜色
+    private var selectedNodeDelayColor: Color {
+        let delay = selectedNodeDelay
+            if delay == 0 {
+            return delayColors.timeout
+            } else if delay < lowDelayThreshold {
+            return delayColors.low
+            } else if delay < mediumDelayThreshold {
+            return delayColors.medium
+            } else {
+            return delayColors.high
+        }
+    }
+    
+    var body: some View {
+        ZStack {
+            // 背景圆环 - 调整透明度使其更柔和
+            if showDelayRing {
+                Circle()
+                    .stroke(
+                        Color(.systemGray5).opacity(colorScheme == .dark ? 0.2 : 0.3),
+                        lineWidth: strokeWidth
+                    )
+                    .frame(width: size, height: size)
+            }
+            
+            // 计算总节点数
+            let total = CGFloat(group.all.count)
+            if showDelayRing && total > 0 {
+                let stats = delayStats
+                
+                // 使用 ZStack 和 trim 来创建环形图
+                ZStack {
+                    // 绘制灰色部分（超时）
+                    if stats.gray > 0 {
+                        Circle()
+                            .trim(from: 0, to: CGFloat(stats.gray) / total)
+                            .stroke(
+                                delayColors.timeout,
+                                style: StrokeStyle(
+                                    lineWidth: strokeWidth,
+                                    lineCap: .round
+                                )
+                            )
+                            .rotationEffect(.degrees(-90))
+                            .animation(.easeInOut(duration: 0.5), value: stats.gray)
+                    }
+                    
+                    // 绘制绿色部分（低延迟）
+                    if stats.green > 0 {
+                        Circle()
+                            .trim(from: CGFloat(stats.gray) / total, 
+                                  to: CGFloat(stats.gray + stats.green) / total)
+                            .stroke(
+                                delayColors.low,
+                                style: StrokeStyle(
+                                    lineWidth: strokeWidth,
+                                    lineCap: .round
+                                )
+                            )
+                            .rotationEffect(.degrees(-90))
+                            .animation(.easeInOut(duration: 0.5), value: stats.green)
+                    }
+                    
+                    // 绘制黄色部分（中延迟）
+                    if stats.yellow > 0 {
+                        Circle()
+                            .trim(from: CGFloat(stats.gray + stats.green) / total, 
+                                  to: CGFloat(stats.gray + stats.green + stats.yellow) / total)
+                            .stroke(
+                                delayColors.medium,
+                                style: StrokeStyle(
+                                    lineWidth: strokeWidth,
+                                    lineCap: .round
+                                )
+                            )
+                            .rotationEffect(.degrees(-90))
+                            .animation(.easeInOut(duration: 0.5), value: stats.yellow)
+                    }
+                    
+                    // 绘制橙色部分（高延迟）
+                    if stats.orange > 0 {
+                        Circle()
+                            .trim(from: CGFloat(stats.gray + stats.green + stats.yellow) / total, 
+                                  to: CGFloat(stats.gray + stats.green + stats.yellow + stats.orange) / total)
+                            .stroke(
+                                delayColors.high,
+                                style: StrokeStyle(
+                                    lineWidth: strokeWidth,
+                                    lineCap: .round
+                                )
+                            )
+                            .rotationEffect(.degrees(-90))
+                            .animation(.easeInOut(duration: 0.5), value: stats.orange)
+                    }
+                }
+                .frame(width: size, height: size)
+            }
+            
+            // 中心内容
+            if showIcon, let iconUrl = group.icon, !iconUrl.isEmpty {
+                // 显示图标 - 移除背景圆圈，直接显示图标
+                ZStack {
+                    // 添加一个非常轻微的渐变背景，增强图标可见性
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                gradient: Gradient(colors: [
+                                    Color(.systemBackground).opacity(colorScheme == .dark ? 0.5 : 0.7),
+                                    Color(.systemBackground).opacity(0)
+                                ]),
+                                center: .center,
+                                startRadius: 0,
+                                endRadius: (size - strokeWidth * 2) / 2
+                            )
+                        )
+                        .frame(width: size - strokeWidth * 2 - 4, height: size - strokeWidth * 2 - 4)
+                    
+                    CachedAsyncImage(url: iconUrl)
+                        .scaledToFit()
+                        .frame(width: size - strokeWidth * 2 - 12, height: size - strokeWidth * 2 - 12)
+                }
+            } else if showDelayRing {
+                // 显示当前选中节点的延迟
+                ZStack {
+                    // 使用半透明背景，而不是实心圆
+                    Circle()
+                        .fill(Color(.systemBackground).opacity(colorScheme == .dark ? 0.7 : 0.9))
+                        .shadow(color: Color.black.opacity(0.05), radius: 1, x: 0, y: 0)
+                    
+                    if selectedNodeDelay > 0 {
+                        Text("\(selectedNodeDelay)")
+                            .font(.system(size: size / 3.5, weight: .semibold, design: .rounded))
+                            .foregroundColor(selectedNodeDelayColor)
+                            .monospacedDigit()
+                            .transition(.opacity)
+                            .id("delay-\(selectedNodeDelay)")
+                    } else {
+                        Image(systemName: "xmark.circle")
+                            .font(.system(size: size / 3))
+                            .foregroundColor(.gray.opacity(0.7))
+                            .transition(.opacity)
+                    }
+                }
+                .frame(width: size - strokeWidth * 2 - 4, height: size - strokeWidth * 2 - 4)
+                .animation(.easeInOut, value: selectedNodeDelay)
+            }
+        }
     }
 }
 
