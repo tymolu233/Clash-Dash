@@ -1052,73 +1052,91 @@ struct ZashProviderDetailView: View {
     }
     
     var body: some View {
-        ScrollView {
-            VStack(spacing: 16) {
-                // 提供者信息卡片
-                ZashInfoCard(provider: provider)
-                
-                // 搜索栏 - 修改样式使其更加明显
-                HStack {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundColor(.secondary)
+        GeometryReader { geometry in
+            ScrollView {
+                VStack(spacing: 16) {
+                    // 提供者信息卡片
+                    ZashInfoCard(provider: provider)
                     
-                    TextField("搜索节点", text: $searchText)
-                        .font(.system(.body, design: .rounded))
-                        .autocorrectionDisabled()
-                        .textInputAutocapitalization(.never)
-                    
-                    if !searchText.isEmpty {
-                        Button(action: {
-                            searchText = ""
-                        }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundColor(.secondary)
+                    // 搜索栏 - 修改样式使其更加明显
+                    HStack {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundColor(.secondary)
+                        
+                        TextField("搜索节点", text: $searchText)
+                            .font(.system(.body, design: .rounded))
+                            .autocorrectionDisabled()
+                            .textInputAutocapitalization(.never)
+                        
+                        if !searchText.isEmpty {
+                            Button(action: {
+                                searchText = ""
+                            }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(.secondary)
+                            }
                         }
                     }
-                }
-                .padding(10)
-                .background(
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(colorScheme == .dark ? Color(.systemGray6) : Color(.systemBackground))
-                        .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.1), radius: 3, x: 0, y: 1)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10)
-                        .strokeBorder(colorScheme == .dark ? Color.gray.opacity(0.5) : Color.blue.opacity(0.2), lineWidth: colorScheme == .dark ? 1.0 : 0.5)
-                )
-                .padding(.horizontal)
-                
-                // 节点统计信息
-                HStack {
-                    Text("共 \(nodes.count) 个节点")
-                        .font(.system(.subheadline, design: .rounded))
-                        .foregroundStyle(.secondary)
+                    .padding(10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(colorScheme == .dark ? Color(.systemGray6) : Color(.systemBackground))
+                                .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.1), radius: 3, x: 0, y: 1)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .strokeBorder(colorScheme == .dark ? Color.gray.opacity(0.5) : Color.blue.opacity(0.2), lineWidth: colorScheme == .dark ? 1.0 : 0.5)
+                    )
+                    .padding(.horizontal)
                     
-                    Spacer()
+                    // 节点统计信息
+                    HStack {
+                        Text("共 \(nodes.count) 个节点")
+                            .font(.system(.subheadline, design: .rounded))
+                            .foregroundStyle(.secondary)
+                        
+                        Spacer()
+                        
+                        // 延迟统计
+                        let stats = getDelayStats()
+                        HStack(spacing: 8) {
+                            DelayStatBadge(count: stats.green, color: .green, label: "低延迟")
+                            DelayStatBadge(count: stats.yellow, color: .yellow, label: "中延迟")
+                            DelayStatBadge(count: stats.orange, color: .orange, label: "高延迟")
+                            DelayStatBadge(count: stats.gray, color: .gray, label: "超时")
+                        }
+                    }
+                    .padding(.horizontal)
                     
-                    // 延迟统计
-                    let stats = getDelayStats()
-                    HStack(spacing: 8) {
-                        DelayStatBadge(count: stats.green, color: .green, label: "低延迟")
-                        DelayStatBadge(count: stats.yellow, color: .yellow, label: "中延迟")
-                        DelayStatBadge(count: stats.orange, color: .orange, label: "高延迟")
-                        DelayStatBadge(count: stats.gray, color: .gray, label: "超时")
+                    // 节点列表
+                    if filteredNodes.isEmpty {
+                        Text("没有找到节点")
+                            .font(.system(.body, design: .rounded))
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .padding()
+                    } else {
+                        LazyVGrid(columns: getColumns(availableWidth: geometry.size.width), spacing: 12) {
+                            ForEach(filteredNodes) { node in
+                                ZashNodeCardOptimized(
+                                    nodeName: node.name,
+                                    node: node,
+                                    isSelected: false,
+                                    isTesting: viewModel.testingNodes.contains(node.name),
+                                    viewModel: viewModel,
+                                    onTap: {
+                                        handleNodeTap(nodeName: node.name)
+                                    }
+                                )
+                                .id("\(node.name)-\(viewModel.testingNodes.contains(node.name))")
+                            }
+                        }
+                        .padding(.horizontal)
                     }
                 }
-                .padding(.horizontal)
-                
-                // 节点列表
-                ZashNodesGrid(
-                    provider: provider,
-                    nodes: filteredNodes,
-                    viewModel: viewModel
-                )
+                .padding(.vertical)
             }
-            .padding(.vertical)
-            // 设置为始终可见
-            .opacity(1.0)
         }
-        .background(Color(.systemGroupedBackground).ignoresSafeArea())
         .navigationTitle(provider.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -1170,6 +1188,33 @@ struct ZashProviderDetailView: View {
         }
         
         return (green, yellow, orange, gray)
+    }
+    
+    // 修改 getColumns 方法，使用传入的实际可用宽度
+    private func getColumns(availableWidth: CGFloat) -> [GridItem] {
+        let spacing: CGFloat = 12
+        let minCardWidth: CGFloat = 160
+        let maxCardWidth: CGFloat = 200
+        
+        // 计算可用宽度内可以放置的列数
+        let horizontalPadding: CGFloat = 32 // 左右总边距
+        let width = availableWidth - horizontalPadding
+        let optimalColumnCount = max(2, Int(width / (minCardWidth + spacing)))
+        
+        return Array(repeating: GridItem(.flexible(minimum: minCardWidth, maximum: maxCardWidth), spacing: spacing), count: optimalColumnCount)
+    }
+    
+    // 处理节点点击
+    private func handleNodeTap(nodeName: String) {
+        
+        HapticManager.shared.impact(.light)
+        
+        Task {
+            await viewModel.healthCheckProviderProxy(
+                providerName: provider.name,
+                proxyName: nodeName
+            )
+        }
     }
 }
 
@@ -1391,328 +1436,6 @@ struct ZashInfoCard: View {
     }
 }
 
-// Zash 风格的节点网格 - 优化版本
-struct ZashNodesGrid: View {
-    let provider: Provider
-    let nodes: [ProxyNode]
-    @ObservedObject var viewModel: ProxyViewModel
-    @Environment(\.colorScheme) private var colorScheme
-    @State private var cachedColumns: [GridItem] = []
-    @State private var lastScreenWidth: CGFloat = 0
-    
-    var body: some View {
-        if nodes.isEmpty {
-            Text("没有找到节点")
-                .font(.system(.body, design: .rounded))
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .padding()
-        } else {
-            LazyVGrid(columns: getColumns(), spacing: 12) {
-                ForEach(nodes) { node in
-                    ZashNodeCardOptimized(
-                        nodeName: node.name,
-                        node: node,
-                        isSelected: false,
-                        isTesting: viewModel.testingNodes.contains(node.name),
-                        viewModel: viewModel,
-                        onTap: {
-                            handleNodeTap(nodeName: node.name)
-                        }
-                    )
-                    .id("\(node.name)-\(viewModel.testingNodes.contains(node.name))")
-                }
-            }
-            .padding(.horizontal)
-        }
-    }
-    
-    private func getColumns() -> [GridItem] {
-        let screenWidth = UIScreen.main.bounds.width
-        
-        // 如果屏幕宽度没有变化，使用缓存的结果
-        if abs(screenWidth - lastScreenWidth) < 1 && !cachedColumns.isEmpty {
-            return cachedColumns
-        }
-        
-        
-        
-        let spacing: CGFloat = 12
-        let minCardWidth: CGFloat = 160
-        let maxCardWidth: CGFloat = 200
-        
-        let columnsCount = max(2, Int(screenWidth / (minCardWidth + spacing * 2)))
-        let newColumns = Array(repeating: GridItem(.flexible(minimum: minCardWidth, maximum: maxCardWidth), spacing: spacing), count: columnsCount)
-        
-        // 避免在视图更新过程中直接修改状态
-        DispatchQueue.main.async {
-            self.lastScreenWidth = screenWidth
-            self.cachedColumns = newColumns
-        }
-        
-        return newColumns
-    }
-    
-    // 处理节点点击
-    private func handleNodeTap(nodeName: String) {
-        
-        HapticManager.shared.impact(.light)
-        
-        Task {
-            await viewModel.healthCheckProviderProxy(
-                providerName: provider.name,
-                proxyName: nodeName
-            )
-        }
-    }
-}
-
-// 添加 Zash 风格的代理组详情视图 - 优化版本
-struct ZashGroupDetailView: View {
-    let group: ProxyGroup
-    @ObservedObject var viewModel: ProxyViewModel
-    @Environment(\.dismiss) private var dismiss
-    @Environment(\.colorScheme) private var colorScheme
-    @State private var searchText = ""
-    @AppStorage("allowManualURLTestGroupSwitch") private var allowManualURLTestGroupSwitch = false
-    @State private var showURLTestAlert = false
-    @State private var cachedColumns: [GridItem] = []
-    @State private var lastScreenWidth: CGFloat = 0
-    @State private var isInitialAppear = true
-    @State private var isLoaded = false
-    @State private var delayStats: (green: Int, yellow: Int, orange: Int, gray: Int) = (0, 0, 0, 0)
-    
-    private var filteredNodes: [String] {
-        if searchText.isEmpty {
-            return group.all
-        } else {
-            return group.all.filter { $0.localizedCaseInsensitiveContains(searchText) }
-        }
-    }
-    
-    var body: some View {
-        
-        
-        ScrollView {
-            VStack(spacing: 16) {
-                // 搜索栏 - 修改样式使其更加明显
-                searchBarView
-                
-                // 节点统计信息
-                statsView
-                
-                // 节点列表
-                if filteredNodes.isEmpty {
-                    Text("没有找到节点")
-                        .font(.system(.body, design: .rounded))
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .padding()
-                } else {
-                    // 使用懒加载方式优化列表渲染
-                    nodeListView
-                }
-            }
-            .padding(.vertical)
-            // 设置为始终可见
-            .opacity(1.0)
-        }
-        .background(Color(.systemGroupedBackground).ignoresSafeArea())
-        .navigationTitle(group.name)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    Task {
-                        await viewModel.testGroupSpeed(groupName: group.name)
-                    }
-                } label: {
-                    Label("测速", systemImage: "bolt.horizontal")
-                }
-            }
-            
-            ToolbarItem(placement: .topBarLeading) {
-                Button("关闭") {
-                    dismiss()
-                }
-            }
-        }
-        .onAppear {
-            
-            // 直接设置为已加载状态，不使用延迟
-            isLoaded = true
-            
-            // 计算延迟统计
-            calculateDelayStats()
-            
-        }
-    }
-    
-    // 搜索栏视图
-    private var searchBarView: some View {
-        HStack {
-            Image(systemName: "magnifyingglass")
-                .foregroundColor(.secondary)
-            
-            TextField("搜索节点", text: $searchText)
-                .font(.system(.body, design: .rounded))
-                .autocorrectionDisabled()
-                .textInputAutocapitalization(.never)
-            
-            if !searchText.isEmpty {
-                Button(action: {
-                    searchText = ""
-                }) {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundColor(.secondary)
-                }
-            }
-        }
-        .padding(10)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(colorScheme == .dark ? Color(.systemGray6) : Color(.systemBackground))
-                    .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.1), radius: 3, x: 0, y: 1)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .strokeBorder(colorScheme == .dark ? Color.gray.opacity(0.5) : Color.blue.opacity(0.2), lineWidth: colorScheme == .dark ? 1.0 : 0.5)
-        )
-        .padding(.horizontal)
-    }
-    
-    // 统计信息视图
-    private var statsView: some View {
-        HStack {
-            Text("共 \(group.all.count) 个节点")
-                .font(.system(.subheadline, design: .rounded))
-                .foregroundStyle(.secondary)
-            
-            Spacer()
-            
-            // 延迟统计 - 使用缓存的统计数据
-            HStack(spacing: 8) {
-                DelayStatBadge(count: delayStats.green, color: .green, label: "低延迟")
-                DelayStatBadge(count: delayStats.yellow, color: .yellow, label: "中延迟")
-                DelayStatBadge(count: delayStats.orange, color: .orange, label: "高延迟")
-                DelayStatBadge(count: delayStats.gray, color: .gray, label: "超时")
-            }
-        }
-        .padding(.horizontal)
-    }
-    
-    // 节点列表视图 - 使用优化的列表渲染
-    private var nodeListView: some View {
-        LazyVGrid(columns: getColumns(), spacing: 12) {
-            ForEach(filteredNodes.indices, id: \.self) { index in
-                let nodeName = filteredNodes[index]
-                let isNodeSelected = viewModel.groups.first(where: { $0.name == group.name })?.now == nodeName
-                let isNodeTesting = viewModel.testingNodes.contains(nodeName)
-                // 使用ID优化ForEach
-                ZashNodeCardOptimized(
-                    nodeName: nodeName,
-                    node: viewModel.nodes.first { $0.name == nodeName },
-                    isSelected: isNodeSelected,
-                    isTesting: isNodeTesting,
-                    viewModel: viewModel,
-                    onTap: {
-                        handleNodeTap(nodeName: nodeName)
-                    }
-                )
-                .id("\(nodeName)-\(isNodeSelected)-\(isNodeTesting)")
-            }
-        }
-        .padding(.horizontal)
-    }
-    
-    // 处理节点点击
-    private func handleNodeTap(nodeName: String) {
-        
-        HapticManager.shared.impact(.light)
-        
-        if group.type == "URLTest" && !allowManualURLTestGroupSwitch {
-            // 显示不支持手动切换的提示
-            showURLTestAlert = true
-            HapticManager.shared.notification(.error)
-            return
-        }
-        
-        Task {
-            await viewModel.selectProxy(groupName: group.name, proxyName: nodeName)
-            
-            // 重新获取代理数据以确保UI更新
-            await viewModel.fetchProxies()
-            
-            await MainActor.run {
-                // 添加成功的触觉反馈
-                HapticManager.shared.notification(.success)
-                
-                // 关闭详情视图，返回到主视图
-                // dismiss()
-            }
-        }
-    }
-    
-    // 优化列计算以使用缓存
-    private func getColumns() -> [GridItem] {
-        let screenWidth = UIScreen.main.bounds.width
-        
-        // 如果屏幕宽度没有变化，使用缓存的结果
-        if abs(screenWidth - lastScreenWidth) < 1 && !cachedColumns.isEmpty {
-            return cachedColumns
-        }
-        
-        
-        
-        let spacing: CGFloat = 12
-        let minCardWidth: CGFloat = 160
-        let maxCardWidth: CGFloat = 200
-        
-        let columnsCount = max(2, Int(screenWidth / (minCardWidth + spacing * 2)))
-        let newColumns = Array(repeating: GridItem(.flexible(minimum: minCardWidth, maximum: maxCardWidth), spacing: spacing), count: columnsCount)
-        
-        // 避免在视图更新过程中直接修改状态
-        DispatchQueue.main.async {
-            self.lastScreenWidth = screenWidth
-            self.cachedColumns = newColumns
-        }
-        
-        return newColumns
-    }
-    
-    // 计算延迟统计并缓存结果
-    private func calculateDelayStats() {
-        let lowThreshold = UserDefaults.standard.integer(forKey: "lowDelayThreshold")
-        let mediumThreshold = UserDefaults.standard.integer(forKey: "mediumDelayThreshold")
-        
-        let lowDelay = lowThreshold == 0 ? 240 : lowThreshold
-        let mediumDelay = mediumThreshold == 0 ? 500 : mediumThreshold
-        
-        var green = 0
-        var yellow = 0
-        var orange = 0
-        var gray = 0
-        
-        for nodeName in group.all {
-            if let node = viewModel.nodes.first(where: { $0.name == nodeName }) {
-                if node.delay == 0 {
-                    gray += 1
-                } else if node.delay < lowDelay {
-                    green += 1
-                } else if node.delay < mediumDelay {
-                    yellow += 1
-                } else {
-                    orange += 1
-                }
-            } else {
-                gray += 1
-            }
-        }
-        
-        self.delayStats = (green, yellow, orange, gray)
-    }
-}
-
 // 优化版节点卡片 - 减少不必要的重绘
 struct ZashNodeCardOptimized: View {
     let nodeName: String
@@ -1888,6 +1611,239 @@ struct ZashNodeCardOptimized: View {
                 self.cachedDelayText = "超时"
             }
         }
+    }
+}
+
+// 添加 Zash 风格的代理组详情视图 - 优化版本
+struct ZashGroupDetailView: View {
+    let group: ProxyGroup
+    @ObservedObject var viewModel: ProxyViewModel
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var searchText = ""
+    @AppStorage("allowManualURLTestGroupSwitch") private var allowManualURLTestGroupSwitch = false
+    @State private var showURLTestAlert = false
+    @State private var cachedColumns: [GridItem] = []
+    @State private var lastScreenWidth: CGFloat = 0
+    @State private var isInitialAppear = true
+    @State private var isLoaded = false
+    @State private var delayStats: (green: Int, yellow: Int, orange: Int, gray: Int) = (0, 0, 0, 0)
+    
+    private var filteredNodes: [String] {
+        if searchText.isEmpty {
+            return group.all
+        } else {
+            return group.all.filter { $0.localizedCaseInsensitiveContains(searchText) }
+        }
+    }
+    
+    var body: some View {
+        GeometryReader { geometry in
+            ScrollView {
+                VStack(spacing: 16) {
+                    // 搜索栏 - 修改样式使其更加明显
+                    searchBarView
+                    
+                    // 节点统计信息
+                    statsView
+                    
+                    // 节点列表
+                    if filteredNodes.isEmpty {
+                        Text("没有找到节点")
+                            .font(.system(.body, design: .rounded))
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .padding()
+                    } else {
+                        // 使用懒加载方式优化列表渲染
+                        LazyVGrid(columns: getColumns(availableWidth: geometry.size.width), spacing: 12) {
+                            ForEach(filteredNodes.indices, id: \.self) { index in
+                                let nodeName = filteredNodes[index]
+                                let isNodeSelected = viewModel.groups.first(where: { $0.name == group.name })?.now == nodeName
+                                let isNodeTesting = viewModel.testingNodes.contains(nodeName)
+                                // 使用ID优化ForEach
+                                ZashNodeCardOptimized(
+                                    nodeName: nodeName,
+                                    node: viewModel.nodes.first { $0.name == nodeName },
+                                    isSelected: isNodeSelected,
+                                    isTesting: isNodeTesting,
+                                    viewModel: viewModel,
+                                    onTap: {
+                                        handleNodeTap(nodeName: nodeName)
+                                    }
+                                )
+                                .id("\(nodeName)-\(isNodeSelected)-\(isNodeTesting)")
+                            }
+                        }
+                        .padding(.horizontal)
+                    }
+                }
+                .padding(.vertical)
+                // 设置为始终可见
+                .opacity(1.0)
+            }
+        }
+        .background(Color(.systemGroupedBackground).ignoresSafeArea())
+        .navigationTitle(group.name)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    Task {
+                        await viewModel.testGroupSpeed(groupName: group.name)
+                    }
+                } label: {
+                    Label("测速", systemImage: "bolt.horizontal")
+                }
+            }
+            
+            ToolbarItem(placement: .topBarLeading) {
+                Button("关闭") {
+                    dismiss()
+                }
+            }
+        }
+        .onAppear {
+            
+            // 直接设置为已加载状态，不使用延迟
+            isLoaded = true
+            
+            // 计算延迟统计
+            calculateDelayStats()
+            
+        }
+        .alert("自动测速选择分组", isPresented: $showURLTestAlert) {
+            Button("确定", role: .cancel) { }
+        } message: {
+            Text("该分组不支持手动切换节点，可在全局设置中启用手动切换")
+        }
+    }
+    
+    // 搜索栏视图
+    private var searchBarView: some View {
+        HStack {
+            Image(systemName: "magnifyingglass")
+                .foregroundColor(.secondary)
+            
+            TextField("搜索节点", text: $searchText)
+                .font(.system(.body, design: .rounded))
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(.never)
+            
+            if !searchText.isEmpty {
+                Button(action: {
+                    searchText = ""
+                }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+        .padding(10)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(colorScheme == .dark ? Color(.systemGray6) : Color(.systemBackground))
+                    .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.1), radius: 3, x: 0, y: 1)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .strokeBorder(colorScheme == .dark ? Color.gray.opacity(0.5) : Color.blue.opacity(0.2), lineWidth: colorScheme == .dark ? 1.0 : 0.5)
+        )
+        .padding(.horizontal)
+    }
+    
+    // 统计信息视图
+    private var statsView: some View {
+        HStack {
+            Text("共 \(group.all.count) 个节点")
+                .font(.system(.subheadline, design: .rounded))
+                .foregroundStyle(.secondary)
+            
+            Spacer()
+            
+            // 延迟统计 - 使用缓存的统计数据
+            HStack(spacing: 8) {
+                DelayStatBadge(count: delayStats.green, color: .green, label: "低延迟")
+                DelayStatBadge(count: delayStats.yellow, color: .yellow, label: "中延迟")
+                DelayStatBadge(count: delayStats.orange, color: .orange, label: "高延迟")
+                DelayStatBadge(count: delayStats.gray, color: .gray, label: "超时")
+            }
+        }
+        .padding(.horizontal)
+    }
+    
+    // 修改列计算方法，使用传入的实际可用宽度
+    private func getColumns(availableWidth: CGFloat) -> [GridItem] {
+        let spacing: CGFloat = 12
+        let minCardWidth: CGFloat = 160
+        let maxCardWidth: CGFloat = 200
+        
+        // 计算可用宽度内可以放置的列数
+        let horizontalPadding: CGFloat = 32 // 左右总边距
+        let width = availableWidth - horizontalPadding
+        let optimalColumnCount = max(2, Int(width / (minCardWidth + spacing)))
+        
+        return Array(repeating: GridItem(.flexible(minimum: minCardWidth, maximum: maxCardWidth), spacing: spacing), count: optimalColumnCount)
+    }
+    
+    // 处理节点点击
+    private func handleNodeTap(nodeName: String) {
+        
+        HapticManager.shared.impact(.light)
+        
+        if group.type == "URLTest" && !allowManualURLTestGroupSwitch {
+            // 显示不支持手动切换的提示
+            showURLTestAlert = true
+            HapticManager.shared.notification(.error)
+            return
+        }
+        
+        Task {
+            await viewModel.selectProxy(groupName: group.name, proxyName: nodeName)
+            
+            // 重新获取代理数据以确保UI更新
+            await viewModel.fetchProxies()
+            
+            await MainActor.run {
+                // 添加成功的触觉反馈
+                HapticManager.shared.notification(.success)
+                
+                // 关闭详情视图，返回到主视图
+                // dismiss()
+            }
+        }
+    }
+    
+    // 计算延迟统计并缓存结果
+    private func calculateDelayStats() {
+        let lowThreshold = UserDefaults.standard.integer(forKey: "lowDelayThreshold")
+        let mediumThreshold = UserDefaults.standard.integer(forKey: "mediumDelayThreshold")
+        
+        let lowDelay = lowThreshold == 0 ? 240 : lowThreshold
+        let mediumDelay = mediumThreshold == 0 ? 500 : mediumThreshold
+        
+        var green = 0
+        var yellow = 0
+        var orange = 0
+        var gray = 0
+        
+        for nodeName in group.all {
+            if let node = viewModel.nodes.first(where: { $0.name == nodeName }) {
+                if node.delay == 0 {
+                    gray += 1
+                } else if node.delay < lowDelay {
+                    green += 1
+                } else if node.delay < mediumDelay {
+                    yellow += 1
+                } else {
+                    orange += 1
+                }
+            } else {
+                gray += 1
+            }
+        }
+        
+        self.delayStats = (green, yellow, orange, gray)
     }
 }
 
