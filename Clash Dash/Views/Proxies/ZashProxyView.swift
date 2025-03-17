@@ -1595,7 +1595,43 @@ struct ZashNodeCardOptimized: View {
             } else {
                 let typeText = node?.type ?? "未知"
                 
-                self.cachedNodeTypeLabel = typeText
+                // 简化代理类型名称
+                let simplifiedType: String
+                switch typeText.lowercased() {
+                case "shadowsocks":
+                    simplifiedType = "SS"
+                case "vmess":
+                    simplifiedType = "V2"
+                case "trojan":
+                    simplifiedType = "TR"
+                case "socks5":
+                    simplifiedType = "S5"
+                case "http":
+                    simplifiedType = "HTTP"
+                case "snell":
+                    simplifiedType = "SNL"
+                case "wireguard":
+                    simplifiedType = "WG"
+                case "hysteria":
+                    simplifiedType = "HY"
+                case "hysteria2":
+                    simplifiedType = "HY2"
+                case "tuic":
+                    simplifiedType = "TUIC"
+                case "vless":
+                    simplifiedType = "VL"
+                case "shadowsocksr":
+                    simplifiedType = "SSR"
+                default:
+                    // 如果是其他类型，取首字母或前两个字母
+                    if typeText.count > 2 {
+                        simplifiedType = String(typeText.prefix(2)).uppercased()
+                    } else {
+                        simplifiedType = typeText.uppercased()
+                    }
+                }
+                
+                self.cachedNodeTypeLabel = simplifiedType
                 self.cachedNodeTypeLabelColor = .purple
             }
             
