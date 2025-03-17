@@ -715,11 +715,16 @@ struct ProxyProviderCard: View {
         case failure
     }
     
+    // 添加计算属性获取最新的提供者数据
+    private var currentProvider: Provider {
+        viewModel.providers.first { $0.name == provider.name } ?? provider
+    }
+    
     // 添加触觉反馈生成器
     
     
     private var trafficInfo: (used: String, total: String, percentage: Double)? {
-        guard let info = provider.subscriptionInfo,
+        guard let info = currentProvider.subscriptionInfo,
               // 添加判断：只有当总流量不为 0 时才显示流量信息
               info.total > 0 else { return nil }
         let used = Double(info.upload + info.download)
@@ -729,7 +734,7 @@ struct ProxyProviderCard: View {
     }
     
     private var relativeUpdateTime: String {
-        guard let updatedAt = provider.updatedAt else {
+        guard let updatedAt = currentProvider.updatedAt else {
             // print("Provider \(provider.name) updatedAt is nil")
             return "从未更新"
         }
@@ -768,7 +773,7 @@ struct ProxyProviderCard: View {
     }
     
     private var expirationDate: String? {
-        guard let info = provider.subscriptionInfo,
+        guard let info = currentProvider.subscriptionInfo,
               // 添加判断：只有当总流量不为 0 时才显示到期时间
               info.total > 0 && info.expire > 0 else { return nil }
         let date = Date(timeIntervalSince1970: TimeInterval(info.expire))

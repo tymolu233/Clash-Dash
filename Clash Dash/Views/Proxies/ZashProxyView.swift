@@ -612,9 +612,14 @@ struct ZashProviderCard: View {
     @State private var showingSheet = false
     @State private var rotation: Double = 0
     
+    // 添加计算属性获取最新的提供者数据
+    private var currentProvider: Provider {
+        viewModel.providers.first { $0.name == provider.name } ?? provider
+    }
+    
     // 使用计算属性替代状态变量
     private var usageInfo: String? {
-        if let info = provider.subscriptionInfo,
+        if let info = currentProvider.subscriptionInfo,
            info.total > 0 || info.upload > 0 || info.download > 0 {
             let remaining = max(0, info.total - info.upload - info.download)
             let remainingFormatted = formatBytes(Int64(remaining))
@@ -628,7 +633,7 @@ struct ZashProviderCard: View {
     }
     
     private var remainingPercentage: Double {
-        if let info = provider.subscriptionInfo,
+        if let info = currentProvider.subscriptionInfo,
            info.total > 0 {
             let result = max(0, min(1.0, 1.0 - Double(info.upload + info.download) / Double(info.total)))
             
@@ -639,7 +644,7 @@ struct ZashProviderCard: View {
     }
     
     private var updateTimeText: String {
-        if let updatedAt = provider.updatedAt,
+        if let updatedAt = currentProvider.updatedAt,
            let updateDate = parseDate(updatedAt) {
             let result = formatRelativeTime(updateDate) + "更新"
             
