@@ -1666,10 +1666,14 @@ struct ZashGroupDetailView: View {
     @State private var delayStats: (green: Int, yellow: Int, orange: Int, gray: Int) = (0, 0, 0, 0)
     
     private var filteredNodes: [String] {
+        // 先获取排序后的节点列表
+        let sortedNodes = viewModel.getSortedNodes(group.all, in: group)
+        
+        // 然后根据搜索文本进行过滤
         if searchText.isEmpty {
-            return group.all
+            return sortedNodes
         } else {
-            return group.all.filter { $0.localizedCaseInsensitiveContains(searchText) }
+            return sortedNodes.filter { $0.localizedCaseInsensitiveContains(searchText) }
         }
     }
     
@@ -1693,8 +1697,7 @@ struct ZashGroupDetailView: View {
                     } else {
                         // 使用懒加载方式优化列表渲染
                         LazyVGrid(columns: getColumns(availableWidth: geometry.size.width), spacing: 12) {
-                            ForEach(filteredNodes.indices, id: \.self) { index in
-                                let nodeName = filteredNodes[index]
+                            ForEach(filteredNodes, id: \.self) { nodeName in
                                 let isNodeSelected = viewModel.groups.first(where: { $0.name == group.name })?.now == nodeName
                                 let isNodeTesting = viewModel.testingNodes.contains(nodeName)
                                 // 使用ID优化ForEach
