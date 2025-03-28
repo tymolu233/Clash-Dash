@@ -1,6 +1,5 @@
 name: Build and Release IPA
 
-# ✅ 将触发器改为手动触发
 on:
   workflow_dispatch:
     inputs:
@@ -12,17 +11,21 @@ on:
 jobs:
   build:
     runs-on: macos-latest
+
     steps:
+      # ✅ 拉取指定分支的代码
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.inputs.branch }}
 
+      # ✅ 设置 Xcode 环境
       - name: Set up Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: latest-stable
 
+      # ✅ 构建 IPA 文件
       - name: Build IPA
         run: |
           mkdir -p build
@@ -35,14 +38,27 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
             archive
+          
           mkdir -p Payload
           cp -r build/App.xcarchive/Products/Applications/*.app Payload/
           zip -r Clash_Dash_unsigned.ipa Payload
 
+      # ✅ 自动创建标签
+      - name: Create Tag
+        id: create_tag
+        run: |
+          TAG_NAME="v1.3.6-Build-8-$(date +%Y%m%d%H%M%S)"
+          echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
+          echo "Creating tag $TAG_NAME"
+          git tag $TAG_NAME
+          git push origin $TAG_NAME
+
+      # ✅ 创建 GitHub Release 并上传 IPA 文件
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           files: Clash_Dash_unsigned.ipa
           generate_release_notes: true
+          tag_name: ${{ env.TAG_NAME }}
         env:
           GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
