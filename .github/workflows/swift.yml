@@ -1,0 +1,48 @@
+name: Build and Release IPA
+
+# ✅ 将触发器改为手动触发
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to build'
+        required: true
+        default: 'v1.3.6-Build-8'
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch }}
+
+      - name: Set up Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Build IPA
+        run: |
+          mkdir -p build
+          xcodebuild -scheme "Clash Dash" \
+            -configuration Release \
+            -archivePath build/App.xcarchive \
+            -sdk iphoneos \
+            -allowProvisioningUpdates \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            archive
+          mkdir -p Payload
+          cp -r build/App.xcarchive/Products/Applications/*.app Payload/
+          zip -r Clash_Dash_unsigned.ipa Payload
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: Clash_Dash_unsigned.ipa
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
